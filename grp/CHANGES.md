@@ -252,7 +252,7 @@ Grip Changelog
 - Enhancement: Allow exporting to stdout ([#73](https://github.com/joeyespo/grip/issues/73))
 - Enhancement: Allow reading from stdin ([#72](https://github.com/joeyespo/grip/issues/72))
 - Enhancement: Allow `:<port>` pattern in CLI
-- Enhancement: Add a favicon ![favicon](artwork/favicon.ico) ([#60](https://github.com/joeyespo/grip/issues/60))
+- Enhancement: Add a favicon ![favicon](grip/static/favicon.ico) ([#60](https://github.com/joeyespo/grip/issues/60))
 - Enhancement: Add "GitHub rate limit" page to replace the generic 403 error ([#48](https://github.com/joeyespo/grip/issues/48))
 - Enhancement: Add option to clear the cache ([#68](https://github.com/joeyespo/grip/issues/68))
 - Enhancement: Allow storing credentials in config file ([#61](https://github.com/joeyespo/grip/issues/61))

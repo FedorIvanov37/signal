@@ -184,8 +184,6 @@ class Ui_LicenseWindow(object):
         self.ButtonReject.clicked.connect(LicenseWindow.reject) # type: ignore
         QtCore.QMetaObject.connectSlotsByName(LicenseWindow)
         LicenseWindow.setTabOrder(self.CheckBoxAgreement, self.CheckBoxDontShowAgain)
-        LicenseWindow.setTabOrder(self.CheckBoxDontShowAgain, self.ButtonAccept)
-        LicenseWindow.setTabOrder(self.ButtonAccept, self.ButtonReject)
 
     def retranslateUi(self, LicenseWindow):
         _translate = QtCore.QCoreApplication.translate

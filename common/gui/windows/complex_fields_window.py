@@ -1,7 +1,7 @@
 from re import search
 from json import dumps, loads
 from json.decoder import JSONDecodeError
-from logging import error, info
+from loguru import logger
 from dataclasses import asdict
 from PyQt6.QtGui import QFont, QKeySequence, QShortcut
 from PyQt6.QtCore import Qt
@@ -150,11 +150,11 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
         json_data: dict = self.get_json_data()
         json_data: str = dumps(json_data, indent=4)
         self.set_clipboard_text(json_data)
-        info("JSON copied to clipboard")
+        logger.info("JSON copied to clipboard")
 
     def copy_string(self):
         self.set_clipboard_text(self.TextData.toPlainText())
-        info("String copied to clipboard")
+        logger.info("String copied to clipboard")
 
     @staticmethod
     def set_clipboard_text(data: str = str()) -> None:
@@ -164,15 +164,15 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
         try:
             field_number = self.get_field_number()
         except LookupError as lookup_error:
-            error(lookup_error)
+            logger.error(lookup_error)
             return
 
         if not (json_data := self.get_json_data()):
-            error("No data to set")
+            logger.error("No data to set")
             return
 
         if not (field_data := json_data.get(field_number)):
-            error("Lost field data")
+            logger.error("Lost field data")
             return
 
         transaction: Transaction = self.terminal.parse_main_window_tab()
@@ -180,13 +180,13 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
 
         self.terminal.parse_transaction(transaction)
 
-        info(f"Set field {field_number} data to MainWindow")
+        logger.info(f"Set field {field_number} data to MainWindow")
 
     def get_json_data(self):
         try:
             field_number = self.get_field_number()
         except LookupError as lookup_error:
-            error(lookup_error)
+            logger.error(lookup_error)
             return
 
         try:
@@ -195,7 +195,7 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
 
         except ValueError as validation_error:
             self.clear_string()
-            error(validation_error)
+            logger.error(validation_error)
             return {}
 
         if not (json_data.get(field_number)):
@@ -217,7 +217,7 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
             try:
                 string_data = string_data + self.parser.join_complex_item(item)
             except Exception as parsing_error:
-                error(f"JSON parsing error: {parsing_error}")
+                logger.error(f"JSON parsing error: {parsing_error}")
                 return
 
         self.TextData.setText(string_data)
@@ -226,7 +226,7 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
         try:
             field_number = self.get_field_number()
         except LookupError as lookup_error:
-            error(lookup_error)
+            logger.error(lookup_error)
             return
 
         try:
@@ -234,25 +234,25 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
                 raise LookupError("Lost transaction data")
 
         except Exception as window_parsing_error:
-            error(window_parsing_error)
+            logger.error(window_parsing_error)
             return
 
         if not (field_data := transaction.data_fields.get(field_number)):
-            error("Lost field data")
+            logger.error("Lost field data")
             return
 
         if isinstance(field_data, dict):
             try:
                 field_data: str = Parser.join_complex_field(field_number, field_data)
             except Exception as parsing_error:
-                error(parsing_error)
+                logger.error(parsing_error)
                 return
 
         self.TextData.setText(field_data)
 
         self.parse_string()
 
-        info(f"Got field {field_number} data from MainWindow")
+        logger.info(f"Got field {field_number} data from MainWindow")
 
     def parse_string(self):
         if TextConstants.HELLO_MESSAGE in self.TextData.toPlainText():
@@ -261,7 +261,7 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
         try:
             field_number = self.get_field_number()
         except LookupError as lookup_error:
-            error(lookup_error)
+            logger.error(lookup_error)
             return
 
         if not (field_data := self.TextData.toPlainText()):
@@ -270,7 +270,7 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
         try:
             field_data = self.parse_json_data(field_data)
         except Exception as parsing_error:
-            error(parsing_error)
+            logger.error(parsing_error)
             return
 
         field_data = field_data.replace("\n", "")
@@ -278,7 +278,7 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
         try:
             json_data = Parser.split_complex_field(field_number, field_data)
         except Exception as parsing_error:
-            error(f"String parsing error: {parsing_error}")
+            logger.error(f"String parsing error: {parsing_error}")
             self.JsonView.clean()
             return
 
@@ -304,7 +304,7 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
         try:
             field_data: str = Parser.join_complex_field(field_number, json_body)
         except Exception as parsing_error:
-            error(f"Cannot set JSON data: {parsing_error}")
+            logger.error(f"Cannot set JSON data: {parsing_error}")
             return data
 
         return field_data

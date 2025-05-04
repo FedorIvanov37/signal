@@ -4,6 +4,7 @@ from enum import StrEnum
 class TermDirs(StrEnum):
     DATA_DIR = "common/data"
     LOG_DIR = "common/log"
+    DOC_DIR = "common/doc"
     SPEC_BACKUP_DIR = f"{DATA_DIR}/spec_backup"
     DEFAULT_MSG_DIR = f"{DATA_DIR}/default"
     LICENSE_DIR = f"{DATA_DIR}/license"

@@ -1,6 +1,5 @@
 from typing import Final
 from enum import StrEnum
-from logging import _levelToName as Levels
 
 
 class DebugLevels(StrEnum):
@@ -12,16 +11,10 @@ class DebugLevels(StrEnum):
     NOTSET = "NOTSET"
 
 
-DISPLAY_DATE_FORMAT: Final[str] = "%T"
-LOGFILE_DATE_FORMAT: Final[str] = "%d.%m.%Y %T"
-
-FORMAT: Final[str] = "{asctime} [{levelname}] {message}"
-MARK_STYLE: Final[str] = "{"
+DISPLAY_DATE_FORMAT: Final[str] = "{time:HH:mm:ss} [{level}] {message}"
+LOGFILE_DATE_FORMAT: Final[str] = "{time:DD.MM.YYYY HH:mm:ss} [{level}] {message}"
 LOG_MAX_SIZE_MEGABYTES: Final[int] = 10
-BACKUP_COUNT: Final[int] = 10
-RAISE_EXCEPTIONS: bool = False
+COMPRESSION = "zip"
 
-LOG_LEVEL: Final[list[str]] = list(Levels.values())
 
-for unused_level in DebugLevels.CRITICAL, DebugLevels.NOTSET:
-    LOG_LEVEL.remove(unused_level)
+LOG_LEVEL = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL", "NOTSET"]

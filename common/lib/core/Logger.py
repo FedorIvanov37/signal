@@ -1,108 +1,48 @@
-import logging
-from logging import debug, getLevelName, getLogger, Formatter, StreamHandler
-from common.gui.core.WirelessHandler import WirelessHandler
-from logging.handlers import RotatingFileHandler
-from common.lib.constants import LogDefinition
-from common.lib.core.EpaySpecification import EpaySpecification
-from common.lib.data_models.Config import Config
+from sys import stdout
+from loguru import logger
 from common.lib.enums.TermFilesPath import TermFilesPath
-from common.lib.decorators.singleton import singleton
+from common.lib.data_models.Config import Config
+from common.lib.constants import LogDefinition
+from common.gui.core.WirelessHandler import WirelessHandler
 
 
-class LogStream:
-    def __init__(self, log_browser):
-        self.log_browser = log_browser
-
-    def write(self, data):
-        self.log_browser.append(data)
-
-
-@singleton
 class Logger:
-    _spec = EpaySpecification()
-    _stream = None
-
-    @property
-    def spec(self):
-        return self._spec
-
-    @property
-    def stream(self):
-        return self._stream
-
-    @stream.setter
-    def stream(self, stream):
-        self._stream = stream
+    rotation = f"{LogDefinition.LOG_MAX_SIZE_MEGABYTES} MB"
+    format = LogDefinition.LOGFILE_DATE_FORMAT
+    compression = LogDefinition.COMPRESSION
 
     def __init__(self, config: Config):
-        self.config: Config = config
+        self.config = config
         self.setup()
 
-    def setup(self, logfile: str | None = None):
-        if logfile is None:
-            logfile = TermFilesPath.LOG_FILE_NAME
+    def setup(self, filename=TermFilesPath.LOG_FILE_NAME):
+        logger.remove()
 
-        logger = getLogger()
-        logger.handlers.clear()
-        logger.setLevel(getLevelName(self.config.debug.level))
-
-        formatter = Formatter(LogDefinition.FORMAT, LogDefinition.LOGFILE_DATE_FORMAT, LogDefinition.MARK_STYLE)
-
-        file_handler = RotatingFileHandler(
-            filename=logfile,
-            maxBytes=LogDefinition.LOG_MAX_SIZE_MEGABYTES * 1024000,
-            backupCount=self.config.debug.backup_storage_depth,
-            encoding='utf8'
+        logger.add(
+            filename,
+            format=self.format,
+            level=self.config.debug.level,
+            rotation=self.rotation,
+            compression=self.compression,
         )
 
-        file_handler.setFormatter(formatter)
+    def add_stdout_handler(self):
+        logger.add(
+            stdout,
+            format=self.format,
+            level=self.config.debug.level,
+        )
 
-        logger.addHandler(file_handler)
+    def add_wireless_handler(self, log_browser, wireless_handler: WirelessHandler | None = None) -> int:
+        if wireless_handler is None:
+            wireless_handler = WirelessHandler()
 
-        logging.raiseExceptions = LogDefinition.RAISE_EXCEPTIONS
+        wireless_handler.new_record_appeared.connect(log_browser.append)
 
-        debug("Logger started")
+        handler_id = logger.add(
+            wireless_handler,
+            format=LogDefinition.DISPLAY_DATE_FORMAT,
+            level=self.config.debug.level
+        )
 
-    def set_debug_level(self, level=None):
-        if level is None:
-            level = self.config.debug.level
-
-        if not level:
-            return
-
-        getLogger().setLevel(getLevelName(level))
-
-    @staticmethod
-    def create_window_logger(log_browser, formatter: Formatter | None = None) -> WirelessHandler:
-        if formatter is None:
-            formatter: Formatter = Formatter(
-                LogDefinition.FORMAT,
-                LogDefinition.DISPLAY_DATE_FORMAT,
-                LogDefinition.MARK_STYLE
-            )
-
-        logger = getLogger()
-
-        for handler in logger.handlers:
-            if not isinstance(handler, WirelessHandler):
-                continue
-
-            logger.removeHandler(handler)
-
-        stream: LogStream = LogStream(log_browser)
-
-        wireless_handler = WirelessHandler()
-        wireless_handler.new_record_appeared.connect(lambda record: stream.write(data=record))
-        wireless_handler.setFormatter(formatter)
-
-        logger.addHandler(wireless_handler)
-
-        return wireless_handler
-
-    @staticmethod
-    def create_logger():
-        formatter: Formatter = Formatter(LogDefinition.FORMAT, LogDefinition.DISPLAY_DATE_FORMAT, LogDefinition.MARK_STYLE)
-        logger = getLogger()
-        handler = StreamHandler()
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        return handler_id

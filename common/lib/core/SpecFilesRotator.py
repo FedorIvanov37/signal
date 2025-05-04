@@ -1,6 +1,6 @@
 from os import remove, listdir, path
 from datetime import datetime
-from logging import error
+from loguru import logger
 from common.lib.data_models.Config import Config
 from common.lib.enums.TermFilesPath import TermDirs
 from common.lib.core.EpaySpecification import EpaySpecification
@@ -31,7 +31,7 @@ class SpecFilesRotator:
         try:
             files = listdir(TermDirs.SPEC_BACKUP_DIR)
         except Exception as dir_access_error:
-            error(f"Cannot get specification backup files list: {dir_access_error}")
+            logger.error(f"Cannot get specification backup files list: {dir_access_error}")
             return
 
         files.sort(reverse=True)
@@ -48,5 +48,5 @@ class SpecFilesRotator:
             try:
                 remove(f"{TermDirs.SPEC_BACKUP_DIR}/{file}")
             except Exception as remove_error:
-                error(f"Cannot cleanup specification backup directory: {remove_error}")
+                logger.error(f"Cannot cleanup specification backup directory: {remove_error}")
                 return

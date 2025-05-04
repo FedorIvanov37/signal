@@ -1,5 +1,4 @@
 from enum import StrEnum
-from common.lib.enums import KeepAlive
 from common.lib.enums.DataFormats import PrintDataFormats
 
 
@@ -58,18 +57,6 @@ class ApplySpecMenuActions(StrEnum):
 class SetSpecMenuActions(StrEnum):
     REMOTE_SPEC = "Set remote specification"
     LOCAL_SPEC = "Set local specification"
-
-
-class KeepAliveTimeIntervals(StrEnum):
-    KEEP_ALIVE_1S = KeepAlive.IntervalNames.KEEP_ALIVE_1S
-    KEEP_ALIVE_5S = KeepAlive.IntervalNames.KEEP_ALIVE_5S
-    KEEP_ALIVE_10S = KeepAlive.IntervalNames.KEEP_ALIVE_10S
-    KEEP_ALIVE_30S = KeepAlive.IntervalNames.KEEP_ALIVE_30S
-    KEEP_ALIVE_60S = KeepAlive.IntervalNames.KEEP_ALIVE_60S
-    KEEP_ALIVE_300S = KeepAlive.IntervalNames.KEEP_ALIVE_300S
-    KEEP_ALIVE_DEFAULT = KeepAlive.IntervalNames.KEEP_ALIVE_DEFAULT
-    KEEP_ALIVE_ONCE = KeepAlive.IntervalNames.KEEP_ALIVE_ONCE
-    KEEP_ALIVE_STOP = KeepAlive.IntervalNames.KEEP_ALIVE_STOP
 
 
 class Marks(StrEnum):

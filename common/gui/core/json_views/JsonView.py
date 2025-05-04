@@ -1,5 +1,5 @@
 from copy import deepcopy
-from logging import error, warning, debug, info
+from loguru import logger
 from PyQt6.QtCore import pyqtSignal, QModelIndex
 from PyQt6.QtWidgets import QTreeWidgetItem, QItemDelegate, QLineEdit
 from common.lib.core.EpaySpecification import EpaySpecification
@@ -261,7 +261,7 @@ class JsonView(TreeView):
 
         if spec := field_item.get_field_spec():
             if len(trans_id) > spec.max_length or len(trans_id) < spec.min_length:
-                warning("Invalid trans ID")
+                logger.warning("Invalid trans ID")
                 return
 
         field_item.field_data = trans_id
@@ -359,10 +359,10 @@ class JsonView(TreeView):
                     self.set_subfields_length(item)
 
         except DataValidationError as validation_error:
-            validation_args = (item, validation_error, error)
+            validation_args = (item, validation_error, logger.error)
 
         except DataValidationWarning as validation_warning:
-            validation_args = (item, validation_warning, warning)
+            validation_args = (item, validation_warning, logger.warning)
 
         finally:
             self.set_validation_status(*validation_args)
@@ -380,7 +380,7 @@ class JsonView(TreeView):
         try:
             item.set_spec()
         except Exception as set_spec_error:
-            debug(set_spec_error)
+            logger.debug(set_spec_error)
 
         if not self.spec.get_field_spec(item.get_field_path()):
             warn_text = f"⚠ ️No specification for field {item.get_field_path(string=True)}"
@@ -400,11 +400,11 @@ class JsonView(TreeView):
         for child in item.get_children():
             self.set_item_description(child)
 
-    def set_validation_status(self, item: FieldItem, exception: Exception | None = None, level=info):
+    def set_validation_status(self, item: FieldItem, exception: Exception | None = None, level=logger.info):
         colors_map = {
-            error: Colors.RED,
-            warning: Colors.BLUE,
-            info: Colors.BLACK
+            logger.error: Colors.RED,
+            logger.warning: Colors.BLUE,
+            logger.info: Colors.BLACK
         }
 
         item.set_item_color(colors_map.get(level, Colors.BLACK))
@@ -436,10 +436,10 @@ class JsonView(TreeView):
                 self.validate_item(child_item, force=force)
 
             except DataValidationError as validation_error:
-                validation_status_args = (child_item, validation_error, error,)
+                validation_status_args = (child_item, validation_error, logger.error,)
 
             except DataValidationWarning as validation_warning:
-                validation_status_args = (child_item, validation_warning, warning,)
+                validation_status_args = (child_item, validation_warning, logger.warning,)
 
             finally:
                 self.set_validation_status(*validation_status_args)
@@ -482,7 +482,7 @@ class JsonView(TreeView):
         try:
             self.check_duplicates_after_remove(item, parent)
         except (DataValidationError, ValueError) as duplication_error:
-            error(duplication_error)
+            logger.error(duplication_error)
 
         self.setFocus()
         self.field_removed.emit()
@@ -537,7 +537,7 @@ class JsonView(TreeView):
 
             except DataValidationWarning as validation_warning:
                 color = Colors.BLUE
-                warning(validation_warning)
+                logger.warning(validation_warning)
 
             finally:
                 item.set_item_color(color)
@@ -626,7 +626,7 @@ class JsonView(TreeView):
             self.parse_fields(fields, parent=item, specification=self.spec.fields.get(item.field_number))
 
         except Exception as parsing_error:
-            error(f"{parsing_error_text}: {parsing_error}")
+            logger.error(f"{parsing_error_text}: {parsing_error}")
             item.set_checkbox(False)
             return
 
@@ -647,8 +647,8 @@ class JsonView(TreeView):
             item.takeChildren()
 
         except Exception as parsing_error:
-            error(parsing_error_text)
-            [error(line) for line in str(parsing_error).splitlines()]
+            logger.error(parsing_error_text)
+            [logger.error(line) for line in str(parsing_error).splitlines()]
             item.set_checkbox()
 
         self.hide_secrets()
@@ -695,7 +695,7 @@ class JsonView(TreeView):
                 field_spec = specification.fields.get(field)
 
             except AttributeError:
-                error(f"Cannot parse field {'.'.join(specification.field_path)}")
+                logger.error(f"Cannot parse field {'.'.join(specification.field_path)}")
                 child = FieldItem([field])
                 child.field_data = str(field_data)
                 parent.addChild(child, fill_len=self.len_fill)
@@ -750,7 +750,7 @@ class JsonView(TreeView):
 
         for row in parent.get_children():
             if row.field_number in result:
-                warning(f"Duplicated field number {row.get_field_path(string=True)}")
+                logger.warning(f"Duplicated field number {row.get_field_path(string=True)}")
 
             try:
                 self.validator.validate_item(row)
@@ -770,7 +770,7 @@ class JsonView(TreeView):
             try:
                 fields = {field: result[field] for field in sorted(result, key=int)}
             except ValueError:
-                warning("Cannot sort top-level data fields, usually it happens due to non-digit field number")
+                logger.warning("Cannot sort top-level data fields, usually it happens due to non-digit field number")
                 fields = result
 
             if not self.config.validation.validate_window:

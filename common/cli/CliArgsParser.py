@@ -32,6 +32,7 @@ class CliArgsParser(ArgumentParser):
         self.add_argument("-v", "--version", action="store_true", help="Print current version of SIGNAL")
         self.add_argument("--print-config", action="store_true", help="Print configuration parameters")
         self.add_argument("--config-file", action="store", default=TermFilesPath.CONFIG, help="Set configuration file path")
+        self.add_argument("--api-mode", action="store_true", default=False, help="Run signal in API mode")
 
     def parse_arguments(self) -> CliConfig:
         cli_arguments = self.parse_args()

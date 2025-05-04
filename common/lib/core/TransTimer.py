@@ -1,5 +1,5 @@
 from re import search
-from logging import info
+from loguru import logger
 from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 from common.lib.enums import KeepAlive
 
@@ -35,7 +35,7 @@ class TransactionTimer(QObject):
         if interval_name == KeepAlive.IntervalNames.KEEP_ALIVE_STOP:
             self._trans_loop_timer.stop()
             self.interval_was_set.emit(interval_name, self.trans_type)
-            info(f"{self.trans_type} loop is deactivated")
+            logger.info(f"{self.trans_type} loop is deactivated")
             return
 
         try:
@@ -52,4 +52,4 @@ class TransactionTimer(QObject):
 
         self.interval_was_set.emit(interval_name, self.trans_type)
 
-        info(f"{self.trans_type} loop set to {interval_name}")
+        logger.info(f"{self.trans_type} loop set to {interval_name}")

@@ -4,10 +4,11 @@
 <p align="center">This guide describes the Signal basic concept, usage, settings, and library re-usage <br><br>
 The document is currently under construction</p> 
 
-# Contents 
 
-* [SIGNAL](#signal)
-  * [SIGNAL general overview](#signal-general-overview)
+<details><summary><h1>Contents</h1></summary>
+       
+* [Signal](#signal)
+  * [Signal general overview](#signal-general-overview)
   * [Important notes](#important-notes)
   * [Release info](#release-info)
    
@@ -15,14 +16,31 @@ The document is currently under construction</p>
 * [Graphic User Interface](#graphic-user-interface)
   * [GUI overview](#gui-overview)
   * [Main Window](#main-window)
-    * [Main Window overview](#main-window-overview)  
-    * [Complex fields parser](#complex-fields-parser)
-    * [Reversal](#reversal)
-    * [Transactions auto-repeat](#transactions-auto-repeat)
-    * [Search line](#search-line)
-    * [Print data](#print-data)
-    * [Fields generators](#fields-generators)
-    * [Secret features](#secret-features)
+    * [Overview](#main-window-overview)
+    * [Features]
+      * [Transactions sending]
+      * [Data exchange]
+      * [Validations]
+      * [Search line](#search-line)
+      * [Hide secrets](#hide-secrets)
+      * [Windows hotkeys](#windows-hotkeys)
+       
+    * Tools
+      * [Connector] 
+      * [Echo-test]
+      * [Keep alive]
+      * [Transactions auto-repeat](#transactions-auto-repeat)
+      * [Reversal](#reversal)
+      * [Complex fields parser](#complex-fields-parser)
+      * [Print data](#print-data)
+      * [Fields generators](#fields-generators)
+      * [Secret features](#secret-features)
+  
+  * [Settings Window](#settings-window)
+    * [Settings Window overview](#settings-window-overview)
+    * [Triggers](#triggers)
+    * [Validations](#validations)      
+
   * [Specification Window](#specification-window)
     * [Specification Window overview](#specification-window-overview)
     * [Field parameters](#field-parameters)
@@ -30,13 +48,15 @@ The document is currently under construction</p>
     * [MTI settings](#mti-settings)
     * [Set specification](#set-specification)
     * [Save specification](#save-specification)
-  * [Settings Window](#settings-window)
-    * [Settings Window overview](#settings-window-overview)
-    * [Triggers](#triggers)
-    * [Validations](#validations)
-  * [Windows hotkeys](#windows-hotkeys)
- 
- 
+
+
+* [HTTP Transaction API](#http-transaction-api)
+  * [Short API reference](#short-api-reference)
+  * [Complete API reference](#complete-api-reference)
+  * [Data models]
+  * [Postman collection](#postman-collection)
+  
+  
 * [Command Line Interface](#command-line-interface)
   * [CLI usage](#cli-usage)
   * [CLI examples](#cli-examples)
@@ -118,25 +138,25 @@ The document is currently under construction</p>
   * [Resources](#resources)
   * [Support](#support)
   * [Author](#author)
-  
-# SIGNAL
 
-## SIGNAL general overview
+</details>
+
+# Signal
+
+## Signal general overview
 
 The Signal simplifies the sending of banking card e-commerce transactions to banking card processing systems using a 
-useful visual and program interface
+useful visual and program interface. It uses ISO-8583 E-pay protocol for transactions sending, instead of PSP. It can be
+used during the Payment Systems certification test, for checking and setting up the system on the test environment, 
+during the application development process, and so on.
 
-The SIGNAL uses ISO-8583 E-pay protocol for transactions sending, instead of PSP. It can be used during the Payment 
-Systems certification test, for checking and setting up the system on the test environment, during the application 
-development process, and so on
+The Signal has three interfaces, which lead to the single core - Graphic User Interface, WEB Application Program 
+Interface, and Command line interface. Generally speaking, they do the same things but use different points of 
+interaction with their own specific features
 
 Also, the Signal builds like a kit of weakly connected modules like a Parser, Connector, Queue, etc. It allows to 
 reuse or extend the Signal's functionality making emulators, loaders, parsers, converters, application interfaces, 
-and many other things based on [Signal modules](#library-re-usage)
-
-[UBC SV API](http://feapi.unlimint.io:7171/documentation) is a good example of using SIGNAL modules without any GUI 
-
-See more in the chapter [About the Signal](#about-signal)
+and many other things based on [Signal modules](#library-re-usage) 
 
 In case of any questions about SIGNAL [contact the author](#author). Your feedback and suggestions are general drivers 
 of the Signal evolution
@@ -151,25 +171,24 @@ of the Signal evolution
 
 ## Release info
 
-What's new is the Signal v0.18 
+What's new is the Signal v0.19
 
 * New features
-  * Command line mode
-  * Main Window tabs
-  * New hotkeys to manage tabs
-    * Multiple files opening
-    * Multiple files saving
+  * Web API in GUI and CLI mode
+  * The Postman collection
+  * Toolbar on main window
+  * Standalone user reference guide, available in browser
 
 * Updates
-  * Reduced validation and other redundant feedback
-  * Expand reversal window to long utrnno
-  * License and About windows renovation
-  * Added setting: Show license agreement on startup
-
+  * The main window buttons set is revised. All the tools moved to the toolbar
+  * Renovation of the settings window 
+  * The "settings" and the "about" windows are merged
+  * Updated user reference guide 
+  
+  
 * Fixed
-  * License window opens multiple times
-  * Incorrect bitmap representation
-  * Small bugs inherited from v0.17
+  * Force fields validation does not work in some cases 
+  * Code optimization
   
 
 # Graphic User Interface
@@ -189,21 +208,31 @@ Check the parameters, opened by the "Configuration" button to make your settings
 
 ## Main Window
 
-### Main Window overview
+The MainWidow is a generic user interaction point. The main purpose is transaction data representation, data 
+validations, and generators, access to the transaction processing tools, sending and receiving transactions
 
-### Complex fields parser
+### Main Window tools
 
-### Reversal
+The MainWidow is an access point to the transactions management tools. Not all the tools are presented in the MainWindow 
+directly. This chapter describes the MainWindow tools' purpose and best usage practices
 
-### Transactions auto-repeat
+#### Search line
 
-### Search line
+Accessible by `Ctrl + F` key sequence. The search line ...
 
-### Print data
+#### Complex fields parser
 
-### Fields generators
+#### Reversal
 
-### Secret features
+#### Transactions auto-repeat
+
+#### Print data
+
+#### Fields generators
+
+#### Secret features
+
+
 
 ## Specification Window
 
@@ -256,6 +285,76 @@ The list of key sequences and corresponding actions
 | Ctrl + Alt + Q                    | Quit SIGNAL                    | -                                |
 
 
+# HTTP Transaction API
+
+Signal has a built-in HTTP WEB API. The API allows for transaction management, configuration settings, and information 
+gathering.
+
+The API is supported by both the command-line and graphic user interfaces. It runs in a separate thread so that you
+can use GUI along with API at the same time 
+
+## Short API reference
+
+| URL                                   | Method | Purpose                                                       | Headers required                 | URL params                                       | Body                                         |  
+|---------------------------------------|--------|---------------------------------------------------------------|----------------------------------|--------------------------------------------------|----------------------------------------------|
+| /api/documentation                    | `GET`  | Get user reference guide                                      | -                                | -                                                | -                                            |
+| /api/transactions                     | `GET`  | Get data of all transactions made in the current runtime      | -                                | -                                                | -                                            |
+| /api/transactions/{trans_id}          | `GET`  | Get data of specific transaction made in the current runtime  | -                                | trans_id: ID of previously-made transaction      | -                                            |
+| /api/transactions                     | `POST` | Create new transaction                                        | Content-Type: application/json   | -                                                | Transaction                                  |
+| /api/transactions/{trans_id}/reversal | `POST` | Reverse specific transaction made in the current runtime      | -                                | trans_id: ID of previously-made transaction      | -                                            |
+| /transactions/{trans_type}            | `POST` | Create predefined transaction                                 | Content-Type: application/json   | TransType: Enum, see [data models](#data-models) | CardData                                     |
+| /api/connection                       | `GET`  | Get connection object                                         | -                                | -                                                | -                                            |
+| /api/connection/{action}              | `PUT`  | Perform connection action such as connect, disconnect, etc    | Content-Type: application/json   | action: Enum, see [data models](#data-models)    | Connection (optional) when action is connect |
+| /api/config                           | `GET`  | Get current configuration object                              | -                                | -                                                | -                                            |
+| /api/config                           | `PUT`  | Update current configuration object                           | Content-Type: application/json   | -                                                | Config                                       |
+| /api/specification                    | `GET`  | Get specification object                                      | -                                | -                                                | -                                            |
+| /api/tools/transactions/validate      | `POST` | Validate transaction                                          | Content-Type: application/json   | -                                                | Transaction                                  |
+
+## Complete API reference
+
+### Get API documentation
+
+**Description**: Get a user reference guide. This method is more suitable for rendering in the browser to the end user
+
+**Endpoint**: `GET /api/documentation`
+
+**Request example**: `curl --location 'http://192.168.0.3:7777/api/documentation'`
+
+**Response example**:
+
+>>>>webpage
+
+
+### Get transactions
+
+**Description**: Get data of all transactions made in the current runtime
+
+**Endpoint**: `GET /api/transactions`
+
+**Request example**: `curl --location 'http://192.168.0.3:7777/api/transactions'`
+
+**Response example**: 
+
+>>>Transactions
+
+
+
+   
+
+
+## Data models
+
+## Postman collection
+Postman is an API platform for building and using APIs. Postman simplifies each step of the API lifecycle and 
+streamlines collaboration so you can create better APIs faster. See more about it on 
+the [Postman home page](https://www.postman.com/)
+
+Signal Postman collection covers basic API usage. You can expand the collection, write the test-scenarios using 
+this tool
+
+Press <a href="c:/fedor/sv.event.example.zip" download> here </a> to download the latest Signal Postman collection 
+
+
 # Command Line Interface
 The SIGNAL can be run in Command Line Interface mode (CLI) by usage of specific flags `-c` or `--console`. In CLI mode 
 GUI will not be run, all the output will be placed in the command line instead. CLI mode is useful when some external 
@@ -287,9 +386,10 @@ To see usage hint call
 > signal.exe --help
 
 ```text
-usage: signal.exe [-h] -c [-f FILE] [-d DIR] [-a ADDRESS] [-p PORT] [-r] [-l LOG_LEVEL] [-i INTERVAL] [--parallel] [-t TIMEOUT] [--about] [-e] [--default] [-v] [--print-config] [--config-file CONFIG_FILE]
+usage: _signal.py [-h] -c [-f FILE] [-d DIR] [-a ADDRESS] [-p PORT] [-r] [--log-file LOG_FILE] [-l LOG_LEVEL] [-i INTERVAL] [--parallel] [-t TIMEOUT] [--about] [-e] [--default] [-v] [--print-config] [--config-file CONFIG_FILE]
+                  [--api-mode]
 
-SIGNAL v0.18
+SIGNAL v0.19
 
 options:
   -h, --help            show this help message and exit
@@ -300,8 +400,9 @@ options:
                         Host TCP/IP address
   -p PORT, --port PORT  TCP/IP port to connect
   -r, --repeat          Repeat transactions after sending
+  --log-file LOG_FILE   Set log file path. Default common/log/signal.log
   -l LOG_LEVEL, --log-level LOG_LEVEL
-                        Debug level DEBUG, INFO, etc
+                        Debug level: DEBUG, INFO, WARNING, ERROR, CRITICAL, NOTSET
   -i INTERVAL, --interval INTERVAL
                         Wait (seconds) before send next transaction
   --parallel            Send new transaction with no waiting of answer for previous one
@@ -314,11 +415,13 @@ options:
   --print-config        Print configuration parameters
   --config-file CONFIG_FILE
                         Set configuration file path
+  --api-mode            Run signal in API mode
 ```
 
 ## CLI examples
 
-Below are a few examples of CLI commands. It is not a complete list of possible combinations. See [CLI Usage](#cli-Usage) to get all the commands
+Using the command line interface, you can write flexible transaction test scenarios. Below are a few examples of 
+CLI commands. It is not a complete list of possible combinations. See [CLI Usage](#cli-Usage) to get all the commands
 
 ### Command examples
 
@@ -330,6 +433,7 @@ Below are a few examples of CLI commands. It is not a complete list of possible 
 | `signal.exe --console --file /transactions/transaction.json` | Parse specific file `/transactions/transaction.json` and send the transaction to the host |
 | `signal.exe --console --default --repeat --interval 2`       | Begin transaction loop, sending new transaction every 2 sec                               |
 | `signal.exe --console --dir /transactions --parallel`        | Immediate send all the transactions from the directory /transactions                      |
+| `signal.exe --console --api-mode`                            | Run Signal in console API mode                                                            |
 
 ## CLI output
 
@@ -479,11 +583,14 @@ for Signal v0.18
 
 The following dependencies are required to install to run the library
 
-| Dependency                                 | Version | Higher version allowed | 
-|--------------------------------------------|---------|------------------------| 
-| [Python](https://www.python.org/)          | 3.12    | Yes                    |
-| [PyQt6](https://wiki.python.org/moin/PyQt) | 6.6.1   | Yes                    |
-| [Pydantic](https://pydantic.dev/)          | 2.6.3   | Yes                    |
+| Dependency                                                 | Version | Higher version allowed | 
+|------------------------------------------------------------|---------|------------------------| 
+| [Python](https://www.python.org/)                          | 3.12    | Yes                    |
+| [PyQt6](https://wiki.python.org/moin/PyQt)                 | 6.6.1   | Yes                    |
+| [Pydantic](https://pydantic.dev/)                          | 2.6.3   | Yes                    |
+| [Flask](https://flask.palletsprojects.com/en/3.0.x/)       | 3.0.3   | Yes                    |
+| [Flask-pydantic](https://pypi.org/project/Flask-Pydantic/) | 0.12.0  | Yes                    |
+
 
 
 Refer to chapter [Library installation](#library-installation) to figure the dependencies installation process out
@@ -1591,11 +1698,11 @@ Contact the [author](#author) in case of any copyright questions
 ## Resources
 
 * [ISO 8583 Wiki page](https://en.wikipedia.org/wiki/ISO_8583)
-  * [Payment service provider Wiki page](https://en.wikipedia.org/wiki/Payment_service_provider)
-  * [GNU licence page](https://www.gnu.org/licenses/)
-  * [Free software Wiki page](https://en.wikipedia.org/wiki/Free_software)
-  * [Qt documentation](https://doc.qt.io/)
-  * [Pydantic documentation](https://docs.pydantic.dev/latest/)
+* [Payment service provider Wiki page](https://en.wikipedia.org/wiki/Payment_service_provider)
+* [GNU licence page](https://www.gnu.org/licenses/)
+* [Free software Wiki page](https://en.wikipedia.org/wiki/Free_software)
+* [Qt documentation](https://doc.qt.io/)
+* [Pydantic documentation](https://docs.pydantic.dev/latest/)
 
 
 ## Support
@@ -1611,10 +1718,10 @@ make a voluntary donation directly to the author. ⚠️ Any donation can be vol
 The project needs help
 
 * Code review, architecture development, advice
-  * Documentation development and translate
-  * Feedback, ideas
-  * Testing, especially auto-tests, unit-tests
-  * Financial support to BTC wallet
+* Documentation development and translate
+* Feedback, ideas
+* Testing, especially auto-tests, unit-tests
+* Financial support to BTC wallet
 
 <details>
  <summary>️❤️Support the project</summary>

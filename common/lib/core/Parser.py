@@ -2,10 +2,11 @@ from json import loads
 from pathlib import Path
 from pydantic import FilePath
 from binascii import hexlify, unhexlify, b2a_hex
-from logging import error, warning, info
+from loguru import logger
 from configparser import ConfigParser, NoSectionError, NoOptionError
+from io import StringIO
 from common.lib.toolkit.generate_trans_id import generate_trans_id
-from common.lib.toolkit.toolkit import mask_secret
+from common.lib.toolkit.toolkit import mask_secret, mask_pan
 from common.lib.core.EpaySpecification import EpaySpecification
 from common.lib.core.Bitmap import Bitmap
 from common.lib.data_models.Config import Config
@@ -32,6 +33,58 @@ class Parser:
         self.generator = FieldsGenerator()
 
     @staticmethod
+    def parse_complex_fields(transaction: Transaction, split: bool = False) -> Transaction:
+        spec: EpaySpecification = EpaySpecification()
+
+        for field, field_data in transaction.data_fields.items():
+            if not spec.is_field_complex([field]):
+                continue
+
+            if not split:
+                transaction.data_fields[field] = Parser.join_complex_field(field, field_data)
+                continue
+
+            transaction.data_fields[field] = Parser.split_complex_field(field, field_data)
+
+        return transaction
+
+    @staticmethod
+    def hide_secret_fields(transaction: Transaction) -> Transaction:
+        spec: EpaySpecification = EpaySpecification()
+        transaction: Transaction = Transaction.model_validate(transaction.dict())
+
+        for field, field_data in transaction.data_fields.items():
+            if field == spec.FIELD_SET.FIELD_001_BITMAP_SECONDARY:
+                continue
+
+            if spec.is_field_complex([field]) and isinstance(field_data, dict):
+                try:
+                    field_data = Parser.join_complex_field(field, field_data)
+                except Exception as parsing_error:
+                    logger.error(f"Cannot print field {field}: {parsing_error}")
+                    continue
+
+            if all((spec.is_field_complex([field]), isinstance(field_data, str))):
+                try:
+                    split_field_data: dict = Parser.split_complex_field(field, field_data)
+                    field_data: str = Parser.join_complex_field(field, split_field_data, hide_secrets=True)
+
+                except Exception as field_parsing_error:
+                    logger.warning(field_parsing_error)
+
+            match field:
+                case spec.FIELD_SET.FIELD_002_PRIMARY_ACCOUNT_NUMBER:
+                    field_data: str = mask_pan(field_data)
+
+                case _:
+                    if spec.is_secret([field]):
+                        field_data: str = mask_secret(field_data)
+
+            transaction.data_fields[field] = field_data
+
+        return transaction
+
+    @staticmethod
     def create_dump(transaction: Transaction, body: bool = False) -> bytes | str:
         spec: EpaySpecification = EpaySpecification()
         msg_type: bytes = transaction.message_type.encode()
@@ -42,7 +95,7 @@ class Parser:
 
         for field in sorted(transaction.data_fields.keys(), key=int):
             if not (text := transaction.data_fields.get(field)):
-                warning("No value for field %s. IsoField was ignored" % field)
+                logger.warning("No value for field %s. IsoField was ignored" % field)
                 continue
 
             if isinstance(text, dict):
@@ -71,7 +124,7 @@ class Parser:
         try:
             body: str = Parser.create_dump(transaction, body=True)
         except Exception as parsing_error:
-            error(f"Parsing error {parsing_error}")
+            logger.error(f"Parsing error {parsing_error}")
             return
 
         dump = "\n"
@@ -100,7 +153,8 @@ class Parser:
         spec: EpaySpecification = EpaySpecification()
 
         if not isinstance(field_data, dict):
-            raise TypeError(f"Incorrect field value in {'.'.join(path) if path else field}")
+            return field_data
+            # raise TypeError(f"Incorrect field value in {'.'.join(path) if path else field}")
 
         if path is None:
             path = [field]
@@ -169,7 +223,7 @@ class Parser:
                             "To work with such message add the field to the Specification or set the Manual entry mode "
                             "in the Configuration window"):
 
-                    error(err)
+                    logger.error(err)
 
                 raise ValueError
 
@@ -217,10 +271,10 @@ class Parser:
 
             except (ValueError, IndexError):
                 if not config.host.header_length_exists:
-                    warning("No message header length set, ordinary header length is 2 or 4. Check the settings")
+                    logger.warning("No message header length set, ordinary header length is 2 or 4. Check the settings")
 
                 if config.host.header_length_exists and config.host.header_length not in (2, 4):
-                    warning(f"Unusual message header length {config.host.header_length}, "
+                    logger.warning(f"Unusual message header length {config.host.header_length}, "
                             f"ordinary it is 2 or 4. Check the settings")
 
                 raise ValueError("Invalid incoming message length")
@@ -317,8 +371,8 @@ class Parser:
                     raise ValueError("Lost variable length")
 
             except(AttributeError, ValueError):
-                error("Lost specification for field %s ", field)
-                error("The field and corresponding sub fields were absent")
+                logger.error("Lost specification for field %s ", field)
+                logger.error("The field and corresponding sub fields were absent")
                 return {}
 
             var_length = spec.tag_length
@@ -357,7 +411,7 @@ class Parser:
             try:
                 field_number = f"F{int(field_number):03}"
             except ValueError:
-                error(f"Wrong field number {field_number}")
+                logger.error(f"Wrong field number {field_number}")
 
             ini_data.append(f"{field_number} = [{field_data}]")
 
@@ -382,13 +436,13 @@ class Parser:
             transaction: Transaction = function(filename)
 
         if not transaction:
-            warning("Unknown file extension, trying to guess the format")
+            logger.warning("Unknown file extension, trying to guess the format")
 
             for extension in data_processing_map:
-                info(f"Trying to parse file as {extension}")
+                logger.info(f"Trying to parse file as {extension}")
 
                 if not (function := data_processing_map.get(extension)):
-                    warning(f"Cannot parse file as {extension}")
+                    logger.warning(f"Cannot parse file as {extension}")
                     continue
 
                 try:
@@ -396,11 +450,11 @@ class Parser:
                         break
 
                 except FileNotFoundError as file_not_found_error:
-                    error(file_not_found_error)
+                    logger.error(file_not_found_error)
                     break
 
                 except Exception as parsing_error:
-                    warning(f"Cannot parse file as {extension}: {parsing_error}")
+                    logger.warning(f"Cannot parse file as {extension}: {parsing_error}")
                     continue
 
         if not transaction:
@@ -422,6 +476,12 @@ class Parser:
 
         return transaction
 
+    def parse_ini_string(self, ini_data: str) -> Transaction:
+        ini: ConfigParser = ConfigParser()
+        ini.read_file(StringIO(ini_data))
+
+        return self._parse_ini(ini)
+
     @staticmethod
     def unpack_ini_field(data: str) -> str:
         return data.removeprefix('[').removesuffix(']')
@@ -432,6 +492,10 @@ class Parser:
 
         ini = ConfigParser()
         ini.read(filename)
+
+        return self._parse_ini(ini)
+
+    def _parse_ini(self, ini: ConfigParser) -> Transaction:
         fields: TypeFields = self._parse_ini_fields(ini)
 
         ini_def = IniMessageDefinition

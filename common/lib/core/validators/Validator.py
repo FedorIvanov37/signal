@@ -297,7 +297,7 @@ class Validator:
 
             return errors
 
-        def extended_validations(): # Extended, logical validation, based on business-purpose of the data field
+        def extended_validations():  # Extended, logical validation, based on business-purpose of the data field
             errors: set[str] = set()
 
             for field, value in field_spec.validators.field_type_validators.model_dump().items():

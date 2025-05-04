@@ -1,4 +1,4 @@
-from logging import error, info, debug, warning
+from loguru import logger
 from copy import deepcopy
 from typing import Optional
 from pydantic import ValidationError
@@ -6,11 +6,10 @@ from PyQt6.QtGui import QCloseEvent, QKeyEvent, QKeySequence, QShortcut
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QFileDialog, QMenu, QDialog, QPushButton, QApplication
 from common.lib.core.EpaySpecification import EpaySpecification
-from common.lib.core.Logger import getLogger, Logger
+from common.lib.core.Logger import Logger
 from common.lib.core.SpecFilesRotator import SpecFilesRotator
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel, IsoField
 from common.lib.data_models.Config import Config
-from common.gui.core.WirelessHandler import WirelessHandler
 from common.gui.core.json_items import SpecItem
 from common.gui.windows.spec_unsaved import SpecUnsaved
 from common.gui.windows.mti_spec_window import MtiSpecWindow
@@ -32,7 +31,6 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
     _reset_spec: pyqtSignal = pyqtSignal(str)
     _load_remote_spec: pyqtSignal = pyqtSignal(bool)
     _clean_spec: EpaySpecModel = None
-    _wireless_handler: WirelessHandler = None
 
     @property
     def load_remote_spec(self):
@@ -110,8 +108,8 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         for box in (self.CheckBoxHideReverved, self.CheckBoxReadOnly):
             box.setChecked(bool(Qt.CheckState.Checked))
 
-        logger = Logger(self.config)
-        self._wireless_handler: WirelessHandler = logger.create_window_logger(self.LogArea)
+        self.logger = Logger(self.config)
+        self.handler_id = self.logger.add_wireless_handler(self.LogArea)
         self.connect_all()
         self.set_read_only(self.CheckBoxReadOnly.isChecked())
         self.set_hello_message()
@@ -123,7 +121,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             self.CheckBoxReadOnly.stateChanged: lambda state: self.set_read_only(bool(state)),
             self.CheckBoxHideReverved.stateChanged: self.hide_reserved_for_future,
             self.ParseFile.pressed: self.parse_file,
-            self.spec_accepted: lambda name: info(f"Specification applied - {name}"),
+            self.spec_accepted: lambda name: logger.info(f"Specification applied - {name}"),
             self.SearchLine.textChanged: self.SpecView.search,
             self.SearchLine.editingFinished: self.SpecView.setFocus,
             self.reset_spec: self.reload_spec,
@@ -171,7 +169,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
     def backup():
         rotator: SpecFilesRotator = SpecFilesRotator()
         backup_filename = rotator.backup_spec()
-        info(f"Backup done! Filename: {backup_filename}")
+        logger.info(f"Backup done! Filename: {backup_filename}")
 
     def set_hello_message(self):
         self.LogArea.setText(f"{TextConstants.HELLO_MESSAGE}\n")
@@ -182,15 +180,15 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         if self.config.specification.backup_storage:
             rotator: SpecFilesRotator = SpecFilesRotator()
             backup_filename: str = rotator.backup_spec()
-            debug(f"Backup local specification file name: {backup_filename}")
+            logger.debug(f"Backup local specification file name: {backup_filename}")
 
         try:
             spec_model_data: EpaySpecModel = EpaySpecModel.model_validate_json(spec_data)
             spec.reload_spec(spec=spec_model_data, commit=False)
 
         except Exception as loading_error:
-            error(f"Cannot load remote specification: {loading_error}")
-            warning("Local specification will be used instead")
+            logger.error(f"Cannot load remote specification: {loading_error}")
+            logger.warning("Local specification will be used instead")
 
         self.SpecView.parse_spec(self.spec.spec)
 
@@ -245,7 +243,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             return
 
         if not (field_spec := item.get_field_spec()):
-            error(f"Cannot get field specification for {item.get_field_path(string=True)}")
+            logger.error(f"Cannot get field specification for {item.get_field_path(string=True)}")
             return
 
         validator_window = FieldDataSet(field_spec)
@@ -258,7 +256,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             self.SpecView.parse_field_spec(field_spec)
 
         except (ValidationError, ValueError) as validation_error:
-            error(validation_error)
+            logger.error(validation_error)
 
     @staticmethod
     def set_clipboard_text(data: str = str()) -> None:
@@ -272,7 +270,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             self.SpecView.reload_spec(commit)
 
         except Exception as apply_error:
-            error(apply_error)
+            logger.error(apply_error)
             self.spec_rejected.emit()
             return
 
@@ -288,11 +286,11 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             try:
                 filename = QFileDialog.getOpenFileName()[0]
             except Exception as get_file_error:
-                error(f"Filename get error: {get_file_error}")
+                logger.error(f"Filename get error: {get_file_error}")
                 return
 
         if not filename:
-            info("No input filename recognized")
+            logger.info("No input filename recognized")
             return
 
         try:
@@ -301,10 +299,10 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
 
         except ValidationError as validation_error:
             error_text = str(validation_error)
-            error(f"File validation error: {error_text}")
+            logger.error(f"File validation error: {error_text}")
 
         except Exception as parsing_error:
-            error(f"File parsing error: {parsing_error}")
+            logger.error(f"File parsing error: {parsing_error}")
 
         else:
             self.SpecView.parse_spec(specification)
@@ -320,14 +318,14 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
 
         except (ValidationError, ValueError) as spec_error:
             if isinstance(spec_error, ValidationError):
-                error(spec_error)
+                logger.error(spec_error)
 
-            getLogger().removeHandler(self._wireless_handler)
+            logger.remove(self.handler_id)
             close_event.accept()
             return
 
         if current_spec == self._clean_spec:
-            getLogger().removeHandler(self._wireless_handler)
+            logger.remove(self.handler_id)
             close_event.accept()
             return
 

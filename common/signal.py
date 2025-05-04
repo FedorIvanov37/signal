@@ -49,6 +49,7 @@ if __name__ != "__main__":  # Runs only by import command
         exit(status)
 
     except Exception as run_signal_exception:
+        raise run_signal_exception
         print(run_signal_exception)
         exit(100)
 

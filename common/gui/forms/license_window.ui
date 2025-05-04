@@ -455,8 +455,6 @@ p, li { white-space: pre-wrap; }
  <tabstops>
   <tabstop>CheckBoxAgreement</tabstop>
   <tabstop>CheckBoxDontShowAgain</tabstop>
-  <tabstop>ButtonAccept</tabstop>
-  <tabstop>ButtonReject</tabstop>
  </tabstops>
  <resources/>
  <connections>

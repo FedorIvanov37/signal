@@ -25,6 +25,18 @@ class ConnectionThread(ConnectionInterface, QObject, metaclass=QObjectAbcMeta):
     stop: bool = False
 
     @property
+    def peerAddress(self):
+        return self.connector.peerAddress
+
+    @property
+    def peerPort(self):
+        return self.connector.peerPort
+
+    @property
+    def sending_error(self):
+        return self.connector.sending_error
+
+    @property
     def connected(self):
         return self.connector.connected
 

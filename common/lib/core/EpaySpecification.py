@@ -1,5 +1,5 @@
 from copy import deepcopy
-from logging import warning
+from loguru import logger
 from dataclasses import asdict
 from pydantic import FilePath, ValidationError
 from common.lib.decorators.singleton import singleton
@@ -65,7 +65,7 @@ class EpaySpecification(EpaySpecificationData):
                 merch_cat_codes: MerchantCategoryCodes = MerchantCategoryCodes.model_validate_json(json_file.read())
 
         except Exception as dictionary_parsing_error:
-            warning(f"Cannot load dictionary: {dictionary_parsing_error}")
+            logger.warning(f"Cannot load dictionary: {dictionary_parsing_error}")
             return Dictionaries()
 
         try:
@@ -76,7 +76,7 @@ class EpaySpecification(EpaySpecificationData):
             )
 
         except (ValueError, ValidationError) as validation_error:
-            warning(validation_error)
+            logger.warning(validation_error)
             return Dictionaries()
 
         return dictionary

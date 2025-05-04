@@ -21,3 +21,4 @@ class CliConfig(BaseModel):
     print_config: bool = False
     config_file: str = TermFilesPath.CONFIG
     log_file: str = TermFilesPath.LOG_FILE_NAME
+    api_mode: bool = False

@@ -2,7 +2,7 @@ from struct import pack
 from http import HTTPStatus
 from http.client import HTTPResponse
 from urllib.request import urlopen
-from logging import error, debug, warning, info
+from loguru import logger
 from pydantic import ValidationError
 from PyQt6.QtNetwork import QTcpSocket
 from PyQt6.QtCore import pyqtSignal
@@ -17,6 +17,7 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
     incoming_transaction_data: pyqtSignal = pyqtSignal(bytes)
     transaction_sent: pyqtSignal = pyqtSignal(str)
     got_remote_spec: pyqtSignal = pyqtSignal(str)
+    sending_error: pyqtSignal = pyqtSignal(str, str)
 
     def __init__(self, config: Config):
         QTcpSocket.__init__(self)
@@ -28,15 +29,16 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
 
     def send_transaction_data(self, trans_id: str, transaction_data: bytes):
         if not self.state() == self.SocketState.ConnectedState:
-            warning("Host disconnected. Trying to establish the connection")
+            logger.warning("Host disconnected. Trying to establish the connection")
 
             try:
                 self.reconnect_sv()
             except Exception as connection_error:
-                error(connection_error)
+                self.sending_error.emit(trans_id, str(connection_error))
                 return
 
         if not self.state() == self.SocketState.ConnectedState:
+            self.sending_error.emit(trans_id, "Cannot connect to host")
             return
 
         transaction_header = pack("!H", len(transaction_data))
@@ -44,32 +46,35 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
         bytes_sent = self.write(transaction_data)
 
         if bytes_sent == int():
-            error("Cannot send transaction data")
+            self.sending_error.emit(trans_id, "Cannot send transaction data")
             return
 
-        debug("bytes sent %s", bytes_sent)
+        logger.debug("bytes sent %s", bytes_sent)
 
         self.flush()
         self.transaction_sent.emit(trans_id)
 
     def read_transaction_data(self):
-        debug("Socket has %d bytes of an incoming data", self.bytesAvailable())
+        logger.debug("Socket has %d bytes of an incoming data", self.bytesAvailable())
         incoming_data = self.readAll()
         incoming_data = incoming_data.data()
-        debug(incoming_data)
+        logger.debug(incoming_data)
         self.incoming_transaction_data.emit(incoming_data)
 
-    def connect_sv(self):
-        host = self.config.host.host
-        port = self.config.host.port
+    def connect_sv(self, host: str | None = None, port: int | None = None):
+        if host is None:
+            host = self.config.host.host
+
+        if port is None:
+            port = self.config.host.port
 
         if "" in (host, port):
-            error("Lost SV host address or port number. Check the configuration.")
+            logger.error("Lost SV host address or port number. Check the configuration.")
             return
 
         port = int(port)
 
-        debug("Connecting to %s:%s", host, port)
+        logger.debug("Connecting to %s:%s", host, port)
 
         self.connectToHost(host, port)
 
@@ -101,14 +106,14 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
             self.disconnect_sv()
 
         else:
-            error("Cannot disconnect the host")
+            logger.error("Cannot disconnect the host")
             return
 
         try:
             self.connect_sv()
 
         except Exception as connection_error:
-            error(f"SV connection error: {connection_error}")
+            logger.error(f"SV connection error: {connection_error}")
 
     def is_connected(self):
         return self.state() == self.SocketState.ConnectedState
@@ -120,13 +125,13 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
             validator.validate_url(self.config.specification.remote_spec_url)
 
         except DataValidationWarning as url_validation_warning:
-            warning(url_validation_warning)
+            logger.warning(url_validation_warning)
 
         except (ValidationError, DataValidationError) as url_validation_error:
-            error(f"Cannot load remote specification due to incorrect URL: {url_validation_error}")
+            logger.error(f"Cannot load remote specification due to incorrect URL: {url_validation_error}")
             return
 
-        info(f"Getting remote spec using url {self.config.specification.remote_spec_url}")
+        logger.info(f"Getting remote spec using url {self.config.specification.remote_spec_url}")
 
         use_local_spec_text = "Local specification will be used instead"
 
@@ -134,14 +139,14 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
             resp: HTTPResponse | str = urlopen(self.config.specification.remote_spec_url)
 
         except Exception as spec_loading_error:
-            error(f"Cannot get remote specification: {spec_loading_error}")
-            warning(use_local_spec_text)
+            logger.error(f"Cannot get remote specification: {spec_loading_error}")
+            logger.warning(use_local_spec_text)
             return
 
         try:
             if resp.getcode() != HTTPStatus.OK:
-                error(f"Cannot get remote specification: Non-success http-code {resp.status}")
-                warning(use_local_spec_text)
+                logger.error(f"Cannot get remote specification: Non-success http-code {resp.status}")
+                logger.warning(use_local_spec_text)
                 return
 
             spec_data: str = resp.read().decode()
@@ -149,5 +154,5 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
             self.got_remote_spec.emit(spec_data)
 
         except Exception as spec_error:
-            error(f"Cannot load remote specification: {spec_error}")
-            warning(use_local_spec_text)
+            logger.error(f"Cannot load remote specification: {spec_error}")
+            logger.warning(use_local_spec_text)

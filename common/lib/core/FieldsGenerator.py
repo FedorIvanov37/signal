@@ -111,3 +111,4 @@ class FieldsGenerator:
         request.resp_time_seconds = response.resp_time_seconds
         response.generate_fields = request.generate_fields
         response.is_keep_alive = request.is_keep_alive
+        response.is_reversal = request.is_reversal

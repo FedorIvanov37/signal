@@ -1,5 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic_core import PydanticCustomError
 from common.lib.core.EpaySpecification import EpaySpecification
 from common.lib.toolkit.generate_trans_id import generate_trans_id
 from common.lib.data_models.Enums import generated_field
@@ -26,6 +27,7 @@ class Transaction(BaseModel):
     utrnno: str = str()
     matched: bool | None = None
     success: bool | None = None
+    error: str | None = None
     resp_time_seconds: float | None = None
     sending_time: datetime | None = None
     is_request: bool | None = None
@@ -34,19 +36,19 @@ class Transaction(BaseModel):
 
     @field_validator("max_amount", mode="before")
     @classmethod
-    def check_amount(cls, val):
-        error_message = f"Wrong max_amount {val}. Amount must be digit in range from 0 to 9 999 999 999"
+    def check_amount(cls, amount):
+        error_message = f"Wrong max_amount {amount}. Amount must be digit in range from 0 to 9 999 999 999"
 
-        if val is None:
-            return val
+        if amount is None:
+            return amount
 
-        if not str(val).isdigit():
-            raise ValueError(error_message)
+        if not str(amount).isdigit():
+            raise PydanticCustomError("Incorrect max amount", error_message)
 
-        if int(val) not in range(0, 10_000_000_000):
-            raise ValueError(error_message)
+        if int(amount) not in range(0, 10_000_000_000):
+            raise PydanticCustomError("Max amount out of range", error_message)
 
-        return val
+        return amount
 
     @field_validator("generate_fields", mode="before")
     @classmethod
@@ -61,31 +63,42 @@ class Transaction(BaseModel):
 
         return val
 
-    @field_validator("message_type")
+    @field_validator("message_type", mode="before")
     @classmethod
-    def valid_mti(cls, val: str):
-        if len(str(val)) != MessageLength.MESSAGE_TYPE_LENGTH:
-            raise ValueError(f"Incorrect MTI length. Expected {MessageLength.MESSAGE_TYPE_LENGTH}, got {len(str(val))}")
+    def valid_mti(cls, mti: str):
+        if len(str(mti)) != MessageLength.MESSAGE_TYPE_LENGTH:
+            raise PydanticCustomError(
+                "Incorrect MTI length",
+                f"Incorrect MTI length. Expected {MessageLength.MESSAGE_TYPE_LENGTH}, got {len(str(mti))}"
+            )
 
-        if not val.isdigit():
-            raise ValueError(f"Wrong MTI value {val}. MTI must contain digits only")
+        if not mti.isdigit():
+            raise PydanticCustomError("Wrong MTI value", f"Wrong MTI value {mti}. MTI must contain digits only")
 
-        if val not in spec.get_mti_codes():
-            raise ValueError(f"No specification for MTI {val}. Correct MTI or set it in Specification Window")
+        if mti not in spec.get_mti_codes():
+            raise PydanticCustomError("MTI does not exist",
+                                      f"No specification for MTI {mti}. Correct MTI or set it in Specification Window")
 
-        return val
+        return mti
 
     @field_validator("data_fields", mode="before")
     @classmethod
-    def top_level_fields_in_range(cls, val: TypeFields):
-        for field in val.keys():
+    def top_level_fields_in_range(cls, fields: TypeFields):
+        for field in fields.keys():
             if not field.isdigit():
-                raise ValueError(f"Incorrect field number {field}. Field numbers must contain digits only")
+                raise PydanticCustomError(
+                    "Non-digit field number",
+                    f"Incorrect field number {field}. Field numbers must contain digits only"
+                )
 
             if int(field) not in range(1, MessageLength.SECOND_BITMAP_CAPACITY + 1):
-                raise ValueError(f"Wrong field number {field}. Top level fields must be in range 1 - {MessageLength.SECOND_BITMAP_CAPACITY}")
+                raise PydanticCustomError(
+                    "Field number out of range",
+                    f"Wrong field number {field}. "
+                    f"Top level fields must be in range 1 - {MessageLength.SECOND_BITMAP_CAPACITY}"
+                )
 
-        return val
+        return fields
 
 
 class OldTransaction(BaseModel):

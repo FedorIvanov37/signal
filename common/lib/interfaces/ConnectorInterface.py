@@ -2,6 +2,11 @@ from abc import abstractmethod, ABCMeta
 
 
 class ConnectionInterface(metaclass=ABCMeta):
+
+    @abstractmethod
+    def sending_error(self):
+        ...
+
     @abstractmethod
     def connected(self):
         ...

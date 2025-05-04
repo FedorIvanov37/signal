@@ -1,4 +1,4 @@
-from logging import error, info
+from loguru import logger
 from re import sub as regexp_substitute, match as regexp_match
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QTabWidget, QWidget, QVBoxLayout, QHBoxLayout
@@ -286,8 +286,8 @@ class TabView(QTabWidget):
     @void_qt_signals
     def add_tab(self, tab_name=None):
         if self.count() > int(TabViewParams.TABS_LIMIT):
-            error(f"Cannot open a new tab, max open tabs limit {TabViewParams.TABS_LIMIT} tabs is reached")
-            error("Close some tab to open a new one")
+            logger.error(f"Cannot open a new tab, max open tabs limit {TabViewParams.TABS_LIMIT} tabs is reached")
+            logger.error("Close some tab to open a new one")
             raise IndexError
 
         self.close_tab(self.plus_tab_index)

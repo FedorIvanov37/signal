@@ -9,15 +9,17 @@
     },
     "terminal": {
         "process_default_dump": true,
-        "connect_on_startup": true,
+        "connect_on_startup": false,
         "load_remote_spec": false,
-        "show_license_dialog": true
+        "show_license_dialog": false,
+        "run_api": false
     },
     "debug": {
         "level": "INFO",
         "clear_log": true,
         "parse_subfields": false,
-        "backup_storage_depth": 10
+        "backup_storage_depth": 10,
+        "reduce_keep_alive": false
     },
     "validation": {
         "validation_enabled": true,
@@ -27,7 +29,7 @@
         "validation_mode": "WARNING"
     },
     "fields": {
-        "max_amount": 100,
+        "max_amount": 1000,
         "max_amount_limited": true,
         "build_fld_90": true,
         "send_internal_id": true,
@@ -36,9 +38,16 @@
     },
     "specification": {
         "rewrite_local_spec": false,
-        "remote_spec_url": "http://172.21.30.20:4242/specification",
+        "remote_spec_url": "",
         "backup_storage_depth": 30,
         "backup_storage": false,
         "manual_input_mode": false
+    },
+    "api": {
+        "address": "0.0.0.0",
+        "port": 7777,
+        "wait_remote_host_response": true,
+        "hide_secrets": true,
+        "parse_subfields": false
     }
 }

@@ -7,7 +7,7 @@
 # #+#    #+#    #+#    #+#    #+# #+#   #+#+# #+#     #+# #+#
 #  ######## ########### ########  ###    #### ###     ### ##########
 #
-# Simplified ISO generation algorithm v0.18 | Released in May 2024
+# Simplified ISO generation algorithm v0.19 | Released in Aug 2024
 #
 #
 # E-com banking terminal GUI, used for direct interaction with banking system by ISO 8583 protocol

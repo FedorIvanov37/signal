@@ -10,12 +10,26 @@ class Host(BaseModel):
     header_length: int = 0
     header_length_exists: bool = True
 
+    @field_validator("port", mode="before")
+    @classmethod
+    def validate_port(cls, val):
+        try:
+            val = int(val)
+        except ValueError:
+            raise ValueError("Port can contain numbers only")
+
+        if val not in range(0, 65536):
+            raise ValueError(f"Incorrect port number {val}. Port number must be in range 0-65535")
+
+        return val
+
 
 class Terminal(BaseModel):
     process_default_dump: bool = True
     connect_on_startup: bool = True
     load_remote_spec: bool = False
     show_license_dialog: bool = True
+    run_api: bool = False
 
 
 class Debug(BaseModel):
@@ -23,6 +37,15 @@ class Debug(BaseModel):
     clear_log: bool = True
     parse_subfields: bool = False
     backup_storage_depth: int = 30
+    reduce_keep_alive: bool = True
+
+    @field_validator("level", mode="before")
+    @classmethod
+    def set_default_level(cls, val):
+        if not val:
+            return "INFO"
+
+        return val
 
 
 class Validation(BaseModel):
@@ -58,6 +81,22 @@ class Specification(BaseModel):
     manual_input_mode: bool = False
 
 
+class ApiModel(BaseModel):
+    address: str | None = "0.0.0.0"
+    port: int = 7777
+    wait_remote_host_response: bool = True
+    hide_secrets: bool = False
+    parse_subfields: bool = False
+
+    @field_validator("address", mode="before")
+    @classmethod
+    def substitute_none(cls, val):
+        if val is None:
+            return "0.0.0.0"
+
+        return val
+
+
 class Config(BaseModel):
     host: Host
     terminal: Terminal
@@ -65,3 +104,4 @@ class Config(BaseModel):
     validation: Validation = None
     fields: Fields | None = None
     specification: Specification = Specification()
+    api: ApiModel = ApiModel()

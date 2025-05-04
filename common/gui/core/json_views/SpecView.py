@@ -1,5 +1,5 @@
 from typing import Callable
-from logging import info, error, warning
+from loguru import logger
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QTreeWidgetItem, QItemDelegate
 from common.lib.core.EpaySpecification import EpaySpecification
@@ -28,7 +28,7 @@ class SpecView(TreeView):
             if not self.hasFocus():
                 self.setFocus()
 
-            warning("Read only mode. Uncheck the checkbox on top of the window")
+            logger.warning("Read only mode. Uncheck the checkbox on top of the window")
 
         return wrapper
 
@@ -73,7 +73,7 @@ class SpecView(TreeView):
         description: str = self.spec.get_field_description(path, string=True)
         path: str = current_item.get_field_path(string=True)
 
-        info(f"{path} - {description}")
+        logger.info(f"{path} - {description}")
 
     def set_read_only(self, readonly: bool = True, parent: SpecItem | None = None) -> None:
         if parent is None:
@@ -92,15 +92,15 @@ class SpecView(TreeView):
     @void_qt_signals
     def process_item_click(self, item: SpecItem, column: int) -> None:
         if item.is_secret_pan(column):
-            warning("The Card Number is a secret constantly")
+            logger.warning("The Card Number is a secret constantly")
             return
 
         if column == SpecFieldDef.ColumnsOrder.CAN_BE_GENERATED:
-            warning('Checkbox "Generate" is pre-defined, not possible to change the state')
+            logger.warning('Checkbox "Generate" is pre-defined, not possible to change the state')
             return
 
         if column > SpecFieldDef.ColumnsOrder.TAG_LENGTH and self.window.read_only:
-            warning("Read only mode. Uncheck the checkbox on top of the window")
+            logger.warning("Read only mode. Uncheck the checkbox on top of the window")
             return
 
     @void_qt_signals
@@ -153,7 +153,7 @@ class SpecView(TreeView):
             return
 
         if self.window.read_only:
-            warning("Read only mode. Uncheck the checkbox on top of the window")
+            logger.warning("Read only mode. Uncheck the checkbox on top of the window")
             return
 
         TreeView.editItem(self, item, column)
@@ -185,7 +185,7 @@ class SpecView(TreeView):
             self.validator.validate_column(item, column)
 
         except ValueError as validation_error:
-            error(validation_error)
+            logger.error(validation_error)
             item.set_item_color(Colors.RED)
             return
 

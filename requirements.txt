@@ -8,5 +8,10 @@
 #
 
 PyQt6
-
 pydantic
+fastapi
+uvicorn
+loguru
+flask
+Flask-Pydantic
+click

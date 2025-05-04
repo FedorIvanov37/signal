@@ -4,6 +4,7 @@ from common.lib.enums.TermFilesPath import TermDirs
 
 class GuiDirs(StrEnum):
     STYLE_DIR = f"{TermDirs.DATA_DIR}/style"
+    DOC_DIR = f"{TermDirs.DOC_DIR}"
 
 
 class GuiFiles(StrEnum):
@@ -17,9 +18,12 @@ class GuiFiles(StrEnum):
     RED_CIRCLE = "red_circle.ico"
     YELLOW_CIRCLE = "yellow_circle.ico"
     NEW_TAB = "new_tab.ico"
+    HTML_DOCUMENT = "signal_user_reference_guide.html"
 
 
 class GuiFilesPath(StrEnum):
+    M_LOGO = f"{GuiDirs.STYLE_DIR.name}:{GuiFiles.MAIN_LOGO}"
+    G_CIRCLE = ":".join([GuiDirs.STYLE_DIR.name, GuiFiles.GREEN_CIRCLE])
     MAIN_LOGO = f"{GuiDirs.STYLE_DIR}/{GuiFiles.MAIN_LOGO}"
     SIGNED_LOGO = f"{GuiDirs.STYLE_DIR}/{GuiFiles.SIGNED_LOGO}"
     MUSIC_ON = f"{GuiDirs.STYLE_DIR}/{GuiFiles.MUSIC_ON}"
@@ -30,3 +34,4 @@ class GuiFilesPath(StrEnum):
     RED_CIRCLE = f"{GuiDirs.STYLE_DIR}/{GuiFiles.RED_CIRCLE}"
     YELLOW_CIRCLE = f"{GuiDirs.STYLE_DIR}/{GuiFiles.YELLOW_CIRCLE}"
     NEW_TAB = f"{GuiDirs.STYLE_DIR}/{GuiFiles.NEW_TAB}"
+    DOC = f"{GuiDirs.DOC_DIR}/{GuiFiles.HTML_DOCUMENT}"

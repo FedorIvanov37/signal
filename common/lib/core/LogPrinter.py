@@ -1,8 +1,7 @@
-from logging import debug, info, warning, error
+from loguru import logger
 from common.lib.data_models.Transaction import Transaction
 from common.lib.core.EpaySpecification import EpaySpecification
 from common.lib.core.Parser import Parser
-from common.lib.toolkit.toolkit import mask_pan, mask_secret
 from common.lib.data_models.Config import Config
 from common.lib.enums.TextConstants import TextConstants
 from common.lib.enums.ReleaseDefinition import ReleaseDefinition
@@ -12,7 +11,7 @@ from PyQt6.QtCore import QObject
 
 class LogPrinter(QObject):
     spec: EpaySpecification = EpaySpecification()
-    default_level = info
+    default_level = logger.info
 
     def __init__(self, config: Config):
         super().__init__()
@@ -44,8 +43,8 @@ class LogPrinter(QObject):
 
         self.print_multi_row(config_data, level=level)
 
-    def print_dump(self, transaction: Transaction, level=debug):
-        if not(dump := Parser.create_sv_dump(transaction)):
+    def print_dump(self, transaction: Transaction, level=logger.debug):
+        if not (dump := Parser.create_sv_dump(transaction)):
             return
 
         self.print_multi_row(dump, level)
@@ -68,6 +67,12 @@ class LogPrinter(QObject):
         if transaction.is_keep_alive:
             return
 
+        transaction: Transaction = transaction.copy(deep=True)
+        transaction: Transaction = Parser.parse_complex_fields(transaction, split=False)
+
+        if self.config.fields.hide_secrets:
+            transaction: Transaction = Parser.hide_secret_fields(transaction)
+
         level("")
 
         bitmap = ", ".join(transaction.data_fields.keys())
@@ -85,42 +90,13 @@ class LogPrinter(QObject):
         level(f"[BITMAP  ][{bitmap}]")
 
         for field, field_data in transaction.data_fields.items():
-            if field == self.spec.FIELD_SET.FIELD_001_BITMAP_SECONDARY:
-                continue
-
-            hide_secrets: bool = self.config.fields.hide_secrets
-
-            if self.spec.is_field_complex([field]) and isinstance(field_data, dict):
-                try:
-                    field_data = Parser.join_complex_field(field, field_data)
-                except Exception as parsing_error:
-                    error(f"Cannot print field {field}: {parsing_error}")
-                    continue
-
-            if all((hide_secrets, self.spec.is_field_complex([field]), isinstance(field_data, str))):
-                try:
-                    split_field_data: dict = Parser.split_complex_field(field, field_data)
-                    field_data: str = Parser.join_complex_field(field, split_field_data, hide_secrets=hide_secrets)
-
-                except Exception as field_parsing_error:
-                    warning(field_parsing_error)
-
-            match field:
-                case self.spec.FIELD_SET.FIELD_002_PRIMARY_ACCOUNT_NUMBER:
-                    field_data: str = mask_pan(field_data)
-
-                case _:
-                    if all((hide_secrets, self.spec.is_secret([field]))):
-                        field_data: str = mask_secret(field_data)
-
-            length = str(len(field_data))
-
-            message = str()
+            message: str = str()
+            length: str = str(len(field_data))
 
             for element in field, length, field_data:
                 size: int = int() if element is field_data else 3
                 message: str = message + f"[{element.zfill(size)}]"
-
+            
             level(message)
 
         level("")

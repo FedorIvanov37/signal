@@ -1,6 +1,6 @@
 from sys import exit
 from json.decoder import JSONDecodeError
-from logging import warning, info
+from loguru import logger
 from pydantic import ValidationError
 from datetime import datetime, UTC
 from PyQt6.QtCore import Qt
@@ -23,15 +23,15 @@ class LicenseWindow(Ui_LicenseWindow, QDialog):
     def license_info(self):
         return self._license_info
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, force: bool = False):
         super().__init__()
         self.config = config
         self.setupUi(self)
-        self._setup()
+        self._setup(force=force)
 
     @frameless_window
     @set_window_icon
-    def _setup(self):
+    def _setup(self, force=False):
         self.LogoLabel.setPixmap(QPixmap(GuiFilesPath.SIGNED_LOGO))
         self.InfoBoard.setText(TextConstants.LICENSE_AGREEMENT)
         self.CheckBoxAgreement.setFocus()
@@ -48,8 +48,9 @@ class LicenseWindow(Ui_LicenseWindow, QDialog):
 
         if self._license_info.accepted and not self._license_info.show_agreement:
             self.config.terminal.show_license_dialog = self._license_info.show_agreement
-            self.print_acceptance_info()
-            raise LicenceAlreadyAccepted
+
+            if not force:
+                raise LicenceAlreadyAccepted
 
         self.CheckBoxAgreement.setChecked(self._license_info.accepted)
         self.CheckBoxAgreement.stateChanged.connect(self.block_acceptance)
@@ -84,7 +85,7 @@ class LicenseWindow(Ui_LicenseWindow, QDialog):
         self.config.terminal.show_license_dialog = license_data.show_agreement
 
         self.save_license_file(license_data)
-        warning("License agreement rejected, exit")
+        logger.warning("License agreement rejected, exit")
         exit(100)
 
     @staticmethod
@@ -104,5 +105,5 @@ class LicenseWindow(Ui_LicenseWindow, QDialog):
     def print_acceptance_info(self):
         date_format = "%d/%m/%Y %T UTC"
 
-        info(f"License ID {self._license_info.license_id} | Accepted {
+        logger.info(f"License ID {self._license_info.license_id} | Accepted {
             datetime.strftime(self._license_info.last_acceptance_date, date_format)}")
