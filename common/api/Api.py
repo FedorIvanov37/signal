@@ -445,5 +445,5 @@ class Api(QObject):
         self.app.json.sort_keys = False
         # waitress_logger = getLogger("waitress")
         # waitress_logger.setLevel(INFO)
-        self.app.run(host=self.config.api.address, port=self.config.api.port)
+        self.app.run(host=self.config.api.address, port=self.config.api.port, ssl_context=("C:/Users/admin/PycharmProjects/sv-terminal/common/api/ssl/certificate.pem", "C:/Users/admin/PycharmProjects/sv-terminal/common/api/ssl/private_key.pem"))
         # serve(self.app, host=self.config.api.address, port=self.config.api.port)

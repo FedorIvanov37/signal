@@ -126,7 +126,7 @@ class SignalGui(Terminal):
 
         if self.config.host.keep_alive_mode:
             interval: int = self.config.host.keep_alive_interval
-            self.set_keep_alive_interval(interval_name=KeepAlive.IntervalNames.KEEP_ALIVE_DEFAULT % interval)
+            self.keep_alive_timer.set_trans_loop_interval(KeepAlive.IntervalNames.KEEP_ALIVE_DEFAULT % interval)
 
         if self.config.terminal.load_remote_spec:
             self.set_remote_spec.emit()
@@ -173,7 +173,7 @@ class SignalGui(Terminal):
             window.hotkeys: lambda: HotKeysHintWindow().exec(),
             window.specification: self.run_specification_window,
             window.about: lambda: self.settings(about=True),
-            window.keep_alive: self.set_keep_alive_interval,
+            window.keep_alive: self.keep_alive_timer.set_trans_loop_interval,
             window.repeat: self.trans_timer.set_trans_loop_interval,
             window.validate_message: lambda force: self.validate_main_window(force=force),
             window.parse_complex_field: lambda: ComplexFieldsParser(self.config, self).exec(),
@@ -377,7 +377,7 @@ class SignalGui(Terminal):
             if self.config.host.keep_alive_mode:
                 interval_name: str = KeepAlive.IntervalNames.KEEP_ALIVE_DEFAULT % self.config.host.keep_alive_interval
 
-            self.set_keep_alive_interval(interval_name)
+            self.keep_alive_timer.set_trans_loop_interval(interval_name)
 
         try:
             with open(TermFilesPath.LICENSE_INFO, "r") as license_json:
@@ -822,6 +822,8 @@ class SignalGui(Terminal):
 
     @set_json_view_focus
     def parse_transaction(self, transaction: Transaction, generate_trans_id=True) -> None:
+        # transaction: Transaction = self.sort_transaction_fields(transaction)
+
         try:
             self.window.tab_view.set_mti_value(transaction.message_type)
             self.window.tab_view.set_transaction_fields(transaction, generate_trans_id=generate_trans_id)

@@ -8,6 +8,6 @@ class ApiModes(StrEnum):
 
 
 class ApiModeNames(StrEnum):
-    START = "API mode started"
-    STOP = "API mode stop"
-    NOT_RUN = "API mode not started"
+    START = "API is started"
+    STOP = "API is stopped"
+    NOT_RUN = "API is not started"

@@ -321,13 +321,19 @@ To fix
     • Publish on confluence
     • Spec explanation
     • Radio buttons
+    • Add a link to the manual to the about window
+    • Add [FINISHED] string to console mode
     + Render doc.html by QWebEngineView # Added link to HTML instead
     + Toolbar
+
+
 
 • Bugs
     • Error on console when run AboutWindow - Could not update timestamps for skipped samples
     • Last tab bug - cannot process tab limits correctly
     • No data in socket if delete field in spec
+    • Fields constructor cannot set field when if does not exist
+        • Sort fields adding a new one
 
 • Licensing preparation
     • Change the framework to pyside

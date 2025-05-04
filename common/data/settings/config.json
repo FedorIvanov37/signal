@@ -12,14 +12,14 @@
         "connect_on_startup": false,
         "load_remote_spec": false,
         "show_license_dialog": false,
-        "run_api": true
+        "run_api": false
     },
     "debug": {
         "level": "INFO",
-        "clear_log": false,
+        "clear_log": true,
         "parse_subfields": false,
         "backup_storage_depth": 10,
-        "reduce_keep_alive": true
+        "reduce_keep_alive": false
     },
     "validation": {
         "validation_enabled": true,

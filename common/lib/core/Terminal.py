@@ -68,6 +68,11 @@ class Terminal(QObject):
         self.trans_queue.transaction_timeout.connect(self.got_timeout)
         self.keep_alive_timer.send_transaction.connect(self.keep_alive)
 
+    @staticmethod
+    def sort_transaction_fields(transaction: Transaction) -> Transaction:
+        transaction.data_fields = {field: transaction.data_fields.get(field) for field in transaction.data_fields}
+        return transaction
+
     def get_transaction(self, trans_id: str) -> None:
         return self.trans_queue.get_transaction(trans_id)
 
@@ -129,9 +134,9 @@ class Terminal(QObject):
     def transaction_received(self, response: Transaction) -> None:
         resp_trans_id = response.match_id if response.matched else response.trans_id
 
-        if not (response.is_keep_alive and self.config.debug.reduce_keep_alive):
+        if not response.is_keep_alive:
             logger.info(f"Incoming transaction ID [{resp_trans_id}] received")
-        
+
         validation_conditions = (
             self.config.validation.validation_enabled,
             self.config.validation.validate_incoming,
@@ -150,6 +155,9 @@ class Terminal(QObject):
         except Exception as parsing_error:
             logger.debug(f"Cannot print transaction dump, data parsing error: {parsing_error}")
 
+        if response.is_keep_alive and self.config.debug.reduce_keep_alive:
+            return
+
         try:
             self.log_printer.print_transaction(response)
         except Exception as parsing_error:
@@ -159,25 +167,21 @@ class Terminal(QObject):
 
             if response.is_keep_alive:
                 resp = response.data_fields.get(self.spec.FIELD_SET.FIELD_039_AUTHORIZATION_RESPONSE_CODE, 'Unknown')
-                message: str = (f'Keep Alive transaction [{response.match_id}] successfully matched. Response code: "{resp}"')
+                message: str = (f'Keep Alive transaction [{response.match_id}] sucessfully done. Response code: "{resp}"')
 
-            else:
+            if not response.is_keep_alive:
                 message: str = f"Transaction ID [{response.match_id}] matched"
 
             message: str = f"{message}, response time seconds: {response.resp_time_seconds}"
 
-            if not (response.is_keep_alive and self.config.debug.reduce_keep_alive):
-                logger.info(message)
+            logger.info(message)
 
         if not response.matched:
             match_fields: list[str] = [field for field in self.spec.get_match_fields() if field in response.data_fields]
             match_fields: str = ', '.join(match_fields)
             logger.warning(f"Non-matched Transaction received. Transaction ID [{response.trans_id}]")
-            logger.warning(f"Fields {match_fields} from the response don't correspond to any requests in the current session "
-                    f"or request was matched before")
-
-    def set_keep_alive_interval(self, interval_name: str) -> None:
-        self.keep_alive_timer.set_trans_loop_interval(interval_name)
+            logger.warning(f"Fields {match_fields} from the response don't correspond to any requests in the current "
+                           f"session or request was matched before")
 
     def keep_alive(self) -> None:
         if self.connector.connection_in_progress():
