@@ -219,7 +219,12 @@ class SignalGui(Terminal):
             if not (item := self.window.json_view.currentItem()):
                 return
 
-        item.set_disabled(disable)
+        try:
+            item.set_disabled(disable)
+        except ValueError as err:
+            logger.warning(err)
+        else:
+            logger.debug(f"Field {item.get_field_path(string=True)} is {'disabled' if disable else 'enabled'}")
 
         self.window.json_view.setFocus()
 

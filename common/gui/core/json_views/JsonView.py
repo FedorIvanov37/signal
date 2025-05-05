@@ -133,6 +133,9 @@ class JsonView(TreeView):
             if not child_item.field_length.isdigit():
                 continue
 
+            if child_item.is_disabled:
+                continue
+
             child_item.set_length(fill_length=self.len_fill)
 
     def refresh_fields(self, parent: FieldItem | None = None, color: Colors | None = None):
@@ -387,6 +390,7 @@ class JsonView(TreeView):
     def set_item_description(self, item: FieldItem):
         try:
             item.set_spec()
+
         except Exception as set_spec_error:
             logger.debug(set_spec_error)
 
@@ -537,6 +541,9 @@ class JsonView(TreeView):
             if not item.field_number == removed_item.field_number:
                 continue
 
+            if item.is_disabled:
+                continue
+
             color = Colors.BLACK
 
             try:
@@ -563,9 +570,6 @@ class JsonView(TreeView):
             if item.field_number != field:
                 continue
 
-            if item.is_disabled:
-                continue
-
             item.field_data = value
 
     def is_json_mode_on(self, field_path: FieldPath) -> bool | None:
@@ -576,6 +580,9 @@ class JsonView(TreeView):
 
     def is_trans_id_generate_mode_on(self) -> bool | None:
         if not (trans_id_item := self.get_trans_id_item()):
+            return
+
+        if trans_id_item.is_disabled:
             return
 
         if not trans_id_item.is_trans_id:
@@ -674,6 +681,9 @@ class JsonView(TreeView):
         for item in self.root.get_children():
             is_checked = False
 
+            if item.is_disabled:
+                continue
+
             if item.field_number in generate_fields:
                 is_checked = item.field_number in transaction.generate_fields
 
@@ -749,6 +759,9 @@ class JsonView(TreeView):
         field_numbers: list[str] = list()
 
         for item in self.root.get_children():
+            if item.is_disabled:
+                continue
+
             if item.field_data or bool(item.checkState(FieldsSpec.ColumnsOrder.PROPERTY)):
                 field_numbers.append(item.field_number)
 

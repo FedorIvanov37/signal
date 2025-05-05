@@ -7,6 +7,8 @@ from common.gui.core.json_items.Item import Item
 from common.gui.decorators.void_qt_signals import void_tree_signals
 from common.gui.enums.CheckBoxesDefinition import CheckBoxesDefinition
 from common.gui.enums import MainFieldSpec as FieldsSpec
+from common.gui.enums.MainFieldSpec import ColumnsOrder
+from common.gui.enums.Colors import Colors
 
 
 class FieldItem(Item):
@@ -75,6 +77,28 @@ class FieldItem(Item):
         super(FieldItem, self).__init__(item_data)
         self.spec = spec if spec else self.spec
         self.setTextAlignment(FieldsSpec.ColumnsOrder.LENGTH, Qt.AlignmentFlag.AlignRight)
+
+    def set_disabled(self, disabled: bool):
+        if parent := self.parent():
+            if not disabled and parent.is_disabled:
+                raise ValueError("Cannot enable child item while parent is disabled")
+
+        if not self.is_disabled and not disabled:
+            return
+        
+        self._is_disabled = disabled
+
+        if self.is_disabled:
+            self.set_item_color(Colors.GREY)
+
+        if not self.is_disabled:
+            self.set_item_color(Colors.BLACK)
+            self.treeWidget().process_change_item(self, ColumnsOrder.VALUE)
+
+        self.set_length()
+
+        for item in self.get_children():
+            item.set_disabled(disabled)
 
     def addChild(self, item, fill_len=None):
         item.spec = self.epay_spec.get_field_spec(item.get_field_path())
@@ -198,20 +222,14 @@ class FieldItem(Item):
         self.setText(FieldsSpec.ColumnsOrder.DESCRIPTION, self.spec.description if self.spec else str())
 
     @void_tree_signals
-    def set_length(self, length: int | None = None, fill_length: int | None = None) -> None:
+    def set_length(self, length: int | None = None, fill_length: int | None = 3) -> None:
         column = FieldsSpec.ColumnsOrder.LENGTH
 
         if not self.spec:
             self.set_spec()
 
         if length is None:
-            length: int = self.get_field_length()
-
-        if fill_length is None:
-            try:
-                fill_length = self.spec.var_length
-            except AttributeError:
-                fill_length = int()
+            length: int = self.get_field_length(count_disabled=self.is_disabled)
 
         if not self.spec and self.field_length:
             fill_length = len(self.text(FieldsSpec.ColumnsOrder.LENGTH))
@@ -223,11 +241,16 @@ class FieldItem(Item):
         if parent := self.parent():
             parent.set_length()
 
-    def get_field_length(self):
-        if self.childCount():
-            length = sum([item.get_field_length() for item in self.get_children()])
+    def get_field_length(self, count_disabled=False):
+        if not self.childCount():
+            return len(self.field_data)
 
-        else:
-            length = len(self.field_data)
+        length = int()
+
+        for item in self.get_children():
+            if not count_disabled and item.is_disabled:
+                continue
+
+            length += item.get_field_length()
 
         return length
