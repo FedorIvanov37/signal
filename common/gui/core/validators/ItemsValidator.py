@@ -77,7 +77,10 @@ class ItemsValidator:
         if parent is None and not (parent := item.parent()):
             return validation_result
 
-        field_numbers = [child_item.field_number for child_item in parent.get_children() if child_item.field_number]
+        field_numbers = [
+            child_item.field_number for child_item in parent.get_children()
+            if child_item.field_number and not child_item.is_disabled
+        ]
 
         if field_numbers.count(item.field_number) > 1:
             errors.add(f"Duplicated field number {item.get_field_path(string=True)}")

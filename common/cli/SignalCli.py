@@ -1,5 +1,6 @@
 from glob import glob
 from time import sleep
+from uuid import uuid1
 from os import listdir, path, system, getcwd, getpid, kill
 from os.path import normpath, basename, isfile
 from loguru import logger
@@ -18,6 +19,7 @@ from common.lib.data_models.License import LicenseInfo
 from common.lib.exceptions.exceptions import LicenseRejected
 from common.api.ApiThread import ApiThread
 from common.lib.exceptions.exceptions import DataValidationWarning
+from common.cli.enums.LogMarks import LogMarks
 
 
 class SignalCli(Terminal):
@@ -25,6 +27,7 @@ class SignalCli(Terminal):
     _finished: pyqtSignal = pyqtSignal()
     _api_thread: ApiThread = None
     _run_api: pyqtSignal = pyqtSignal()
+    _job_id: str = str(uuid1())
 
     def __init__(self, config: Config):
         super(SignalCli, self).__init__(config)
@@ -87,6 +90,8 @@ class SignalCli(Terminal):
 
         """
 
+        logger.info(LogMarks.BEGIN % self._job_id)
+
         if self._cli_config.repeat and self._cli_config.api_mode:
             logger.error("Mutually exclusive flags --repeat and --api-mode are set")
             kill(getpid(), 9)
@@ -146,6 +151,8 @@ class SignalCli(Terminal):
 
             if not self._cli_config.repeat:
                 break
+
+        logger.info(LogMarks.FINISH % self._job_id)
 
     def run_api_mode(self):
         logger.info("Run command line API mode")

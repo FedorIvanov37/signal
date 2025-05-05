@@ -323,9 +323,10 @@ To fix
     • Spec explanation
     • Radio buttons
     • Add a link to the manual to the about window
-    • Add [FINISHED] string to console mode
+    + Add [FINISHED] string to console mode
     + Render doc.html by QWebEngineView # Added link to HTML instead
     + Toolbar
+    + Buttons to enable/disable field items
 
 
 
