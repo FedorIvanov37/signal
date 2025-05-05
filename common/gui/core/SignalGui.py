@@ -467,7 +467,7 @@ class SignalGui(Terminal):
                 raise LookupError
 
         except Exception as reversal_building_error:
-            logger.error(f"Cannot reverse transaction, lost transaction ID or non-reversible MTI {reversal_building_error}")
+            logger.error(f"Reversal building error: {reversal_building_error}")
             return
 
         match command:

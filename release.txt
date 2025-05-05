@@ -1,17 +1,15 @@
-• New features
-  • Command line mode
-  • Main Window tabs
-    • New hotkeys to manage tabs
-    • Multiple files opening
-    • Multiple files saving
+• New features v0.19
+  • API mode
+  • Data fields control buttons
 
 • Updates
-  • Reduced validation and other redundant feedback
-  • Expand reversal window to long utrnno
-  • License and About windows renovation
-  • Added setting: Show license agreement on startup
+  • Renovation of settings window
+  • MainWindow keys optimization
+  • Begin and finish marks in command-line mode
+  • New settings
+  • Default settings button
 
 • Fixed
-  • License window opens multiple times
-  • Incorrect bitmap representation
+  • Copy bitmap
+  •
   • Small bugs inherited from v0.17

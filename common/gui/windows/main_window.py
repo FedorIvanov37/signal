@@ -3,7 +3,7 @@ from ctypes import windll
 from PyQt6.QtNetwork import QTcpSocket
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QCloseEvent, QKeySequence, QShortcut, QPixmap
-from PyQt6.QtWidgets import QMainWindow, QMenu, QPushButton, QToolBar
+from PyQt6.QtWidgets import QMainWindow, QMenu, QPushButton
 from common.gui.forms.mainwindow import Ui_MainWindow
 from common.gui.decorators.window_settings import set_window_icon
 from common.lib.data_models.Config import Config
@@ -21,7 +21,6 @@ from common.lib.core.EpaySpecification import EpaySpecification
 from common.gui.core.tab_view.TabView import TabView
 from common.gui.enums.ToolBarElements import ToolBarElements
 from common.gui.enums.ApiMode import ApiModes
-from PyQt6.QtCore import Qt
 
 
 
@@ -68,7 +67,6 @@ class MainWindow(Ui_MainWindow, QMainWindow):
     _validate_message: pyqtSignal = pyqtSignal(bool)
     _spec: EpaySpecification = EpaySpecification()
     _api_mode_changed: pyqtSignal = pyqtSignal(str)
-    _tool_bar: QToolBar = QToolBar()
     _exit: pyqtSignal = pyqtSignal(int)
     _show_document: pyqtSignal = pyqtSignal()
     _message_repeat_menu: QMenu = None
@@ -230,7 +228,6 @@ class MainWindow(Ui_MainWindow, QMainWindow):
     def _setup(self) -> None:
         self.setupUi(self)
         self._add_json_control_buttons()
-        self._tool_bar.toggleViewAction().setVisible(False)
         self._connect_all()
         self.setWindowTitle(f"{TextConstants.SYSTEM_NAME.capitalize()} {ReleaseDefinition.VERSION} | Terminal GUI")
         windll.shell32.SetCurrentProcessExplicitAppUserModelID("MainWindow")
@@ -240,7 +237,10 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self.TabViewLayout.addWidget(self._tab_view)
         self.api_mode_changed.emit(ApiMode.ApiModes.NOT_RUN)
 
-        for transaction_type in KeepAlive.TransTypes.TRANS_TYPE_KEEP_ALIVE, KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION:
+        for transaction_type in [
+            KeepAlive.TransTypes.TRANS_TYPE_KEEP_ALIVE,
+            KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION
+        ]:
             self.process_transaction_loop_change(KeepAlive.IntervalNames.KEEP_ALIVE_STOP, transaction_type)
 
     def _add_json_control_buttons(self) -> None:
@@ -299,9 +299,10 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             self._tab_view.tab_changed: self.process_tab_change,
         }
 
-        main_window_connection_map = {
+        event_connection_map = {
             self.SearchLine.textChanged: self.search,
             self.SearchLine.editingFinished: self._tab_view.set_json_focus,
+            self.api_mode_changed: self.process_api_mode_change,
         }
 
         keys_connection_map = {
@@ -350,11 +351,9 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         for button, slot in buttons_connection_map.items():
             button.clicked.connect(slot)
 
-        for connection_map in tab_view_connection_map, main_window_connection_map:  # Signals, activated by key event
+        for connection_map in tab_view_connection_map, event_connection_map:
             for signal, slot in connection_map.items():
                 signal.connect(slot)
-
-        self.api_mode_changed.connect(self.process_api_mode_change)
 
     def set_buttons_menu(self):
 
