@@ -6,8 +6,6 @@ from common.lib.core.EpaySpecification import EpaySpecification
 from common.gui.decorators.void_qt_signals import void_tree_signals
 from common.lib.data_models.EpaySpecificationModel import IsoField
 from common.gui.enums.Colors import Colors
-from common.gui.enums.MainFieldSpec import ColumnsOrder
-from loguru import logger
 
 
 class Item(QTreeWidgetItem):
@@ -37,28 +35,6 @@ class Item(QTreeWidgetItem):
 
     def get_field_depth(self):
         return len(self.get_field_path())
-
-    def set_disabled(self, disabled: bool):
-        if parent := self.parent():
-            if not disabled and parent.is_disabled:
-                logger.warning("Cannot enable child item while parent is disabled")
-                return
-
-        if disabled == self.is_disabled:
-            return
-
-        self._is_disabled = disabled
-
-        if self.is_disabled:
-            self.set_item_color(Colors.GREY)
-
-        if not self.is_disabled:
-            self.treeWidget().process_change_item(self, ColumnsOrder.VALUE)
-
-        for item in self.get_children():
-            item.set_disabled(disabled)
-
-        logger.debug(f"Field {self.get_field_path(string=True)} is {'disabled' if disabled else 'enabled'}")
 
     def get_field_path(self, string=False) -> FieldPath | str:
         path: FieldPath = list()
@@ -91,13 +67,10 @@ class Item(QTreeWidgetItem):
         for child_id in range(self.childCount()):
             child = self.child(child_id)
 
-            if child.is_disabled:
-                continue
-
             children.append(child)
 
         return tuple(children)
-    
+
     @void_tree_signals
     def set_item_color(self, color: str = Colors.BLACK):
         color: QtGui.QColor = QtGui.QColor(color)
