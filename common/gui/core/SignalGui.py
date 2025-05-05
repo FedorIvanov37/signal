@@ -181,6 +181,9 @@ class SignalGui(Terminal):
             window.exit: exit,
             window.show_document: self.show_document,
             window.show_license: lambda: self.show_license_dialog(force=True),
+            window.disable_item: lambda: self.disable_current_item(disable=True),
+            window.enable_item: lambda: self.disable_current_item(disable=False),
+            window.enable_all_items: self.enable_all_items,
             self.connector.stateChanged: self.set_connection_status,
             self.set_remote_spec: self.connector.get_remote_spec,
             self.connector.got_remote_spec: self.load_remote_spec,
@@ -207,6 +210,18 @@ class SignalGui(Terminal):
 
         if state == ApiModes.STOP:
             ...
+
+    def enable_all_items(self):
+        self.disable_current_item(disable=False, item=self.window.json_view.root)
+
+    def disable_current_item(self, disable: bool, item=None):
+        if item is None:
+            if not (item := self.window.json_view.currentItem()):
+                return
+
+        item.set_disabled(disable)
+
+        self.window.json_view.setFocus()
 
     @staticmethod
     def show_document():

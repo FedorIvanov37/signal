@@ -19,6 +19,7 @@ from common.gui.enums.Colors import Colors
 from common.gui.enums import MainFieldSpec as FieldsSpec
 from common.gui.enums.RootItemNames import RootItemNames
 from common.lib.toolkit.generate_trans_id import generate_trans_id
+from PyQt6.QtCore import Qt
 
 
 class JsonView(TreeView):
@@ -66,6 +67,7 @@ class JsonView(TreeView):
         self.delegate.closeEditor.connect(lambda: self.set_all_items_length())
         self.delegate.text_edited.connect(self.set_item_length)
         self.currentItemChanged.connect(self.disable_next_level)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setItemDelegate(self.delegate)
         self.setHeaderLabels(FieldsSpec.Columns)
         self.addTopLevelItem(self.root)
@@ -189,6 +191,9 @@ class JsonView(TreeView):
         if item is self.root:
             return
 
+        if item.is_disabled:
+            return
+
         if column not in (FieldsSpec.ColumnsOrder.FIELD, FieldsSpec.ColumnsOrder.VALUE, FieldsSpec.ColumnsOrder.LENGTH):
             return
 
@@ -208,6 +213,9 @@ class JsonView(TreeView):
 
     def generate_item_data(self, item):
         if not item.checkbox_checked(CheckBoxesDefinition.GENERATE):
+            return
+
+        if item.is_disabled:
             return
 
         if item.is_trans_id:
@@ -430,6 +438,9 @@ class JsonView(TreeView):
                 self.check_all_items(child_item, force=force)
                 continue
 
+            if child_item.is_disabled:
+                continue
+
             validation_status_args = (child_item,)
 
             try:
@@ -550,6 +561,9 @@ class JsonView(TreeView):
     def set_field_value(self, field, value):
         for item in self.root.get_children():
             if item.field_number != field:
+                continue
+
+            if item.is_disabled:
                 continue
 
             item.field_data = value
@@ -749,6 +763,9 @@ class JsonView(TreeView):
         row: FieldItem
 
         for row in parent.get_children():
+            if row.is_disabled:
+                continue
+
             if row.field_number in result:
                 logger.warning(f"Duplicated field number {row.get_field_path(string=True)}")
 
@@ -798,6 +815,9 @@ class JsonView(TreeView):
 
         for item in parent.get_children():
             if item.field_number != field_number:
+                continue
+
+            if item.is_disabled:
                 continue
 
             return bool(int(item.get_field_length()))

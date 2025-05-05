@@ -10,6 +10,9 @@ class ButtonActionSigns(StrEnum):
     BUTTON_DOWN_SIGN = "🡻"
     BUTTON_LEFT_SIGN = "🡸"
     BUTTON_RIGHT_SIGN = "🡺"
+    BUTTON_DISABLE = "Disable"
+    BUTTON_ENABLE = "Enable"
+    BUTTON_ENABLE_ALL = "Enable all"
 
 
 PrintButtonDataFormats = StrEnum("PrintButtonDataFormats", PrintDataFormats.__dict__.get('_member_map_'))

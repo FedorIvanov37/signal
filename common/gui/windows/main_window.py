@@ -21,6 +21,8 @@ from common.lib.core.EpaySpecification import EpaySpecification
 from common.gui.core.tab_view.TabView import TabView
 from common.gui.enums.ToolBarElements import ToolBarElements
 from common.gui.enums.ApiMode import ApiModes
+from PyQt6.QtCore import Qt
+
 
 
 """
@@ -74,6 +76,21 @@ class MainWindow(Ui_MainWindow, QMainWindow):
     _print_menu: QMenu = None
     _api_menu: QMenu = None
     _show_license: pyqtSignal = pyqtSignal()
+    _disable_item: pyqtSignal = pyqtSignal()
+    _enable_item: pyqtSignal = pyqtSignal()
+    _enable_all_items: pyqtSignal = pyqtSignal()
+
+    @property
+    def enable_all_items(self):
+        return self._enable_all_items
+
+    @property
+    def disable_item(self):
+        return self._disable_item
+
+    @property
+    def enable_item(self):
+        return self._enable_item
 
     @property
     def show_license(self):
@@ -232,11 +249,17 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self.PlusButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_PLUS_SIGN)
         self.MinusButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_MINUS_SIGN)
         self.NextLevelButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_NEXT_LEVEL_SIGN)
+        self.ButtonDisable = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_DISABLE)
+        self.ButtonEnable = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_ENABLE)
+        self.ButtonEnableAll = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_ENABLE_ALL)
 
         buttons_layouts_map = {
             self.PlusLayout: self.PlusButton,
             self.MinusLayout: self.MinusButton,
-            self.NextLevelLayout: self.NextLevelButton
+            self.NextLevelLayout: self.NextLevelButton,
+            self.DisableLayout: self.ButtonDisable,
+            self.EnableLayout: self.ButtonEnable,
+            self.EnableAllLayout: self.ButtonEnableAll,
         }
 
         for layout, button in buttons_layouts_map.items():
@@ -259,6 +282,9 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             self.ButtonClearLog: self.clear_log,
             self.ButtonEchoTest: self.echo_test,
             self.ButtonReconnect: self.reconnect,
+            self.ButtonDisable: self.disable_item,
+            self.ButtonEnable: self.enable_item,
+            self.ButtonEnableAll: self.enable_all_items,
         }
 
         tab_view_connection_map = {
@@ -364,7 +390,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
                     process_menu_structure(structure=action, menu=sub_menu)
 
                     continue
-                    
+
                 menu.addAction(function, action)
                 menu.addSeparator()
 
