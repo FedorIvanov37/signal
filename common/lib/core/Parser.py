@@ -194,6 +194,9 @@ class Parser:
         result: str = str()
 
         for child_item in parent.get_children():
+            if child_item.is_disabled:
+                continue
+
             if child_item.childCount():
                 result += self.join_complex_item(parent=child_item)
                 continue

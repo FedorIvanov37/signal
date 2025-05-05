@@ -240,7 +240,7 @@
 
 To fix
 • Music does not play on work machine
-
+• [ERROR] Cannot reverse transaction, lost transaction ID or non-reversible MTI Lost response for transaction 20250505_013642_2353741910. Cannot build reversal
 + Toolbar menu does not open
 + API reversal does not work
 + Logger cannot log message
@@ -307,7 +307,8 @@ To fix
     • Generate doc.html in TeamCity
     • TeamCity build correct settings
     • Checkable buttons
-    • Buttons auto-repeat
+    • Disable fields
+    + Buttons auto-repeat
     • Generate grip html-documentation in process of building
     • Prepare the release page for slack https://unlimit.slack.com/archives/G018EV1EY85/p1716830943695369
     • Add ctrl + alt + p to the doc

@@ -114,6 +114,15 @@
        <layout class="QHBoxLayout" name="NextLevelLayout"/>
       </item>
       <item>
+       <layout class="QHBoxLayout" name="DisableLayout"/>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="EnableLayout"/>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="EnableAllLayout"/>
+      </item>
+      <item>
        <layout class="QHBoxLayout" name="horizontalLayout_5">
         <item>
          <widget class="QLineEdit" name="SearchLine">
