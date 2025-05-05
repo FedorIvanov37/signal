@@ -84,6 +84,9 @@ class FieldItem(Item):
                 raise ValueError("Cannot enable child item while parent is disabled")
 
         if not self.is_disabled and not disabled:
+            for item in self.get_children():
+                item.set_disabled(disabled)
+
             return
         
         self._is_disabled = disabled

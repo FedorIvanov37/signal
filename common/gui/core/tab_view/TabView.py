@@ -316,10 +316,6 @@ class TabView(QTabWidget):
 
         return widget
 
-    def copy_bitmap_pressed(self):
-        self.copy_bitmap.emit()
-        info("Bitmap copied")
-
     def add_plus_tab(self):  # Add the technical "plus" tab
         self.addTab(QWidget(), '')
         self.setTabIcon(self.plus_tab_index, QIcon(GuiFilesPath.NEW_TAB))

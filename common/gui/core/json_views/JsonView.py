@@ -34,11 +34,15 @@ class JsonView(TreeView):
             editor.textEdited.connect(lambda text: self.text_edited.emit(text, index.column()))
             QItemDelegate.setEditorData(self, editor, index)
 
-    root: FieldItem
+    _root: FieldItem = None
     need_disable_next_level: pyqtSignal = pyqtSignal()
     need_enable_next_level: pyqtSignal = pyqtSignal()
     trans_id_set: pyqtSignal = pyqtSignal()
     spec: EpaySpecification = EpaySpecification()
+
+    @property
+    def root(self):
+        return self._root
 
     @property
     def len_fill(self):
@@ -50,7 +54,7 @@ class JsonView(TreeView):
 
     def __init__(self, config: Config, root_name: str = RootItemNames.TRANSACTION_ROOT_NAME, parent=None):
         super(JsonView, self).__init__(parent=parent)
-        self.root: FieldItem = FieldItem([root_name])
+        self._root: FieldItem = FieldItem([root_name])
         self.config: Config = config
         self.delegate = JsonView.Delegate()
         self.validator = ItemsValidator(self.config)

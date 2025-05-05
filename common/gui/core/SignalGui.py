@@ -159,7 +159,7 @@ class SignalGui(Terminal):
             window.echo_test: self.echo_test,
             window.clear: self.clear_message,
             window.copy_log: self.copy_log,
-            window.copy_bitmap: lambda: self.copy_bitmap,
+            window.copy_bitmap: self.copy_bitmap,
             window.reconnect: self.reconnect,
             window.parse_file: self.parse_file,
             window.window_close: self.stop_signal,
@@ -181,9 +181,9 @@ class SignalGui(Terminal):
             window.exit: exit,
             window.show_document: self.show_document,
             window.show_license: lambda: self.show_license_dialog(force=True),
-            window.disable_item: lambda: self.disable_current_item(disable=True),
-            window.enable_item: lambda: self.disable_current_item(disable=False),
-            window.enable_all_items: self.enable_all_items,
+            window.disable_item: lambda: self.disable_item(disable=True),
+            window.enable_item: lambda: self.disable_item(disable=False),
+            window.enable_all_items: lambda: self.disable_item(disable=False, item=self.window.json_view.root),
             self.connector.stateChanged: self.set_connection_status,
             self.set_remote_spec: self.connector.get_remote_spec,
             self.connector.got_remote_spec: self.load_remote_spec,
@@ -211,13 +211,9 @@ class SignalGui(Terminal):
         if state == ApiModes.STOP:
             ...
 
-    def enable_all_items(self):
-        self.disable_current_item(disable=False, item=self.window.json_view.root)
-
-    def disable_current_item(self, disable: bool, item=None):
-        if item is None:
-            if not (item := self.window.json_view.currentItem()):
-                return
+    def disable_item(self, disable: bool, item=None):
+        if item is None and not (item := self.window.json_view.currentItem()):
+            return
 
         try:
             item.set_disabled(disable)
@@ -225,6 +221,8 @@ class SignalGui(Terminal):
             logger.warning(err)
         else:
             logger.debug(f"Field {item.get_field_path(string=True)} is {'disabled' if disable else 'enabled'}")
+
+        self.set_bitmap()
 
         self.window.json_view.setFocus()
 
@@ -763,6 +761,7 @@ class SignalGui(Terminal):
 
     def copy_bitmap(self) -> None:
         self.set_clipboard_text(self.window.get_bitmap_data())
+        logger.info("The bitmap copied")
 
     @staticmethod
     def set_clipboard_text(data: str = str()) -> None:
