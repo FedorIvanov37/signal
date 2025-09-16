@@ -55,7 +55,8 @@ class SignalCli(Terminal):
             exit(100)
 
         if self._cli_config.log_file != TermFilesPath.LOG_FILE_NAME:
-            self.logger.setup(filename=self._cli_config.log_file)
+            self.logger.remove()
+            self.logger.add_file_handler(filename=self._cli_config.log_file)
 
         self.logger.add_stdout_handler()
 

@@ -389,6 +389,7 @@ class JsonView(TreeView):
     @check_validation_config
     def validate_item(self, item: FieldItem, force=False):
         self.validator.validate_item(item)
+        item.set_length()
 
     @void_qt_signals
     def set_item_description(self, item: FieldItem):
@@ -799,16 +800,6 @@ class JsonView(TreeView):
 
             if not row.childCount():
                 result[row.field_number] = row.field_data
-
-        if parent is self.root:
-            try:
-                fields = {field: result[field] for field in sorted(result, key=int)}
-            except ValueError:
-                logger.warning("Cannot sort top-level data fields, usually it happens due to non-digit field number")
-                fields = result
-
-            if not self.config.validation.validate_window:
-                return fields
 
         return result
 

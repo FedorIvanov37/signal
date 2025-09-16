@@ -1,6 +1,6 @@
 {
     "host": {
-        "host": "172.21.30.5",
+        "host": "127.0.0.1",
         "port": 16677,
         "keep_alive_mode": false,
         "keep_alive_interval": 300,
@@ -16,7 +16,7 @@
     },
     "debug": {
         "level": "INFO",
-        "clear_log": true,
+        "clear_log": false,
         "parse_subfields": false,
         "backup_storage_depth": 10,
         "reduce_keep_alive": false

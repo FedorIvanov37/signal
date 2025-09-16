@@ -74,7 +74,7 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
 
         port = int(port)
 
-        logger.debug("Connecting to %s:%s", host, port)
+        logger.debug(f"Connecting to {host}:{port}")
 
         self.connectToHost(host, port)
 

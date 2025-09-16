@@ -78,9 +78,9 @@ class SignalGui(Terminal):
     _run_timer = QTimer()
     _run_api = pyqtSignal()
     _stop_api = pyqtSignal()
-    _handler_id: int = None
     _api_thread: ApiThread = None
     _stop_api_thread: pyqtSignal = pyqtSignal()
+    _generated_echo_test_transactions: list[Transaction] = []
 
     @property
     def stop_api_thread(self):
@@ -112,7 +112,7 @@ class SignalGui(Terminal):
         QDir.addSearchPath(GuiDirs.STYLE_DIR.name, GuiDirs.STYLE_DIR)
         self._run_timer.setSingleShot(True)
         self._run_timer.start(int())
-        self._handler_id = self.logger.add_wireless_handler(self.window.log_browser, self._wireless_handler)
+        self.logger.add_wireless_handler(self.window.log_browser, self._wireless_handler)
 
     def on_startup(self) -> None:  # Runs on startup to make all the preparation activity, then shows MainWindow
         self.show_license_dialog()
@@ -257,11 +257,10 @@ class SignalGui(Terminal):
     def run_specification_window(self) -> None:
         old_spec = self.spec.spec.json()
 
-        logger.remove(self._handler_id)
+        self.logger.remove()
         spec_window = SpecWindow(self.connector, self.config)
         spec_window.exec()
-
-        self._handler_id = self.logger.add_wireless_handler(self.window.log_browser)
+        self.logger.add_wireless_handler(self.window.log_browser)
 
         if self.config.fields.hide_secrets:
             self.window.json_view.hide_secrets()
@@ -305,7 +304,9 @@ class SignalGui(Terminal):
 
     def echo_test(self) -> None:
         try:
-            Terminal.echo_test(self)
+            echo_test = self.parser.parse_file(TermFilesPath.ECHO_TEST)
+            self._generated_echo_test_transactions.append(echo_test)
+            self.send(echo_test)
 
         except ValidationError as validation_error:
             logger.error(validation_error.json())
@@ -329,6 +330,10 @@ class SignalGui(Terminal):
     def process_config_change(self, old_config: Config) -> None:
         self.read_config()
 
+        if self.config.debug.level != old_config.debug.level:
+            self.logger.remove()
+            self.logger.add_wireless_handler(self.window.log_browser)
+
         if "" in (self.config.host.host, self.config.host.port):
             logger.warning("Lost SV address or SV port! Check the parameters")
 
@@ -340,7 +345,8 @@ class SignalGui(Terminal):
                 raise ValueError
 
         except ValueError:
-            logger.warning(f"Incorrect SV port value: {self.config.host.port}. Must be a number in the range of 0 to 65535")
+            logger.warning(f"Incorrect SV port value: {self.config.host.port}. "
+                           f"Must be a number in the range of 0 to 65535")
 
         logger.info("Settings applied")
 
@@ -455,7 +461,7 @@ class SignalGui(Terminal):
                 raise LookupError
 
             if not (transaction_id := transaction_source()):
-                raise LookupError
+                raise LookupError("lost transaction response or non-reversible transaction")
 
             if not (original_trans := self.trans_queue.get_transaction(transaction_id)):
                 raise LookupError
@@ -521,6 +527,7 @@ class SignalGui(Terminal):
             transaction.is_keep_alive,
             transaction.json_fields,
             transaction.sending_time,
+            transaction.error,
         )
 
         return transaction
@@ -586,7 +593,12 @@ class SignalGui(Terminal):
 
         if transaction.generate_fields:
             transaction: Transaction = self.generator.set_generated_fields(transaction)
+
+        if transaction not in self._generated_echo_test_transactions:
             self.set_generated_fields_to_gui(transaction)
+
+        if transaction in self._generated_echo_test_transactions:
+            self._generated_echo_test_transactions.remove(transaction)
 
         validation_conditions = (
             self.config.validation.validation_enabled,
@@ -769,6 +781,8 @@ class SignalGui(Terminal):
 
     def show_reversal_window(self) -> str:
         reversible_transactions_list: list[Transaction] = self.trans_queue.get_reversible_transactions()
+        reversible_transactions_list.sort(key=lambda transaction: transaction.trans_id, reverse=True)
+
         reversal_window: ReversalWindow = ReversalWindow(reversible_transactions_list)
         accepted: int = reversal_window.exec()
 
@@ -884,6 +898,9 @@ class SignalGui(Terminal):
         self.set_bitmap()
 
     def set_generated_fields_to_gui(self, transaction: Transaction) -> None:
+        if transaction.is_keep_alive:
+            return
+
         for field in transaction.generate_fields:
 
             if not self.spec.can_be_generated([field]):

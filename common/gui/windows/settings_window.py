@@ -65,7 +65,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
             button_box.clicked.connect(self.process_default_button)
 
         self.HeaderLength.textChanged.connect(self.validate_header_length)
-        self.DebugLevel.currentIndexChanged.connect(self.process_debug_level_change)
         self.KeepAliveMode.stateChanged.connect(lambda state: self.KeepAliveInterval.setEnabled(bool(state)))
         self.HeaderLengthMode.stateChanged.connect(lambda state: self.HeaderLength.setEnabled(bool(state)))
         self.MaxAmountBox.stateChanged.connect(lambda state: self.MaxAmount.setEnabled(bool(state)))
@@ -224,18 +223,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
 
         if header_length % 2 != int():
             self.HeaderLength.setValue(header_length - 1)
-
-    def process_debug_level_change(self) -> None:
-        disabled: bool = False
-        checked: bool = self.config.debug.clear_log
-
-        if self.DebugLevel.currentText() == LogDefinition.DebugLevels.DEBUG:
-            checked: bool = False
-            disabled: bool = True
-
-        for checkbox in self.ClearLog, self.HideSecrets:
-            checkbox.setChecked(checked)
-            checkbox.setDisabled(disabled)
 
     def ok(self) -> None:
         getLogger().setLevel(getLevelName(self.DebugLevel.currentText()))

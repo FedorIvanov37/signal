@@ -72,10 +72,12 @@ class TransactionQueue(QObject):
                 continue
 
             if transaction.trans_id == old_transaction.trans_id:
-                logger.warning(f"Transaction with ID [{transaction.trans_id}] already exists. The transaction will be rewritten")
+                logger.warning(f"Transaction with ID [{transaction.trans_id}] already exists. "
+                               f"The transaction will be rewritten")
 
             if transaction.trans_id == old_transaction.match_id:
-                logger.warning(f"Transaction with match ID [{transaction.trans_id}] already exists. The transaction will be rewritten")
+                logger.warning(f"Transaction with match ID [{transaction.trans_id}] already exists. The transaction "
+                               f"will be rewritten")
 
             transactions_to_delete.append(old_transaction)
 
@@ -110,8 +112,12 @@ class TransactionQueue(QObject):
         if not (de047 := response.data_fields.get(self.spec.FIELD_SET.FIELD_047_PROPRIETARY_FIELD)):
             return response
 
-        de047 = Parser.split_complex_field(self.spec.FIELD_SET.FIELD_047_PROPRIETARY_FIELD, de047)
-        response.utrnno = de047.get("064") # TODO
+        try:
+            de047 = Parser.split_complex_field(self.spec.FIELD_SET.FIELD_047_PROPRIETARY_FIELD, de047)
+            response.utrnno = de047.get("064", str())  # TODO
+
+        except Exception as e:
+            ...
 
         return response
 

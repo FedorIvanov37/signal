@@ -26,12 +26,13 @@ class LicenseWindow(Ui_LicenseWindow, QDialog):
     def __init__(self, config: Config, force: bool = False):
         super().__init__()
         self.config = config
+        self.force = force
         self.setupUi(self)
-        self._setup(force=force)
+        self._setup()
 
     @frameless_window
     @set_window_icon
-    def _setup(self, force=False):
+    def _setup(self):
         self.LogoLabel.setPixmap(QPixmap(GuiFilesPath.SIGNED_LOGO))
         self.InfoBoard.setText(TextConstants.LICENSE_AGREEMENT)
         self.CheckBoxAgreement.setFocus()
@@ -46,12 +47,28 @@ class LicenseWindow(Ui_LicenseWindow, QDialog):
         except Exception as license_parsing_error:
             raise LicenseDataLoadingError(f"GNU license info file parsing error: {license_parsing_error}")
 
+        if self.force:
+
+            widgets = (
+                self.CheckBoxAgreement,
+                self.CheckBoxDontShowAgain,
+                self.ButtonAccept,
+                self.ButtonReject,
+                self.line_2
+            )
+
+            for widget in widgets:
+                widget.setHidden(True)
+
+            return
+        
         if self._license_info.accepted and not self._license_info.show_agreement:
             self.config.terminal.show_license_dialog = self._license_info.show_agreement
 
-            if not force:
+            if not self.force:
                 raise LicenceAlreadyAccepted
 
+        self.CheckBoxAgreement.setChecked(self._license_info.show_agreement)
         self.CheckBoxAgreement.setChecked(self._license_info.accepted)
         self.CheckBoxAgreement.stateChanged.connect(self.block_acceptance)
         self.rejected.connect(self.reject_license)
@@ -77,6 +94,9 @@ class LicenseWindow(Ui_LicenseWindow, QDialog):
         self.close()
 
     def reject_license(self):
+        if self.force:
+            return
+
         license_data: LicenseInfo = self._license_info.model_copy(deep=True)
         license_data.accepted = False
         license_data.show_agreement = True

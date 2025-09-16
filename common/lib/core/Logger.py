@@ -15,9 +15,15 @@ class Logger:
         self.config = config
         self.setup()
 
-    def setup(self, filename=TermFilesPath.LOG_FILE_NAME):
+    def setup(self):
+        self.remove()
+        self.add_file_handler()
+
+    @staticmethod
+    def remove():
         logger.remove()
 
+    def add_file_handler(self, filename=TermFilesPath.LOG_FILE_NAME):
         logger.add(
             filename,
             format=self.format,

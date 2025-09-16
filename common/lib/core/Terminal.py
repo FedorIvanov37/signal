@@ -270,7 +270,3 @@ class Terminal(QObject):
         reversal: Transaction = self.generator.set_trans_id(reversal)
 
         return reversal
-
-    def echo_test(self) -> None:
-        transaction: Transaction = self.parser.parse_file(TermFilesPath.ECHO_TEST)
-        self.send(transaction)

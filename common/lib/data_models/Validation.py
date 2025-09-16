@@ -31,6 +31,7 @@ class ValidationResult(BaseModel):
         ValidationTypes.FIELD_DATA_PRE_VALIDATION,
         ValidationTypes.FIELD_DATA_MAIN_VALIDATION,
         ValidationTypes.MTI_VALIDATION,
+        ValidationTypes.DUPLICATED_FIELDS_VALIDATION,
     ]
 
     @field_validator("errors", mode="before")
