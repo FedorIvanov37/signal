@@ -8,6 +8,7 @@ from webbrowser import open as open_url
 from PyQt6.QtWidgets import QApplication, QFileDialog
 from PyQt6.QtNetwork import QTcpSocket
 from PyQt6.QtCore import pyqtSignal, QTimer, QDir, QThreadPool
+from common.gui.undo_commands.SetDisabledCommand import SetDisabledCommand
 from common.gui.enums.GuiFilesPath import GuiFilesPath
 from common.gui.windows.settings_window import SettingsWindow
 from common.gui.windows.main_window import MainWindow
@@ -212,8 +213,11 @@ class SignalGui(Terminal):
         if item is None and not (item := self.window.json_view.currentItem()):
             return
 
+        self.window.json_view.undo_stack.push(SetDisabledCommand(item, disable))
+
         try:
             item.set_disabled(disable)
+
         except ValueError as err:
             logger.warning(err)
         else:

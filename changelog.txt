@@ -303,11 +303,17 @@ To fix
 • GET /api/datamodels/{type}
 
 
+• Undo/redo
+        • Add buttons
+        • Change validation
+        • Undo disable/enable
+        • Change value
+
 • To do
     • Generate doc.html in TeamCity
     • TeamCity build correct settings
     • Checkable buttons
-    • Disable fields
+    + Disable fields
     + Buttons auto-repeat
     • Generate grip html-documentation in process of building
     • Prepare the release page for slack https://unlimit.slack.com/archives/G018EV1EY85/p1716830943695369
