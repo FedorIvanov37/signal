@@ -20,6 +20,9 @@ from common.gui.enums.Colors import Colors
 from common.gui.enums import MainFieldSpec as FieldsSpec
 from common.gui.enums.RootItemNames import RootItemNames
 from common.lib.toolkit.generate_trans_id import generate_trans_id
+from common.gui.undo_commands.InsertItemCommand import InsertItemCommand
+from common.gui.undo_commands.RemoveItemCommand import RemoveItemCommand
+from common.gui.undo_commands.InsertSubItemCommand import InsertSubItemCommand
 from PyQt6.QtCore import Qt
 
 
@@ -475,7 +478,8 @@ class JsonView(TreeView):
         item = FieldItem([])
         index = parent.indexOfChild(current_item) + 1
         parent.insertChild(index, item)
-        self.set_new_item(item)
+        self.set_new_item(item, edit=False)
+        self.undo_stack.push(InsertItemCommand(self, item, index))
         self.field_added.emit()
 
     @void_qt_signals
@@ -492,21 +496,11 @@ class JsonView(TreeView):
         if not (parent := item.parent()):
             return
 
+        self.undo_stack.push(RemoveItemCommand(self, item))
+
         parent.removeChild(item)
-        self.previousInFocusChain()
-        parent.set_length(fill_length=self.len_fill)
 
-        if not parent.childCount() and parent.field_number in self.spec.get_fields_to_generate():
-            parent.set_checkbox()
-            self.generate_item_data(parent)
-
-        try:
-            self.check_duplicates_after_remove(item, parent)
-        except (DataValidationError, ValueError) as duplication_error:
-            logger.error(duplication_error)
-
-        self.setFocus()
-        self.field_removed.emit()
+        self.process_item_remove(parent=parent, item=item)
 
     @void_qt_signals
     def next_level(self, *args):
@@ -530,15 +524,36 @@ class JsonView(TreeView):
             current_item.remove_checkbox()
 
         current_item.hide_secret(False)
+        self.undo_stack.push(InsertSubItemCommand(self, current_item, item))
         current_item.setText(FieldsSpec.ColumnsOrder.VALUE, str())
         current_item.insertChild(int(), item)
+        current_item.set_length()
         self.set_new_item(item)
 
-    def set_new_item(self, item: FieldItem):
+    def process_item_remove(self, parent, item):
+        self.previousInFocusChain()
+        parent.set_length(fill_length=self.len_fill)
+
+        if not parent.childCount() and parent.field_number in self.spec.get_fields_to_generate():
+            parent.set_checkbox()
+            self.generate_item_data(parent)
+
+        try:
+            self.check_duplicates_after_remove(item, parent)
+        except (DataValidationError, ValueError) as duplication_error:
+            logger.error(duplication_error)
+
+        self.setFocus()
+
+        self.field_removed.emit()
+
+    def set_new_item(self, item: FieldItem, edit=False):
         self.setCurrentItem(item)
         self.scrollToItem(item)
         self.setFocus()
-        self.editItem(item, int())
+
+        if edit:
+            self.editItem(item, int())
 
     def check_duplicates_after_remove(self, removed_item: FieldItem, parent_item: FieldItem):
         self.validator.validate_duplicates(removed_item, parent_item)

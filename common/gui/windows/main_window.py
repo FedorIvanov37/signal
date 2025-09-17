@@ -73,6 +73,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
     disable_item: pyqtSignal = pyqtSignal()
     enable_item: pyqtSignal = pyqtSignal()
     enable_all_items: pyqtSignal = pyqtSignal()
+    undo: pyqtSignal = pyqtSignal()
+    redo: pyqtSignal = pyqtSignal()
     _message_repeat_menu: QMenu = None
     _keep_alive_menu: QMenu = None
     _api_menu: QMenu = None
@@ -109,11 +111,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self.TabViewLayout.addWidget(self._tab_view)
         self.api_mode_changed.emit(ApiMode.ApiModes.NOT_RUN)
 
-        for transaction_type in (
-            KeepAlive.TransTypes.TRANS_TYPE_KEEP_ALIVE,
-            KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION
-        ):
-            self.process_transaction_loop_change(KeepAlive.IntervalNames.KEEP_ALIVE_STOP, transaction_type)
+        for trans_type in KeepAlive.TransTypes.TRANS_TYPE_KEEP_ALIVE, KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION:
+            self.process_transaction_loop_change(KeepAlive.IntervalNames.KEEP_ALIVE_STOP, trans_type)
 
     def _add_control_buttons(self) -> None:
 

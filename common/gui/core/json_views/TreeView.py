@@ -14,7 +14,7 @@ class TreeView(QTreeWidget):
 
     def __init__(self, parent=None):
         super(TreeView, self).__init__(parent=parent)
-        self.undo_stack = QUndoStack()
+        self.undo_stack = QUndoStack(self)
         self.setup()
 
     def setup(self):

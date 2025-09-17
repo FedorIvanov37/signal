@@ -14,6 +14,12 @@ class ItemsValidator:
         self.validator = Validator(self.config)
 
     def validate_item(self, item: FieldItem):
+        if item.field_number == "" and item.field_data == "":
+            return
+
+        if item.field_number != "" and item.childCount():
+            return 
+
         validation_result: ValidationResult = ValidationResult()
         validation_result: ValidationResult = self._validate_field_number(item, validation_result)
 
