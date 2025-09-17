@@ -5,6 +5,7 @@ from common.gui.forms.mti_spec import Ui_MtiSpecWindow
 from common.gui.decorators.window_settings import set_window_icon, has_close_button_only
 from common.gui.enums import ButtonActions
 
+
 class MtiSpecWindow(Ui_MtiSpecWindow, QDialog):
     _spec: EpaySpecification = EpaySpecification()
     _changed: pyqtSignal = pyqtSignal()

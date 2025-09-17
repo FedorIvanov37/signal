@@ -26,15 +26,21 @@ class SpecUnsaved(Ui_SpecUnsaved, QDialog):
 
     @set_window_icon
     @has_close_button_only
-    def setup(self):
+    def setup(self) -> None:
         self.LogoLabel.setPixmap(QPixmap(GuiFilesPath.MAIN_LOGO))
         self.ButtonSave.setMenu(QMenu())
-        self.ButtonSave.menu().addAction(ButtonActions.ApplySpecMenuActions.ONE_SESSION, lambda: self.need_apply(ButtonActions.ApplySpecMenuActions.ONE_SESSION))
+        self.ButtonSave.menu().addAction(
+            ButtonActions.ApplySpecMenuActions.ONE_SESSION,
+            lambda: self.need_apply(ButtonActions.ApplySpecMenuActions.ONE_SESSION)
+        )
         self.ButtonSave.menu().addSeparator()
-        self.ButtonSave.menu().addAction(ButtonActions.ApplySpecMenuActions.PERMANENTLY, lambda: self.need_apply(ButtonActions.ApplySpecMenuActions.PERMANENTLY))
+        self.ButtonSave.menu().addAction(
+            ButtonActions.ApplySpecMenuActions.PERMANENTLY,
+            lambda: self.need_apply(ButtonActions.ApplySpecMenuActions.PERMANENTLY)
+        )
         self.ButtonReturn.clicked.connect(self.return_to_spec.emit)
 
-    def need_apply(self, commit: str):
+    def need_apply(self, commit: str) -> None:
         self.save.emit(commit == ButtonActions.ApplySpecMenuActions.PERMANENTLY)
         self.accept()
 

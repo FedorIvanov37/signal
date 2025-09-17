@@ -47,7 +47,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
 
     @set_window_icon
     @has_close_button_only
-    def setup(self, about: bool = False):
+    def setup(self, about: bool = False) -> None:
         self.player.setAudioOutput(self.audio_output)
         self.player.setSource(QUrl.fromLocalFile(GuiFilesPath.VVVVVV))
         self.MainTabs.tabBar().setDocumentMode(True)
@@ -71,19 +71,19 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.LoadSpec2.stateChanged.connect(lambda: self.LoadSpec.setChecked(self.LoadSpec2.isChecked()))
         self.LoadSpec.stateChanged.connect(lambda: self.LoadSpec2.setChecked(self.LoadSpec.isChecked()))
         self.ValidationEnabled.stateChanged.connect(self.process_validation_change)
-        self.ManualInputMode.stateChanged.connect(self.process_manual_entry_mode_change)
+        self.ManualInputMode.stateChanged.connect(lambda: self.ValidationEnabled.setChecked(not self.ManualInputMode.isChecked()))
         self.ApiInfoLabel.linkActivated.connect(lambda: self.open_user_guide.emit())
         self.ApiAddress.linkActivated.connect(lambda: self.open_api_url.emit(self.get_api_url()))
         self.ApiPort.textChanged.connect(self.set_api_url)
         self.MusicOnOfButton.clicked.connect(self.switch_music)
         self.ContactLabel.linkActivated.connect(self.open_url)
         self.process_validation_change()
-        self.process_manual_entry_mode_change()
         self.process_config(self.config)
         self.set_data_about()
         self.MainTabs.setCurrentIndex(self.MainTabs.count() - 1 if about else int())
+        self.ValidationEnabled.setChecked(not self.ManualInputMode.isChecked())
 
-    def process_config(self, config: Config):
+    def process_config(self, config: Config) -> None:
         checkboxes_state_map = {
             self.MaxAmountBox: config.fields.max_amount_limited,
             self.ProcessDefaultDump: config.terminal.process_default_dump,
@@ -162,13 +162,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
                 self.set_default_settings()
                 break
 
-    def process_manual_entry_mode_change(self):
-        if not self.ManualInputMode.isChecked():
-            return
-
-        self.ValidationEnabled.setChecked(False)
-
-    def process_validation_change(self):
+    def process_validation_change(self) -> None:
         validation_elements = (
             self.ValidateWindow,
             self.ValidateIncoming,
@@ -180,7 +174,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         for element in validation_elements:
             element.setEnabled(self.ValidationEnabled.isChecked())
 
-    def set_data_about(self):
+    def set_data_about(self) -> None:
         self.logoLabel.setPixmap(QPixmap(GuiFilesPath.SIGNED_LOGO))
         self.MusicOnOfButton.setIcon(QIcon(QPixmap(GuiFilesPath.MAIN_LOGO)))
         self.MusicOnOfButton.setIcon(QIcon(QPixmap(GuiFilesPath.MUSIC_ON)))
@@ -278,15 +272,15 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.reject()
 
     @staticmethod
-    def open_url(link):
+    def open_url(link) -> None:
         link = QUrl(link)
         QDesktopServices.openUrl(link)
 
-    def record_finished(self, state):
+    def record_finished(self, state) -> None:
         if state == self.player.PlaybackState.StoppedState:
             self.MusicOnOfButton.setIcon(QIcon(QPixmap(GuiFilesPath.MUSIC_ON)))
 
-    def switch_music(self):
+    def switch_music(self) -> None:
         match self.player.playbackState():
             case self.player.PlaybackState.StoppedState:
                 icon = GuiFilesPath.MUSIC_OFF

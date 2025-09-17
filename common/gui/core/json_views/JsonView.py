@@ -1,4 +1,5 @@
 from copy import deepcopy
+from contextlib import suppress
 from loguru import logger
 from PyQt6.QtCore import pyqtSignal, QModelIndex
 from PyQt6.QtWidgets import QTreeWidgetItem, QItemDelegate, QLineEdit
@@ -787,10 +788,8 @@ class JsonView(TreeView):
             if row.field_number in result:
                 logger.warning(f"Duplicated field number {row.get_field_path(string=True)}")
 
-            try:
+            with suppress(DataValidationWarning):
                 self.validator.validate_item(row)
-            except DataValidationWarning:
-                pass
 
             if row.childCount():
                 if flat:

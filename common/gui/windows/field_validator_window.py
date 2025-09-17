@@ -1,4 +1,5 @@
 from copy import deepcopy
+from contextlib import suppress
 from PyQt6.QtGui import QPalette, QColor
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QDialog, QListWidgetItem, QCheckBox, QLineEdit, QSpinBox
@@ -165,12 +166,10 @@ class FieldDataSet(Ui_FieldDataSet, QDialog):
             }
         }
 
-        try:
+        with suppress(KeyError):
             field_date: dict = self._field_type_checkboxes[FieldTypeParams.DATE]
             line_date: QLineEdit = field_date[FieldTypeParams.DATE_FORMAT]
             line_date.setPlaceholderText(FieldTypeParams.DATE_FORMAT)
-        except KeyError:
-            pass
 
         for field_type, widgets in self._field_type_checkboxes.items():
             self.FieldType.addItem(field_type)
@@ -310,12 +309,10 @@ class FieldDataSet(Ui_FieldDataSet, QDialog):
         return field_spec
 
     def set_generate(self):
-        try:
+        with suppress(AttributeError):
             self.CheckBoxGeneratible.setCheckState(
                 Qt.CheckState.Checked if self.field_spec.generate else Qt.CheckState.Unchecked
             )
-        except AttributeError:
-            return
 
     def set_justification_simbols(self):
         self.field_spec.validators.justification_element = self.FillSymbol.text()
@@ -350,10 +347,8 @@ class FieldDataSet(Ui_FieldDataSet, QDialog):
         literal_list: check_list = [self.ValuesList.item(row).text() for row in range(self.ValuesList.count())]
         literal_list: check_list = list(set(literal_list))
 
-        try:
+        with suppress(ValueError):  # When no empty strings in literal_list
             literal_list.remove(str())
-        except ValueError:
-            pass  # When no empty strings in literal_list
 
         validations_map[check_type] = literal_list
 

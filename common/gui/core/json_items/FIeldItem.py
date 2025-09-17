@@ -43,9 +43,9 @@ class FieldItem(Item):
 
     @field_data.setter
     def field_data(self, field_data):
-        self.is_new = False
+        self.is_new: bool = False
         self.setText(FieldsSpec.ColumnsOrder.VALUE, field_data)
-        self._secret = ""
+        self._secret: str = ""
         self.set_spec()
         self.hide_secret()
 
@@ -90,6 +90,9 @@ class FieldItem(Item):
             return
         
         self._is_disabled = disabled
+
+        if checkbox := self.get_checkbox():
+            checkbox.setDisabled(disabled)
 
         if self.is_disabled:
             self.set_item_color(Colors.GREY)

@@ -75,9 +75,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
     enable_all_items: pyqtSignal = pyqtSignal()
     _message_repeat_menu: QMenu = None
     _keep_alive_menu: QMenu = None
-    _print_menu: QMenu = None
     _api_menu: QMenu = None
-    _control_buttons: list = list()
 
     @property
     def json_view(self):
@@ -101,7 +99,6 @@ class MainWindow(Ui_MainWindow, QMainWindow):
     def _setup(self) -> None:
         self.setupUi(self)
         self._add_control_buttons()
-        self._add_json_control_buttons()
         self._connect_all()
         self.setWindowTitle(f"{TextConstants.SYSTEM_NAME.capitalize()} {ReleaseDefinition.VERSION} | Terminal GUI")
         windll.shell32.SetCurrentProcessExplicitAppUserModelID("MainWindow")
@@ -118,54 +115,66 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         ):
             self.process_transaction_loop_change(KeepAlive.IntervalNames.KEEP_ALIVE_STOP, transaction_type)
 
-    def _add_control_buttons(self):
-        def create_control_button(name):
-            button = QPushButton()
-            button.setText(name)
-            button.setFont(QFont("Arial", 10))
-            button.setFocusPolicy(Qt.FocusPolicy.TabFocus)
-            control_buttons.append(button)
-            return button
+    def _add_control_buttons(self) -> None:
 
-        control_buttons: list[QPushButton] = list()
+        def create_button(name) -> QPushButton:
+            push_button: QPushButton = QPushButton()
+            push_button.setText(name)
+            push_button.setFont(QFont("Arial", 10))
+            push_button.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+            return push_button
 
-        self.ButtonSend = create_control_button(Buttons.SEND)
-        self.ButtonRepeat = create_control_button(Buttons.REPEAT)
-        self.ButtonReverse = create_control_button(Buttons.REVERSE)
-        self.ButtonClearLog = create_control_button(Buttons.CLEAR_LOG)
-        self.ButtonMessage = create_control_button(Buttons.MESSAGE)
-        self.ButtonFiles = create_control_button(Buttons.FILE)
-        self.ButtonReconnect = create_control_button(Buttons.RECONNECT)
-        self.ButtonEchoTest = create_control_button(Buttons.ECHO_TEST)
-        self.ButtonLog = create_control_button(Buttons.LOG)
-        self.ButtonPrint = create_control_button(Buttons.PRINT)
-        self.ButtonTools = create_control_button(Buttons.TOOLS)
-        self.ButtonHelp = create_control_button(Buttons.HELP)
+        # Create general control buttons
 
-        for control_button in control_buttons:
-            self.ButtonsLayout.addWidget(control_button, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.ButtonSend: QPushButton = create_button(Buttons.SEND)
+        self.ButtonRepeat: QPushButton = create_button(Buttons.REPEAT)
+        self.ButtonReverse: QPushButton = create_button(Buttons.REVERSE)
+        self.ButtonLog: QPushButton = create_button(Buttons.LOG)
+        self.ButtonMessage: QPushButton = create_button(Buttons.MESSAGE)
+        self.ButtonFiles: QPushButton = create_button(Buttons.FILE)
+        self.ButtonReconnect: QPushButton = create_button(Buttons.RECONNECT)
+        self.ButtonEchoTest: QPushButton = create_button(Buttons.ECHO_TEST)
+        self.ButtonPrint: QPushButton = create_button(Buttons.PRINT)
+        self.ButtonTools: QPushButton = create_button(Buttons.TOOLS)
+        self.ButtonHelp: QPushButton = create_button(Buttons.HELP)
 
-    def _add_json_control_buttons(self) -> None:
         # Create and place the JSON-view control buttons as "New Field", "New Subfield", "Remove Field"
 
-        self.PlusButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_PLUS_SIGN)
-        self.MinusButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_MINUS_SIGN)
-        self.NextLevelButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_NEXT_LEVEL_SIGN)
-        self.ButtonDisable = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_DISABLE)
-        self.ButtonEnable = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_ENABLE)
-        self.ButtonEnableAll = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_ENABLE_ALL)
+        self.PlusButton: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_PLUS_SIGN)
+        self.MinusButton: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_MINUS_SIGN)
+        self.NextLevelButton: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_NEXT_LEVEL_SIGN)
+        self.ButtonDisable: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_DISABLE)
+        self.ButtonEnable: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_ENABLE)
+        self.ButtonEnableAll: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_ENABLE_ALL)
+
+        # Setup buttons destination layout
 
         buttons_layouts_map = {
-            self.PlusLayout: self.PlusButton,
-            self.MinusLayout: self.MinusButton,
-            self.NextLevelLayout: self.NextLevelButton,
-            self.DisableLayout: self.ButtonDisable,
-            self.EnableLayout: self.ButtonEnable,
-            self.EnableAllLayout: self.ButtonEnableAll,
+
+            # Transaction data control buttons
+            self.PlusButton: self.PlusLayout,
+            self.MinusButton: self.MinusLayout,
+            self.NextLevelButton: self.NextLevelLayout,
+            self.ButtonDisable: self.DisableLayout,
+            self.ButtonEnable: self.EnableLayout,
+            self.ButtonEnableAll: self.EnableAllLayout,
+            self.ButtonSend: self.ButtonsLayout,
+
+            # Main control buttons. The order of button below will change their order on the MainWindow
+            self.ButtonReverse: self.ButtonsLayout,
+            self.ButtonRepeat: self.ButtonsLayout,
+            self.ButtonLog: self.ButtonsLayout,
+            self.ButtonMessage: self.ButtonsLayout,
+            self.ButtonFiles: self.ButtonsLayout,
+            self.ButtonReconnect: self.ButtonsLayout,
+            self.ButtonEchoTest: self.ButtonsLayout,
+            self.ButtonPrint: self.ButtonsLayout,
+            self.ButtonTools: self.ButtonsLayout,
+            self.ButtonHelp: self.ButtonsLayout,
         }
 
-        for layout, button in buttons_layouts_map.items():
-            layout.addWidget(button)
+        for button, layout in buttons_layouts_map.items():
+            layout.addWidget(button, alignment=Qt.AlignmentFlag.AlignLeft)
 
     def _connect_all(self) -> None:
         """
@@ -181,7 +190,6 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             self.MinusButton: self._tab_view.minus,
             self.NextLevelButton: self._tab_view.next_level,
             self.ButtonSend: self.send,
-            self.ButtonClearLog: self.clear_log,
             self.ButtonEchoTest: self.echo_test,
             self.ButtonReconnect: self.reconnect,
             self.ButtonDisable: self.disable_item,
@@ -257,7 +265,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             for signal, slot in connection_map.items():
                 signal.connect(slot)
 
-    def set_buttons_menu(self):
+    def set_buttons_menu(self) -> None:
 
         def process_menu_structure(structure: dict, menu=None):
             for button in structure.keys():
@@ -285,9 +293,6 @@ class MainWindow(Ui_MainWindow, QMainWindow):
                         case KeepAlive.TransTypes.TRANS_TYPE_KEEP_ALIVE:
                             self._keep_alive_menu = sub_menu
 
-                        case ToolBarElements.PRINT:
-                            self._print_menu = sub_menu
-
                         case ToolBarElements.API:
                             self._api_menu = sub_menu
 
@@ -305,9 +310,9 @@ class MainWindow(Ui_MainWindow, QMainWindow):
                 ToolBarElements.SET_REVERSAL_FIELDS: lambda: self.reverse.emit(ButtonActions.ReversalMenuActions.SET_REVERSAL),
             },
             self.ButtonMessage: {
-                ToolBarElements.CLEAR_MESSAGE: self.clear,
                 ToolBarElements.RESET_MESSAGE: lambda: self.reset.emit(False),
                 ToolBarElements.VALIDATE: lambda: self.validate_message.emit(True),
+                ToolBarElements.CLEAR_MESSAGE: self.clear,
             },
             self.ButtonLog: {
                 ToolBarElements.CLEAR_LOG: self.clear_log,

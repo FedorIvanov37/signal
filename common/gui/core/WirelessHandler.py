@@ -1,3 +1,4 @@
+from contextlib import suppress
 from PyQt6.QtCore import QObject, pyqtSignal
 from logging import StreamHandler, LogRecord
 
@@ -15,9 +16,6 @@ class WirelessHandler(StreamHandler, QObject):
         QObject.__init__(self)
 
     def emit(self, record: LogRecord):
-        try:
+        with suppress(Exception):
             record = self.format(record)
             self.new_record_appeared.emit(record)
-
-        except Exception:
-            return

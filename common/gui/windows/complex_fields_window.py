@@ -95,7 +95,7 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
         self.connect_all()
         self.set_field_data()
 
-    def connect_all(self):
+    def connect_all(self) -> None:
         button_connection_map = {
             self.ButtonClose: self.close,
             self.ButtonClearString: self.clear_string,
@@ -132,27 +132,27 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
         for combination, function in keys_connection_map.items():  # Key sequences
             QShortcut(QKeySequence(combination), self).activated.connect(function)
 
-    def set_message(self, message: str | None = None):
+    def set_message(self, message: str | None = None) -> None:
         if message is None:
-            message = TextConstants.HELLO_MESSAGE + "\n"
+            message: str = TextConstants.HELLO_MESSAGE + "\n"
 
         self.TextData.setText(message)
         self.TextData.clearFocus()
 
-    def set_field_data(self):
+    def set_field_data(self) -> None:
         self.JsonView.clean()
         self.get_from_main_window()
 
-    def clear_string(self):
+    def clear_string(self) -> None:
         self.TextData.setText(str())
 
-    def copy_json(self):
+    def copy_json(self) -> None:
         json_data: dict = self.get_json_data()
         json_data: str = dumps(json_data, indent=4)
         self.set_clipboard_text(json_data)
         logger.info("JSON copied to clipboard")
 
-    def copy_string(self):
+    def copy_string(self) -> None:
         self.set_clipboard_text(self.TextData.toPlainText())
         logger.info("String copied to clipboard")
 
@@ -160,7 +160,7 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
     def set_clipboard_text(data: str = str()) -> None:
         QApplication.clipboard().setText(data)
 
-    def set_on_main_windows(self):
+    def set_on_main_windows(self) -> None:
         try:
             field_number = self.get_field_number()
         except LookupError as lookup_error:
@@ -203,11 +203,11 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
 
         return json_data
 
-    def clear_all(self):
+    def clear_all(self) -> None:
         self.JsonView.clean()
         self.clear_string()
 
-    def parse_json(self):
+    def parse_json(self) -> None:
         string_data = str()
 
         for item in self.JsonView.root.get_children():
@@ -254,7 +254,7 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
 
         logger.info(f"Got field {field_number} data from MainWindow")
 
-    def parse_string(self):
+    def parse_string(self) -> None:
         if TextConstants.HELLO_MESSAGE in self.TextData.toPlainText():
             return
 
@@ -288,6 +288,7 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
         self.JsonView.parse_fields(json_data)
 
     def parse_json_data(self, data: str):
+
         try:
             json_data: dict = loads(data)
         except JSONDecodeError:
@@ -309,7 +310,7 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
 
         return field_data
 
-    def get_field_number(self):
+    def get_field_number(self) -> str:
         field_number = self.FieldNumber.currentText()
 
         if not (field_number := search(r"^\d{1,3}", field_number)):

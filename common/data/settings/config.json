@@ -29,7 +29,7 @@
         "validation_mode": "WARNING"
     },
     "fields": {
-        "max_amount": 1000,
+        "max_amount": 100,
         "max_amount_limited": true,
         "build_fld_90": true,
         "send_internal_id": true,

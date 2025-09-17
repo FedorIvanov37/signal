@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from contextlib import suppress
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
@@ -25,9 +26,7 @@ class HttpSpec(BaseHTTPRequestHandler):
 
 server = HTTPServer((SERVER_ADDRESS, PORT), HttpSpec)
 
-try:
+with suppress(KeyboardInterrupt):
     server.serve_forever()
-except KeyboardInterrupt:
-    pass
 
 server.server_close()

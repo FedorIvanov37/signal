@@ -31,7 +31,7 @@ if __name__ != "__main__":  # Runs only by import command
         print(run_preparation_error)
         exit(100)
 
-    cli_mode_triggers = (
+    cli_mode_triggers: tuple = (
         CliDefinition.CONSOLE_MODE,
         CliDefinition.CONSOLE_MODE_LONG,
         CliDefinition.HELP,

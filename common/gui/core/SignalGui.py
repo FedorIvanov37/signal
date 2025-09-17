@@ -100,11 +100,11 @@ class SignalGui(Terminal):
         return wrapper
 
     def __init__(self, config: Config):
-        self.connector = ConnectionThread(config)
+        self.connector: ConnectionThread = ConnectionThread(config)
         super(SignalGui, self).__init__(config=config, connector=self.connector)
         self.window: MainWindow = MainWindow(self.config)
         self.thread_pool: QThreadPool = QThreadPool()
-        self._api_thread = ApiThread(self.config)
+        self._api_thread: ApiThread = ApiThread(self.config)
         self.connect_widgets()
         self.setup()
 
@@ -146,7 +146,7 @@ class SignalGui(Terminal):
 
         self.window.show()
 
-    def connect_widgets(self):
+    def connect_widgets(self) -> None:
         window: MainWindow = self.window
 
         terminal_connections_map: dict[pyqtSignal, Callable] = {
@@ -196,10 +196,7 @@ class SignalGui(Terminal):
         for signal, slot in terminal_connections_map.items():
             signal.connect(slot)
 
-    def sigint_handler(self):
-        return
-
-    def process_change_api_mode(self, state):
+    def process_change_api_mode(self, state) -> None:
         if state == ApiModes.START:
             logger.info("Starting API mode")
             self._api_thread.setup(terminal=self)
@@ -211,7 +208,7 @@ class SignalGui(Terminal):
         if state == ApiModes.STOP:
             ...
 
-    def disable_item(self, disable: bool, item=None):
+    def disable_item(self, disable: bool, item=None) -> None:
         if item is None and not (item := self.window.json_view.currentItem()):
             return
 
@@ -279,9 +276,9 @@ class SignalGui(Terminal):
     def modify_fields_data(self):  # Set extended data modifications, set in field params
         self.window.json_view.modify_all_fields_data()
 
-    def load_remote_spec(self, spec_data: str):
+    def load_remote_spec(self, spec_data: str) -> None:
         try:
-            epay_spec = EpaySpecModel.model_validate_json(spec_data)
+            epay_spec: EpaySpecModel = EpaySpecModel.model_validate_json(spec_data)
         except (ValidationError, ValueError) as spec_parsing_error:
             logger.error(f"Remote spec processing error: {spec_parsing_error}")
             logger.warning("Local specification will be used instead")
@@ -296,7 +293,7 @@ class SignalGui(Terminal):
 
         logger.info(f"Remote specification loaded: {epay_spec.name}")
 
-    def validate_main_window(self, force=False):
+    def validate_main_window(self, force: bool = False) -> None:
         self.window.validate_fields(force=force)
         self.window.json_view.refresh_fields()
 
@@ -304,7 +301,7 @@ class SignalGui(Terminal):
 
     def echo_test(self) -> None:
         try:
-            echo_test = self.parser.parse_file(TermFilesPath.ECHO_TEST)
+            echo_test: Transaction = self.parser.parse_file(TermFilesPath.ECHO_TEST)
             self._generated_echo_test_transactions.append(echo_test)
             self.send(echo_test)
 
@@ -763,7 +760,8 @@ class SignalGui(Terminal):
             self.window.set_log_data(function())
 
         except AttributeError:
-            logger.error("Cannot construct message: lost field specification. Correct spec or turn field validation off")
+            logger.error("Cannot construct message: lost field specification."
+                         " Correct spec or turn field validation off")
 
         except Exception as validation_error:
             logger.error(f"Cannot construct message: {validation_error}")

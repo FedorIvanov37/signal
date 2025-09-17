@@ -11,7 +11,7 @@ class HotKeysHintWindow(Ui_HotKeysHint, QDialog):
         self.setup()
 
     @frameless_window
-    def setup(self):
+    def setup(self) -> None:
         header = self.HintTable.horizontalHeader()
         header.setSectionResizeMode(header.ResizeMode.Fixed)
         header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft)
