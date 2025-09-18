@@ -25,28 +25,12 @@ from common.lib.enums.TextConstants import TextConstants
 
 class SpecWindow(Ui_SpecificationWindow, QDialog):
     _read_only: bool = True
-    _spec: EpaySpecification = EpaySpecification()
-    _spec_accepted: pyqtSignal = pyqtSignal(str)
-    _spec_rejected: pyqtSignal = pyqtSignal()
-    _reset_spec: pyqtSignal = pyqtSignal(str)
-    _load_remote_spec: pyqtSignal = pyqtSignal(bool)
     _clean_spec: EpaySpecModel = None
-
-    @property
-    def load_remote_spec(self):
-        return self._load_remote_spec
-
-    @property
-    def reset_spec(self):
-        return self._reset_spec
-
-    @property
-    def spec_accepted(self):
-        return self._spec_accepted
-
-    @property
-    def spec_rejected(self):
-        return self._spec_rejected
+    _spec: EpaySpecification = EpaySpecification()
+    spec_accepted: pyqtSignal = pyqtSignal(str)
+    spec_rejected: pyqtSignal = pyqtSignal()
+    reset_spec: pyqtSignal = pyqtSignal(str)
+    load_remote_spec: pyqtSignal = pyqtSignal(bool)
 
     @property
     def spec(self):
@@ -113,6 +97,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         self.connect_all()
         self.set_read_only(self.CheckBoxReadOnly.isChecked())
         self.set_hello_message()
+        self.setAcceptDrops(True)
 
     def connect_all(self):
 
@@ -169,10 +154,41 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
     def backup():
         rotator: SpecFilesRotator = SpecFilesRotator()
         backup_filename = rotator.backup_spec()
-        logger.info(f"Backup done! Filename: {backup_filename}")
+        logger.info(f"Backup is done. Filename: {backup_filename}")
 
     def set_hello_message(self):
         self.LogArea.setText(f"{TextConstants.HELLO_MESSAGE}\n")
+
+    def dragEnterEvent(self, event):
+        if not event.mimeData().hasUrls():
+            return
+
+        event.acceptProposedAction()
+
+    def dragMoveEvent(self, event):
+        if not event.mimeData().hasUrls():
+            return
+
+        event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        files: list[str] = list()
+
+        for url in event.mimeData().urls():
+            files.append(url.toLocalFile())
+
+        if files:
+            logger.debug(f"Spec files dropped: {files}")
+
+        for file in files:
+
+            try:
+                self.parse_file(file, log=True)
+
+            except Exception as parsing_error:
+                logger.error(f"Spec file {file} parsing error: {parsing_error}")
+
+        event.acceptProposedAction()
 
     def process_remote_spec(self, spec_data: str):
         spec: EpaySpecification = EpaySpecification()
@@ -281,7 +297,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
     def closeEvent(self, a0: QCloseEvent) -> None:
         self.process_close(a0)
 
-    def parse_file(self, filename: Optional[str] = None) -> None:
+    def parse_file(self, filename: Optional[str] = None, log: bool = False) -> None:
         if filename is None:
             try:
                 filename = QFileDialog.getOpenFileName()[0]
@@ -292,6 +308,8 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         if not filename:
             logger.info("No input filename recognized")
             return
+
+        specification: EpaySpecModel | None = None
 
         try:
             with open(filename) as json_file:
@@ -304,8 +322,18 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         except Exception as parsing_error:
             logger.error(f"File parsing error: {parsing_error}")
 
-        else:
+        if not specification:
+            return
+
+        try:
             self.SpecView.parse_spec(specification)
+
+        except Exception as parsing_error:
+            logger.error(f"File parsing error: {parsing_error}")
+            return
+
+        if log:
+            logger.info(f"Specification file parsed: {filename}")
 
     def reload(self):
         self.SpecView.reload()

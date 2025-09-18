@@ -1,7 +1,7 @@
 from copy import deepcopy
 from contextlib import suppress
 from loguru import logger
-from PyQt6.QtCore import pyqtSignal, QModelIndex
+from PyQt6.QtCore import pyqtSignal, QModelIndex, Qt
 from PyQt6.QtWidgets import QTreeWidgetItem, QItemDelegate, QLineEdit
 from common.lib.core.EpaySpecification import EpaySpecification
 from common.lib.core.FieldsGenerator import FieldsGenerator
@@ -23,7 +23,6 @@ from common.lib.toolkit.generate_trans_id import generate_trans_id
 from common.gui.undo_commands.InsertItemCommand import InsertItemCommand
 from common.gui.undo_commands.RemoveItemCommand import RemoveItemCommand
 from common.gui.undo_commands.InsertSubItemCommand import InsertSubItemCommand
-from PyQt6.QtCore import Qt
 
 
 class JsonView(TreeView):
@@ -42,6 +41,7 @@ class JsonView(TreeView):
     need_disable_next_level: pyqtSignal = pyqtSignal()
     need_enable_next_level: pyqtSignal = pyqtSignal()
     trans_id_set: pyqtSignal = pyqtSignal()
+    files_dropped: pyqtSignal = pyqtSignal(list)
     spec: EpaySpecification = EpaySpecification()
 
     @property
@@ -85,6 +85,7 @@ class JsonView(TreeView):
         self.make_order()
 
     def check_validation_config(function: callable):
+
         """
         This decorator check the configuration before validate FieldItem. If the validation is not activated
         the function will return None
@@ -104,6 +105,7 @@ class JsonView(TreeView):
             return function(self, *args, **kwargs)
 
         return wrapper
+
     def dragEnterEvent(self, event):
         if not event.mimeData().hasUrls():
             return
@@ -117,13 +119,17 @@ class JsonView(TreeView):
         event.acceptProposedAction()
 
     def dropEvent(self, event):
-        for url in event.mimeData().urls():
-            print(url.toLocalFile())
+        files: list[str] = list()
 
-            # if url.isLocalFile():
-            #     path = pathlib.Path(url.toLocalFile())
-            #     QTreeWidgetItem(self, [path.name])
-        # e.acceptProposedAction()
+        for url in event.mimeData().urls():
+            files.append(url.toLocalFile())
+
+        if files:
+            logger.debug(f"Files dropped: {files}")
+            self.files_dropped.emit(files)
+
+        event.acceptProposedAction()
+
     def search(self, text: str, parent: FieldItem | None = None) -> None:
         TreeView.search(self, text, parent)
 

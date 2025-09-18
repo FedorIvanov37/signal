@@ -73,6 +73,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
     disable_item: pyqtSignal = pyqtSignal()
     enable_item: pyqtSignal = pyqtSignal()
     enable_all_items: pyqtSignal = pyqtSignal()
+    files_dropped: pyqtSignal = pyqtSignal(list)
     undo: pyqtSignal = pyqtSignal()
     redo: pyqtSignal = pyqtSignal()
     _message_repeat_menu: QMenu = None
@@ -206,6 +207,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             self._tab_view.copy_bitmap: self.copy_bitmap,
             self._tab_view.trans_id_set: self.set_reversal_trans_id,
             self._tab_view.tab_changed: self.process_tab_change,
+            self._tab_view.files_dropped: self.files_dropped,
         }
 
         event_connection_map = {
@@ -309,8 +311,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
                 ToolBarElements.SET_REVERSAL_FIELDS: lambda: self.reverse.emit(ButtonActions.ReversalMenuActions.SET_REVERSAL),
             },
             self.ButtonMessage: {
-                ToolBarElements.RESET_MESSAGE: lambda: self.reset.emit(False),
                 ToolBarElements.VALIDATE: lambda: self.validate_message.emit(True),
+                ToolBarElements.RESET_MESSAGE: lambda: self.reset.emit(False),
                 ToolBarElements.CLEAR_MESSAGE: self.clear,
             },
             self.ButtonLog: {
@@ -355,7 +357,6 @@ class MainWindow(Ui_MainWindow, QMainWindow):
                     KeepAlive.IntervalNames.KEEP_ALIVE_300S: lambda: self.keep_alive.emit(KeepAlive.IntervalNames.KEEP_ALIVE_300S),
                     KeepAlive.IntervalNames.KEEP_ALIVE_STOP: lambda: self.keep_alive.emit(KeepAlive.IntervalNames.KEEP_ALIVE_STOP),
                 },
-
             },
             self.ButtonTools: {
                 ToolBarElements.SETTINGS: self.settings,

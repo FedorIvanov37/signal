@@ -162,7 +162,7 @@ class SignalGui(Terminal):
             window.copy_log: self.copy_log,
             window.copy_bitmap: self.copy_bitmap,
             window.reconnect: self.reconnect,
-            window.parse_file: self.parse_file,
+            window.parse_file: lambda: self.parse_file(new_tab=True),
             window.window_close: self.stop_signal,
             window.reverse: self.perform_reversal,
             window.print: self.print_data,
@@ -185,6 +185,7 @@ class SignalGui(Terminal):
             window.disable_item: lambda: self.disable_item(disable=True),
             window.enable_item: lambda: self.disable_item(disable=False),
             window.enable_all_items: lambda: self.disable_item(disable=False, item=self.window.json_view.root),
+            window.files_dropped: self.process_files_drop,
             self.connector.stateChanged: self.set_connection_status,
             self.set_remote_spec: self.connector.get_remote_spec,
             self.connector.got_remote_spec: self.load_remote_spec,
@@ -320,6 +321,7 @@ class SignalGui(Terminal):
         try:
             old_config: Config = self.config.model_copy(deep=True)
             settings_window: SettingsWindow = SettingsWindow(self.config, about=about)
+            settings_window.config_file_dropped.connect(lambda config_file: self.reload_config(config_file, settings_window))
             settings_window.accepted.connect(lambda: self.process_config_change(old_config))
             settings_window.open_user_guide.connect(self.show_document)
             settings_window.open_api_url.connect(self.open_api_url)
@@ -328,6 +330,10 @@ class SignalGui(Terminal):
         except Exception as settings_error:
             logger.error(settings_error)
 
+    def reload_config(self, config_file, settings_window):
+        self.read_config(config_file)
+        settings_window.config = self.config
+        
     def process_config_change(self, old_config: Config) -> None:
         self.read_config()
 
@@ -422,16 +428,17 @@ class SignalGui(Terminal):
         except Exception as license_error:
             logger.error(f"Cannot save license params: {license_error}")
 
-    def read_config(self) -> None:
+    def read_config(self, config_file: str | None = None) -> None:
+
+        if config_file is None:
+            config_file = TermFilesPath.CONFIG
+
         try:
-            with open(TermFilesPath.CONFIG) as json_file:
-                config: Config = Config.model_validate_json(json_file.read())
+            with open(config_file) as json_file:
+                self.config: Config = Config.model_validate_json(json_file.read())
 
-        except ValidationError as parsing_error:
+        except Exception as parsing_error:
             logger.error(f"Cannot parse configuration file: {parsing_error}")
-            return
-
-        self.config.fields = config.fields
 
     def stop_signal(self) -> None:
         self.connector.stop_thread()
@@ -802,7 +809,7 @@ class SignalGui(Terminal):
     @set_json_view_focus
     def set_default_values(self, log=True) -> None:
         try:
-            self.parse_file(str(TermFilesPath.DEFAULT_FILE), log=False)
+            self.parse_file(str(TermFilesPath.DEFAULT_FILE), log=False, new_tab=False)
 
         except Exception as parsing_error:
             logger.error(f"Default file parsing error! Exception: {parsing_error}")
@@ -810,50 +817,46 @@ class SignalGui(Terminal):
         else:
             logger.info("Default file parsed") if log else ...
 
+    def process_files_drop(self, incoming_files: list[str]):
+        for incoming_file in incoming_files:
+            self.parse_file(incoming_file, new_tab=True)
+
     @set_json_view_focus
-    def parse_file(self, filename: str | None = None, log=True) -> None:
+    def parse_file(self, incoming_filename: str | None = None, log=True, new_tab: bool = False) -> None:
+        filenames: list[str] = []
 
-        def _parse_file(_filename: str, _log: bool) -> None:
-            try:
-                transaction: Transaction = self.parser.parse_file(_filename)
+        if incoming_filename:
+            filenames.append(incoming_filename)
 
-            except (DataValidationError, ValidationError, ValueError) as validation_error:
-                logger.error(f"File parsing error: {validation_error}")
-                return
-
-            except Exception as parsing_error:
-                logger.error(f"File parsing error: {parsing_error}")
-                return
-
-            try:
-                self.parse_transaction(transaction)
-
-            except Exception as fields_setting_error:
-                logger.error(fields_setting_error)
-                return
-
-            if not log:
-                return
-
-            logger.info(f"File parsed: {filename}")
-
-        if filename:
-            _parse_file(filename, _log=log)
-            return
-
-        if not (filenames := self.get_input_filename(multiple_files=True)):
+        if not filenames and not (filenames := self.get_input_filename(multiple_files=True)):
             logger.warning("No input filename(s) recognized")
             return
 
         for filename in filenames:
+
             try:
+                transaction: Transaction = self.parser.parse_file(filename)
+
+            except (DataValidationError, ValidationError, ValueError) as validation_error:
+                logger.error(f"File parsing error: {validation_error}")
+                continue
+
+            except Exception as parsing_error:
+                logger.error(f"File parsing error: {parsing_error}")
+                continue
+
+            if new_tab:
                 self.window.tab_view.add_tab()
-            except IndexError:
-                break
+                self.window.set_tab_name(basename(filename))
 
-            self.window.set_tab_name(basename(filename))
+            try:
+                self.parse_transaction(transaction)
+            except Exception as fields_setting_error:
+                logger.error(fields_setting_error)
+                continue
 
-            _parse_file(filename, _log=log)
+            if log:
+                logger.info(f"File parsed: {filename}")
 
     @set_json_view_focus
     def parse_transaction(self, transaction: Transaction, generate_trans_id=True) -> None:

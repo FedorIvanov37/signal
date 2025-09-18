@@ -352,10 +352,12 @@ To fix
     + Gif copyright
     + Change the name
 
+
 Release v0.19
     • API mode experimental feature
     • Buttons optimization
     • Renovated Settings window
     • Buttons disable / enable
     • CLI mode marks
-    • New settings
+    • Drag n drop
+    • Undo / redo

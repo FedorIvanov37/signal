@@ -14,51 +14,16 @@ from common.gui.core.json_items import FIeldItem
 
 
 class TabView(QTabWidget):
-    _field_changed: pyqtSignal = pyqtSignal()
-    _field_removed: pyqtSignal = pyqtSignal()
-    _field_added: pyqtSignal = pyqtSignal()
-    _disable_next_level_button: pyqtSignal = pyqtSignal()
-    _enable_next_level_button: pyqtSignal = pyqtSignal()
-    _trans_id_set: pyqtSignal = pyqtSignal()
-    _tab_changed: pyqtSignal = pyqtSignal()
-    _new_tab_opened: pyqtSignal = pyqtSignal()
-    _copy_bitmap: pyqtSignal = pyqtSignal()
-
-    @property
-    def copy_bitmap(self):
-        return self._copy_bitmap
-
-    @property
-    def new_tab_opened(self):
-        return self._new_tab_opened
-
-    @property
-    def tab_changed(self):
-        return self._tab_changed
-
-    @property
-    def trans_id_set(self):
-        return self._trans_id_set
-
-    @property
-    def disable_next_level_button(self):
-        return self._disable_next_level_button
-
-    @property
-    def enable_next_level_button(self):
-        return self._enable_next_level_button
-
-    @property
-    def field_changed(self):
-        return self._field_changed
-
-    @property
-    def field_added(self):
-        return self._field_added
-
-    @property
-    def field_removed(self):
-        return self._field_removed
+    field_changed: pyqtSignal = pyqtSignal()
+    field_removed: pyqtSignal = pyqtSignal()
+    field_added: pyqtSignal = pyqtSignal()
+    disable_next_level_button: pyqtSignal = pyqtSignal()
+    enable_next_level_button: pyqtSignal = pyqtSignal()
+    trans_id_set: pyqtSignal = pyqtSignal()
+    tab_changed: pyqtSignal = pyqtSignal()
+    new_tab_opened: pyqtSignal = pyqtSignal()
+    copy_bitmap: pyqtSignal = pyqtSignal()
+    files_dropped: pyqtSignal = pyqtSignal(list)
 
     @property
     def json_view(self):
@@ -136,6 +101,7 @@ class TabView(QTabWidget):
             self.json_view.field_removed: self.field_removed,
             self.json_view.need_disable_next_level: self.disable_next_level_button,
             self.json_view.need_enable_next_level: self.enable_next_level_button,
+            self.json_view.files_dropped: self.files_dropped,
         }
 
         for signal, slot in json_view_connection_map.items():
@@ -234,8 +200,8 @@ class TabView(QTabWidget):
         if self.currentIndex() == self.main_tab_index:
             return
 
-        self.close_tab(self.currentIndex())
         self.prev_tab()
+        self.close_tab(self.next_tab_index)
         self.mark_active_tab()
 
     def prev_tab(self):
