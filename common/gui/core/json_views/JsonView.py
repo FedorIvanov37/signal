@@ -66,6 +66,7 @@ class JsonView(TreeView):
         self._setup()
 
     def _setup(self):
+        self.setAcceptDrops(True)
         self.setTabKeyNavigation(True)
         self.setAnimated(True)
         self.itemDoubleClicked.connect(self.editItem)
@@ -103,7 +104,26 @@ class JsonView(TreeView):
             return function(self, *args, **kwargs)
 
         return wrapper
+    def dragEnterEvent(self, event):
+        if not event.mimeData().hasUrls():
+            return
 
+        event.acceptProposedAction()
+
+    def dragMoveEvent(self, event):
+        if not event.mimeData().hasUrls():
+            return
+
+        event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        for url in event.mimeData().urls():
+            print(url.toLocalFile())
+
+            # if url.isLocalFile():
+            #     path = pathlib.Path(url.toLocalFile())
+            #     QTreeWidgetItem(self, [path.name])
+        # e.acceptProposedAction()
     def search(self, text: str, parent: FieldItem | None = None) -> None:
         TreeView.search(self, text, parent)
 
