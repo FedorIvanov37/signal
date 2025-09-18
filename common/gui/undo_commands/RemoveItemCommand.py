@@ -5,30 +5,29 @@ from common.gui.core.json_items.Item import Item
 
 
 class RemoveItemCommand(QUndoCommand):
-    def __init__(self, tree: TreeView, item: Item):
+    def __init__(self, tree: TreeView, item: Item, callback: callable = None):
         super().__init__()
 
         self.tree = tree
         self.item = item
-        self.parent = item.parent()
-
-        if self.item is not self.tree.root:
-            self.row = self.parent.indexOfChild(item)
+        self.parent = self.item.parent()
+        self.callback = callback
+        self.index = self.parent.indexOfChild(self.item)
+        self.removed_item = None
 
     def redo(self):
         if self.item is self.tree.root:
             return
 
         with SignalsBlocker(self.tree):
-            self.parent.takeChild(self.row)
-            self.tree.process_item_remove(parent=self.parent, item=self.item)
+            self.removed_item = self.parent.takeChild(self.index)
+
+        if self.callback is not None:
+            self.callback(self.parent, self.removed_item, undo=False)
 
     def undo(self):
-        if self.item is self.tree.root:
-            return
-
         with SignalsBlocker(self.tree):
-            self.parent.insertChild(self.row, self.item)
-            self.tree.set_new_item(self.item)
-            self.item.set_checkbox()
-            self.tree.root.set_length()
+            self.parent.insertChild(self.index, self.removed_item)
+
+        if self.callback is not None:
+            self.callback(self.parent, self.item)

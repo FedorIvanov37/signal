@@ -494,7 +494,14 @@ class JsonView(TreeView):
             finally:
                 self.set_validation_status(*validation_status_args)
 
+    def refresh_ui(self, parent: FieldItem, item: FieldItem, field_added: bool = False):
+        self.set_all_items_length()
+
     def plus(self):
+        def callback(new_item):
+            self.set_new_item(new_item, edit=False)
+            self.field_added.emit()
+
         if not (current_item := self.currentItem()):
             return
 
@@ -503,13 +510,19 @@ class JsonView(TreeView):
 
         item = FieldItem([])
         index = parent.indexOfChild(current_item) + 1
-        parent.insertChild(index, item)
-        self.set_new_item(item, edit=False)
-        self.undo_stack.push(InsertItemCommand(self, item, index))
-        self.field_added.emit()
+        self.undo_stack.push(InsertItemCommand(self, item, parent, index, callback))
 
     @void_qt_signals
     def minus(self, *args):
+        def callback(_item_parent: FieldItem, _item: FieldItem, undo: bool = True):
+            if not undo:
+                self.process_item_remove(parent=_item_parent, item=_item)
+                return
+
+            _item.set_checkbox()
+            _item.set_length()
+            self.set_new_item(_item)
+
         item: FieldItem | QTreeWidgetItem
 
         if not (item := self.currentItem()):
@@ -519,20 +532,24 @@ class JsonView(TreeView):
             self.setFocus()
             return
 
-        if not (parent := item.parent()):
-            return
-
-        self.undo_stack.push(RemoveItemCommand(self, item))
-
-        parent.removeChild(item)
-
-        self.process_item_remove(parent=parent, item=item)
+        self.undo_stack.push(RemoveItemCommand(self, item, callback))
 
     @void_qt_signals
     def next_level(self, *args):
+        def callback(_parent: FieldItem, _item: FieldItem, undo: bool = True):
+            if undo:
+                _parent.set_checkbox()
+
+            if not undo:
+                _parent.remove_checkbox()
+                _parent.setText(FieldsSpec.ColumnsOrder.VALUE, str())
+                self.set_new_item(_item)
+
+            _parent.set_length()
+
         current_item: FieldItem | None = self.currentItem()
 
-        if not current_item:
+        if current_item is None:
             return
 
         if current_item.get_field_depth() == 1:
@@ -541,20 +558,9 @@ class JsonView(TreeView):
             if is_field_complex and not current_item.checkbox_checked(CheckBoxesDefinition.JSON_MODE):
                 return
 
-        item = FieldItem([])
+        sub_item = FieldItem([])
 
-        if current_item is None:
-            return
-
-        if current_item.checkbox_checked(CheckBoxesDefinition.GENERATE):
-            current_item.remove_checkbox()
-
-        current_item.hide_secret(False)
-        self.undo_stack.push(InsertSubItemCommand(self, current_item, item))
-        current_item.setText(FieldsSpec.ColumnsOrder.VALUE, str())
-        current_item.insertChild(int(), item)
-        current_item.set_length()
-        self.set_new_item(item)
+        self.undo_stack.push(InsertSubItemCommand(self, current_item, sub_item, callback))
 
     def process_item_remove(self, parent, item):
         self.previousInFocusChain()

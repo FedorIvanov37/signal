@@ -2,6 +2,7 @@ from typing import Callable
 from loguru import logger
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QTreeWidgetItem, QItemDelegate
+from common.gui.undo_commands.InsertItemCommand import InsertItemCommand
 from common.lib.core.EpaySpecification import EpaySpecification
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel, Validators
 from common.lib.data_models.EpaySpecificationModel import IsoField, FieldSet
@@ -243,6 +244,7 @@ class SpecView(TreeView):
         current_index = parent.indexOfChild(current_item)
         parent.insertChild(current_index + 1, item)
         self.scrollToItem(item)
+        self.undo_stack.push(InsertItemCommand(self, item, parent.indexOfChild(current_item) + 1))
         self.editItem(item, 0)
         self.setCurrentItem(item)
 

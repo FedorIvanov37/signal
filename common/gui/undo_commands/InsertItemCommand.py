@@ -5,26 +5,22 @@ from common.gui.core.json_items.Item import Item
 
 
 class InsertItemCommand(QUndoCommand):
-    def __init__(self, tree: TreeView, item: Item, row: int):
+    def __init__(self, tree: TreeView, item: Item, parent: Item, index: int, callback: callable = None):
         super().__init__()
 
-        self.row = row
         self.tree = tree
         self.item = item
-
-        if self.item is not self.tree.root:
-            self.parent_item = self.item.parent()
+        self.index = index
+        self.parent = parent
+        self.callback = callback
 
     def redo(self):
-        if self.item is self.tree.root:
-            return
-
         with SignalsBlocker(self.tree):
-            self.parent_item.insertChild(self.row, self.item)
+            self.parent.insertChild(self.index, self.item)
+
+        if self.callback is not None:
+            self.callback(self.item)
 
     def undo(self):
-        if self.item is self.tree.root:
-            return
-
         with SignalsBlocker(self.tree):
-            self.item = self.parent_item.takeChild(self.row)
+            self.item = self.parent.takeChild(self.index)

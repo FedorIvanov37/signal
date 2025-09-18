@@ -2,37 +2,30 @@ from PyQt6.QtGui import QUndoCommand
 from common.gui.undo_commands.SignalsBlocker import SignalsBlocker
 from common.gui.core.json_views.TreeView import TreeView
 from common.gui.core.json_items.Item import Item
+from common.gui.enums.MainFieldSpec import ColumnsOrder
 
 
 class InsertSubItemCommand(QUndoCommand):
-    def __init__(self, tree: TreeView, current_item: Item, item: Item):
+    def __init__(self, tree: TreeView, item: Item, sub_item, callback: callable = None):
         super().__init__()
 
         self.tree = tree
         self.item = item
-        self.current_item = current_item
-        self.current_item_data = self.current_item.text(1)
-
-        if self.current_item is not self.tree.root:
-            self.parent_current_item = current_item.parent()
-
-        self.current_item_index = self.parent_current_item.indexOfChild(current_item) + 1
+        self.sub_item = sub_item
+        self.callback = callback
+        self.item_data = self.item.text(ColumnsOrder.VALUE)
 
     def redo(self):
-        if self.item is self.tree.root:
-            return
-
         with SignalsBlocker(self.tree):
-            self.current_item.insertChild(int(), self.item)
+            self.item.insertChild(int(), self.sub_item)
+
+            if self.callback is not None:
+                self.callback(self.item, self.sub_item, undo=False)
 
     def undo(self):
-        if self.item is self.tree.root:
-            return
-
         with SignalsBlocker(self.tree):
-            self.item = self.current_item.takeChild(int())
-            self.parent_current_item.insertChild(self.current_item_index, self.current_item)
-            self.current_item.setText(1, self.current_item_data)
-            self.tree.set_new_item(self.current_item)
-            self.current_item.set_length()
-            self.current_item.set_checkbox()
+            self.sub_item = self.item.takeChild(int())
+
+        if self.callback is not None:
+            self.item.setText(ColumnsOrder.VALUE, self.item_data)
+            self.callback(self.item, self.sub_item)

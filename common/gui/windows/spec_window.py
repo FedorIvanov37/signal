@@ -134,6 +134,8 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             QKeySequence.StandardKey.Delete: self.SpecView.minus,
             QKeySequence.StandardKey.Open: self.parse_file,
             QKeySequence.StandardKey.Save: self.backup,
+            QKeySequence.StandardKey.Undo: self.SpecView.undo,
+            QKeySequence.StandardKey.Redo: self.SpecView.redo,
             KeySequences.CTRL_SHIFT_N: self.SpecView.next_level,
             KeySequences.CTRL_W: lambda: self.SpecView.edit_column(SpecFieldDef.ColumnsOrder.FIELD),
             KeySequences.CTRL_E: lambda: self.SpecView.edit_column(SpecFieldDef.ColumnsOrder.DESCRIPTION),
@@ -161,12 +163,14 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
 
     def dragEnterEvent(self, event):
         if not event.mimeData().hasUrls():
+            event.ignore()
             return
 
         event.acceptProposedAction()
 
     def dragMoveEvent(self, event):
         if not event.mimeData().hasUrls():
+            event.ignore()
             return
 
         event.acceptProposedAction()
@@ -177,8 +181,10 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         for url in event.mimeData().urls():
             files.append(url.toLocalFile())
 
-        if files:
-            logger.debug(f"Spec files dropped: {files}")
+        if not files:
+            event.ignore()
+
+        logger.debug(f"Spec files dropped: {files}")
 
         for file in files:
 

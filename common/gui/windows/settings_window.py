@@ -161,18 +161,25 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
 
     def dragEnterEvent(self, event):
         if not event.mimeData().hasUrls():
+            event.ignore()
             return
 
         event.acceptProposedAction()
 
     def dragMoveEvent(self, event):
         if not event.mimeData().hasUrls():
+            event.ignore()
             return
 
         event.acceptProposedAction()
 
     def dropEvent(self, event):
+        if not event.mimeData().urls():
+            event.ignore()
+            return
+
         for url in event.mimeData().urls():
+
             if not (config_file := url.toLocalFile()):
                 continue
 
@@ -182,6 +189,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
 
             try:
                 self.process_config(self.config)
+
             except Exception as config_processing_error:
                 logger.error(config_processing_error)
                 continue
