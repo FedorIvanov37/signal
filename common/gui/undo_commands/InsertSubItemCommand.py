@@ -3,6 +3,7 @@ from common.gui.undo_commands.SignalsBlocker import SignalsBlocker
 from common.gui.core.json_views.TreeView import TreeView
 from common.gui.core.json_items.Item import Item
 from common.gui.enums.MainFieldSpec import ColumnsOrder
+from common.gui.enums.UndoSteps import UndoSteps
 
 
 class InsertSubItemCommand(QUndoCommand):
@@ -20,7 +21,7 @@ class InsertSubItemCommand(QUndoCommand):
             self.item.insertChild(int(), self.sub_item)
 
             if self.callback is not None:
-                self.callback(self.item, self.sub_item, undo=False)
+                self.callback(self.item, self.sub_item, UndoSteps.REDO)
 
     def undo(self):
         with SignalsBlocker(self.tree):
@@ -28,4 +29,4 @@ class InsertSubItemCommand(QUndoCommand):
 
         if self.callback is not None:
             self.item.setText(ColumnsOrder.VALUE, self.item_data)
-            self.callback(self.item, self.sub_item)
+            self.callback(self.item, self.sub_item, UndoSteps.UNDO)

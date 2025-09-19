@@ -1,8 +1,10 @@
 from copy import deepcopy
 from contextlib import suppress
 from loguru import logger
+from PyQt6.QtGui import QUndoStack
 from PyQt6.QtCore import pyqtSignal, QModelIndex, Qt
 from PyQt6.QtWidgets import QTreeWidgetItem, QItemDelegate, QLineEdit
+from common.lib.toolkit.generate_trans_id import generate_trans_id
 from common.lib.core.EpaySpecification import EpaySpecification
 from common.lib.core.FieldsGenerator import FieldsGenerator
 from common.lib.core.Parser import Parser
@@ -17,16 +19,25 @@ from common.gui.core.json_views.TreeView import TreeView
 from common.gui.decorators.void_qt_signals import void_qt_signals
 from common.gui.enums.CheckBoxesDefinition import CheckBoxesDefinition
 from common.gui.enums.Colors import Colors
+from common.gui.enums.UndoSteps import UndoSteps
 from common.gui.enums import MainFieldSpec as FieldsSpec
 from common.gui.enums.RootItemNames import RootItemNames
-from common.lib.toolkit.generate_trans_id import generate_trans_id
 from common.gui.undo_commands.InsertItemCommand import InsertItemCommand
 from common.gui.undo_commands.RemoveItemCommand import RemoveItemCommand
 from common.gui.undo_commands.InsertSubItemCommand import InsertSubItemCommand
+from common.gui.undo_commands.EditItemTextCommand import EditItemTextCommand
+from common.gui.undo_commands.SignalsBlocker import SignalsBlocker
 
 
 class JsonView(TreeView):
+
     class Delegate(QItemDelegate):
+        def __init__(self, tree: TreeView, stack: QUndoStack):
+            super().__init__()
+
+            self.tree = tree
+            self.stack = stack
+
         _text_edited: pyqtSignal = pyqtSignal(str, int)
 
         @property
@@ -36,6 +47,20 @@ class JsonView(TreeView):
         def setEditorData(self, editor: QLineEdit, index: QModelIndex):
             editor.textEdited.connect(lambda text: self.text_edited.emit(text, index.column()))
             QItemDelegate.setEditorData(self, editor, index)
+
+        def setModelData(self, editor, model, idx):
+            role = Qt.ItemDataRole.EditRole
+
+            old = model.data(idx, role) or str()
+
+            with SignalsBlocker(self.tree):
+                super().setModelData(editor, model, idx)
+
+            new = model.data(idx, role) or str()
+
+            if new != old:
+                item = self.tree.itemFromIndex(idx)
+                self.stack.push(EditItemTextCommand(self.tree, item, idx.column(), old, new, self.text_edited))
 
     _root: FieldItem = None
     need_disable_next_level: pyqtSignal = pyqtSignal()
@@ -60,7 +85,7 @@ class JsonView(TreeView):
         super(JsonView, self).__init__(parent=parent)
         self._root: FieldItem = FieldItem([root_name])
         self.config: Config = config
-        self.delegate = JsonView.Delegate()
+        self.delegate = JsonView.Delegate(self, self.undo_stack)
         self.validator = ItemsValidator(self.config)
         self.parser = Parser(self.config)
         self._setup()
@@ -494,11 +519,11 @@ class JsonView(TreeView):
             finally:
                 self.set_validation_status(*validation_status_args)
 
-    def refresh_ui(self, parent: FieldItem, item: FieldItem, field_added: bool = False):
-        self.set_all_items_length()
-
     def plus(self):
-        def callback(new_item):
+        def callback(new_item: FieldItem, step: UndoSteps):
+            if step is not UndoSteps.REDO:
+                return
+
             self.set_new_item(new_item, edit=False)
             self.field_added.emit()
 
@@ -514,14 +539,19 @@ class JsonView(TreeView):
 
     @void_qt_signals
     def minus(self, *args):
-        def callback(_item_parent: FieldItem, _item: FieldItem, undo: bool = True):
-            if not undo:
-                self.process_item_remove(parent=_item_parent, item=_item)
-                return
 
-            _item.set_checkbox()
-            _item.set_length()
-            self.set_new_item(_item)
+        def callback(_item_parent: FieldItem, _item: FieldItem, step: UndoSteps):
+            match step:
+
+                case UndoSteps.UNDO:
+                    _item.set_checkbox()
+                    _item.set_length()
+                    self.expand_all(_item)
+                    self.set_new_item(_item)
+                    self.set_json_mode(_item)
+
+                case UndoSteps.REDO:
+                    self.process_item_remove(parent=_item_parent, item=_item)
 
         item: FieldItem | QTreeWidgetItem
 
@@ -536,14 +566,16 @@ class JsonView(TreeView):
 
     @void_qt_signals
     def next_level(self, *args):
-        def callback(_parent: FieldItem, _item: FieldItem, undo: bool = True):
-            if undo:
-                _parent.set_checkbox()
 
-            if not undo:
-                _parent.remove_checkbox()
-                _parent.setText(FieldsSpec.ColumnsOrder.VALUE, str())
-                self.set_new_item(_item)
+        def callback(_parent: FieldItem, _item: FieldItem, step: UndoSteps):
+            match step:
+                case UndoSteps.UNDO:
+                    _parent.set_checkbox()
+
+                case UndoSteps.REDO:
+                    _parent.remove_checkbox()
+                    _parent.setText(FieldsSpec.ColumnsOrder.VALUE, str())
+                    self.set_new_item(_item)
 
             _parent.set_length()
 
@@ -561,6 +593,17 @@ class JsonView(TreeView):
         sub_item = FieldItem([])
 
         self.undo_stack.push(InsertSubItemCommand(self, current_item, sub_item, callback))
+
+    def expand_all(self, item: FieldItem):
+        item.setExpanded(True)
+
+        sub_item: FieldItem
+
+        for sub_item in item.get_children():
+            sub_item.setExpanded(True)
+
+            if sub_item.childCount():
+                self.expand_all(sub_item)
 
     def process_item_remove(self, parent, item):
         self.previousInFocusChain()
@@ -693,6 +736,9 @@ class JsonView(TreeView):
             return
 
         if not isinstance(item.field_data, str):
+            return
+
+        if not self.spec.is_field_complex([item.field_number]):
             return
 
         try:
@@ -830,6 +876,14 @@ class JsonView(TreeView):
 
         for row in parent.get_children():
             if row.is_disabled:
+                continue
+
+            if not row.field_number:
+                logger.warning("Empty field number in message. Field skipped")
+                continue
+
+            if not row.field_data and not row.childCount():
+                logger.warning(f"Empty field value in message. Field skipped: {row.get_field_path(string=True)}")
                 continue
 
             if row.field_number in result:

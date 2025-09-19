@@ -33,6 +33,9 @@ class Item(QTreeWidgetItem):
             Qt.ItemFlag.ItemIsSelectable
         )
 
+    def set_disabled(self, disabled):
+        self._is_disabled = disabled
+
     def get_field_depth(self):
         return len(self.get_field_path())
 

@@ -185,10 +185,16 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
 
             logger.debug(f"Config file dropped {config_file}")
 
-            self.config_file_dropped.emit(config_file)
+            try:
+                with open(config_file) as json_file:
+                    config: Config = Config.model_validate_json(json_file.read())
+
+            except Exception as config_parsing_error:
+                logger.error(f"Config parsing_error: {config_parsing_error}")
+                continue
 
             try:
-                self.process_config(self.config)
+                self.process_config(config)
 
             except Exception as config_processing_error:
                 logger.error(config_processing_error)

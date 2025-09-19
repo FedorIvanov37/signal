@@ -226,6 +226,7 @@ class SignalGui(Terminal):
 
         self.set_bitmap()
 
+        self.window.json_view.focusNextChild()
         self.window.json_view.setFocus()
 
     @staticmethod
@@ -321,19 +322,14 @@ class SignalGui(Terminal):
         try:
             old_config: Config = self.config.model_copy(deep=True)
             settings_window: SettingsWindow = SettingsWindow(self.config, about=about)
-            settings_window.config_file_dropped.connect(lambda config_file: self.reload_config(config_file, settings_window))
             settings_window.accepted.connect(lambda: self.process_config_change(old_config))
             settings_window.open_user_guide.connect(self.show_document)
             settings_window.open_api_url.connect(self.open_api_url)
             settings_window.exec()
-
+            
         except Exception as settings_error:
             logger.error(settings_error)
 
-    def reload_config(self, config_file, settings_window):
-        self.read_config(config_file)
-        settings_window.config = self.config
-        
     def process_config_change(self, old_config: Config) -> None:
         self.read_config()
 

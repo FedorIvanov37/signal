@@ -304,10 +304,18 @@ To fix
 
 
 • Undo/redo
-        • Add buttons
-        • Change validation
-        • Undo disable/enable
-        • Change value
+        + Undo disable/enable
+        + Undo / redo field value
+        + Fix JSON mode
+        + Expand complex fields
+        + Remove empty fields from message
+        + Change validation
+        + Add buttons
+        + Add hotkeys on help window
+
+        • Manual mode in config brakes the Signal
+        • Add spec undo / redo
+
 
 • To do
     • Generate doc.html in TeamCity

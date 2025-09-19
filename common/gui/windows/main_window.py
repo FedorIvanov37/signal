@@ -1,9 +1,10 @@
 from sys import exit
 from ctypes import windll
+from itertools import batched
 from PyQt6.QtNetwork import QTcpSocket
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QCloseEvent, QKeySequence, QShortcut, QPixmap, QFont
-from PyQt6.QtWidgets import QMainWindow, QMenu, QPushButton
+from PyQt6.QtWidgets import QMainWindow, QMenu, QPushButton, QFrame
 from common.gui.forms.mainwindow import Ui_MainWindow
 from common.gui.decorators.window_settings import set_window_icon
 from common.lib.data_models.Config import Config
@@ -124,6 +125,12 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             push_button.setFocusPolicy(Qt.FocusPolicy.TabFocus)
             return push_button
 
+        def create_vertical_line():
+            line = QFrame()
+            line.setFrameShape(QFrame.Shape.VLine)
+            line.setFrameShadow(QFrame.Shadow.Sunken)
+            return line
+
         # Create general control buttons
 
         self.ButtonSend: QPushButton = create_button(Buttons.SEND)
@@ -146,35 +153,47 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self.ButtonDisable: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_DISABLE)
         self.ButtonEnable: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_ENABLE)
         self.ButtonEnableAll: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_ENABLE_ALL)
+        self.ButtonUndo: QPushButton = create_button(Buttons.UNDO)
+        self.ButtonRedo: QPushButton = create_button(Buttons.REDO)
 
-        # Setup buttons destination layout
+        # Setup buttons to the destination layout
 
-        buttons_layouts_map = {
+        json_control_buttons = (
+            self.PlusButton,
+            self.MinusButton,
+            self.NextLevelButton,
+            self.ButtonDisable,
+            self.ButtonEnable,
+            self.ButtonEnableAll,
+            self.ButtonUndo,
+            self.ButtonRedo,
+        )
 
-            # Transaction data control buttons
-            self.PlusButton: self.PlusLayout,
-            self.MinusButton: self.MinusLayout,
-            self.NextLevelButton: self.NextLevelLayout,
-            self.ButtonDisable: self.DisableLayout,
-            self.ButtonEnable: self.EnableLayout,
-            self.ButtonEnableAll: self.EnableAllLayout,
-            self.ButtonSend: self.ButtonsLayout,
+        # Main control buttons. The order of button below will change their order on the MainWindow
 
-            # Main control buttons. The order of button below will change their order on the MainWindow
-            self.ButtonReverse: self.ButtonsLayout,
-            self.ButtonRepeat: self.ButtonsLayout,
-            self.ButtonLog: self.ButtonsLayout,
-            self.ButtonMessage: self.ButtonsLayout,
-            self.ButtonFiles: self.ButtonsLayout,
-            self.ButtonReconnect: self.ButtonsLayout,
-            self.ButtonEchoTest: self.ButtonsLayout,
-            self.ButtonPrint: self.ButtonsLayout,
-            self.ButtonTools: self.ButtonsLayout,
-            self.ButtonHelp: self.ButtonsLayout,
-        }
+        main_control_buttons = (
+            self.ButtonSend,
+            self.ButtonReverse,
+            self.ButtonRepeat,
+            self.ButtonLog,
+            self.ButtonMessage,
+            self.ButtonFiles,
+            self.ButtonReconnect,
+            self.ButtonEchoTest,
+            self.ButtonPrint,
+            self.ButtonTools,
+            self.ButtonHelp,
+        )
 
-        for button, layout in buttons_layouts_map.items():
-            layout.addWidget(button, alignment=Qt.AlignmentFlag.AlignLeft)
+        for button in main_control_buttons:
+            self.ButtonsLayout.addWidget(button, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        for batch in batched(json_control_buttons, 3):
+
+            for button in batch:
+                self.JsonButtonsLayout.addWidget(button, alignment=Qt.AlignmentFlag.AlignLeft)
+
+            self.JsonButtonsLayout.addWidget(create_vertical_line(), alignment=Qt.AlignmentFlag.AlignLeft)
 
     def _connect_all(self) -> None:
         """
@@ -195,6 +214,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             self.ButtonDisable: self.disable_item,
             self.ButtonEnable: self.enable_item,
             self.ButtonEnableAll: self.enable_all_items,
+            self.ButtonUndo: self.json_view.undo,
+            self.ButtonRedo: self.json_view.redo,
         }
 
         tab_view_connection_map = {

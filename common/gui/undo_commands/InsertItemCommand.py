@@ -2,6 +2,7 @@ from PyQt6.QtGui import QUndoCommand
 from common.gui.undo_commands.SignalsBlocker import SignalsBlocker
 from common.gui.core.json_views.TreeView import TreeView
 from common.gui.core.json_items.Item import Item
+from common.gui.enums.UndoSteps import UndoSteps
 
 
 class InsertItemCommand(QUndoCommand):
@@ -19,7 +20,7 @@ class InsertItemCommand(QUndoCommand):
             self.parent.insertChild(self.index, self.item)
 
         if self.callback is not None:
-            self.callback(self.item)
+            self.callback(self.item, UndoSteps.REDO)
 
     def undo(self):
         with SignalsBlocker(self.tree):

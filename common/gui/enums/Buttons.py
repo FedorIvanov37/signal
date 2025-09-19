@@ -16,3 +16,6 @@ class Buttons(StrEnum):
     REVERSE = 'Reverse'
     REPEAT = 'Repeat'
     PRINT = 'Print'
+    UNDO = "Undo"
+    REDO = "Redo"
+
