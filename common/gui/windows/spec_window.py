@@ -18,7 +18,7 @@ from common.gui.forms.spec import Ui_SpecificationWindow
 from common.gui.core.json_views.SpecView import SpecView
 from common.gui.enums.KeySequences import KeySequences
 from common.gui.decorators.window_settings import set_window_icon, has_close_button_only
-from common.gui.enums import ButtonActions, SpecFieldDef
+from common.gui.enums import ButtonActions, SpecFieldDef, Buttons
 from common.lib.enums.TermFilesPath import TermFilesPath
 from common.lib.enums.TextConstants import TextConstants
 
@@ -60,12 +60,15 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         self.PlusButton: QPushButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_PLUS_SIGN)
         self.MinusButton: QPushButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_MINUS_SIGN)
         self.NextLevelButton: QPushButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_NEXT_LEVEL_SIGN)
+        self.UndoButton: QPushButton = QPushButton(Buttons.Buttons.UNDO)
+        self.RedoButton: QPushButton = QPushButton(Buttons.Buttons.REDO)
 
         widgets_layouts_map = {
-            self.PlusLayout: self.PlusButton,
-            self.MinusLayout: self.MinusButton,
-            self.NextLevelLayout: self.NextLevelButton,
-            self.SpecTreeLayout: self.SpecView,
+            self.PlusButton: self.JsonButtonLayout,
+            self.MinusButton: self.JsonButtonLayout,
+            self.NextLevelButton: self.JsonButtonLayout,
+            self.UndoButton: self.JsonButtonLayout,
+            self.RedoButton: self.JsonButtonLayout,
         }
 
         button_menu_structure = {
@@ -86,12 +89,13 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
                 button.menu().addAction(name, action)
                 button.menu().addSeparator()
 
-        for layout, widget in widgets_layouts_map.items():
-            layout.addWidget(widget)
+        for widget, layout in widgets_layouts_map.items():
+            layout.addWidget(widget, alignment=Qt.AlignmentFlag.AlignLeft)
 
         for box in (self.CheckBoxHideReverved, self.CheckBoxReadOnly):
             box.setChecked(bool(Qt.CheckState.Checked))
 
+        self.SpecTreeLayout.addWidget(self.SpecView)
         self.logger = Logger(self.config)
         self.handler_id = self.logger.add_wireless_handler(self.LogArea)
         self.connect_all()
@@ -126,6 +130,8 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             self.ButtonSetMti: self.set_mti,
             self.ButtonBackup: self.backup,
             self.ButtonSetValidators: self.set_field_custom_validations,
+            self.UndoButton: self.SpecView.undo,
+            self.RedoButton: self.SpecView.redo,
         }
 
         keys_connection_map = {

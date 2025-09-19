@@ -68,19 +68,9 @@
     <layout class="QVBoxLayout" name="SpecTreeLayout"/>
    </item>
    <item row="3" column="0">
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
+    <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout">
-       <item>
-        <layout class="QHBoxLayout" name="PlusLayout"/>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="MinusLayout"/>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="NextLevelLayout"/>
-       </item>
-      </layout>
+      <layout class="QHBoxLayout" name="JsonButtonLayout"/>
      </item>
      <item>
       <widget class="QLineEdit" name="SearchLine">

@@ -18,11 +18,13 @@ from common.gui.windows.hotkeys_hint_window import HotKeysHintWindow
 from common.gui.windows.complex_fields_window import ComplexFieldsParser
 from common.gui.windows.license_window import LicenseWindow
 from common.gui.core.ConnectionThread import ConnectionThread
+from common.gui.enums.ApiMode import ApiModes
 from common.gui.enums import ButtonActions
 from common.gui.enums.Colors import Colors
+from common.gui.enums.GuiFilesPath import GuiDirs
+from common.gui.core.WirelessHandler import WirelessHandler
 from common.lib.enums import KeepAlive
 from common.lib.enums.TermFilesPath import TermFilesPath
-from common.gui.enums.GuiFilesPath import GuiDirs
 from common.lib.enums.DataFormats import DataFormats, PrintDataFormats, OutputFilesFormat, InputFilesFormat
 from common.lib.enums.MessageLength import MessageLength
 from common.lib.enums.TextConstants import TextConstants
@@ -33,9 +35,7 @@ from common.lib.data_models.Config import Config
 from common.lib.data_models.License import LicenseInfo
 from common.lib.data_models.Transaction import Transaction, TypeFields
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
-from common.gui.core.WirelessHandler import WirelessHandler
 from common.api.ApiThread import ApiThread
-from common.gui.enums.ApiMode import ApiModes
 from common.lib.exceptions.exceptions import (
     LicenceAlreadyAccepted,
     LicenseDataLoadingError,
@@ -184,7 +184,7 @@ class SignalGui(Terminal):
             window.show_license: lambda: self.show_license_dialog(force=True),
             window.disable_item: lambda: self.disable_item(disable=True),
             window.enable_item: lambda: self.disable_item(disable=False),
-            window.enable_all_items: lambda: self.disable_item(disable=False, item=self.window.json_view.root),
+            window.enable_all_items: lambda: self.disable_item(False, self.window.json_view.root, go_next=False),
             window.files_dropped: self.process_files_drop,
             self.connector.stateChanged: self.set_connection_status,
             self.set_remote_spec: self.connector.get_remote_spec,
@@ -210,7 +210,7 @@ class SignalGui(Terminal):
         if state == ApiModes.STOP:
             ...
 
-    def disable_item(self, disable: bool, item=None) -> None:
+    def disable_item(self, disable: bool, item=None, go_next=True) -> None:
         if item is None and not (item := self.window.json_view.currentItem()):
             return
 
@@ -226,8 +226,10 @@ class SignalGui(Terminal):
 
         self.set_bitmap()
 
-        self.window.json_view.focusNextChild()
         self.window.json_view.setFocus()
+
+        if go_next:
+            self.window.json_view.focusNextChild()
 
     @staticmethod
     def show_document():

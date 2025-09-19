@@ -312,9 +312,11 @@ To fix
         + Change validation
         + Add buttons
         + Add hotkeys on help window
+        + Add spec undo / redo
+        + Add spec buttons undo / redo
 
         • Manual mode in config brakes the Signal
-        • Add spec undo / redo
+
 
 
 • To do
