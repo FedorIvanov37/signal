@@ -21,6 +21,7 @@ from common.gui.decorators.window_settings import set_window_icon, has_close_but
 from common.gui.enums import ButtonActions, SpecFieldDef, Buttons
 from common.lib.enums.TermFilesPath import TermFilesPath
 from common.lib.enums.TextConstants import TextConstants
+from common.gui.tools.create_gui_elements import create_button
 
 
 class SpecWindow(Ui_SpecificationWindow, QDialog):
@@ -57,11 +58,11 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
 
         self.SpecView: SpecView = SpecView(self)
         self._clean_spec = deepcopy(self.SpecView.generate_spec())
-        self.PlusButton: QPushButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_PLUS_SIGN)
-        self.MinusButton: QPushButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_MINUS_SIGN)
-        self.NextLevelButton: QPushButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_NEXT_LEVEL_SIGN)
-        self.UndoButton: QPushButton = QPushButton(Buttons.Buttons.UNDO)
-        self.RedoButton: QPushButton = QPushButton(Buttons.Buttons.REDO)
+        self.PlusButton: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_PLUS_SIGN)
+        self.MinusButton: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_MINUS_SIGN)
+        self.NextLevelButton: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_NEXT_LEVEL_SIGN)
+        self.UndoButton: QPushButton = create_button(Buttons.Buttons.UNDO)
+        self.RedoButton: QPushButton = create_button(Buttons.Buttons.REDO)
 
         widgets_layouts_map = {
             self.PlusButton: self.JsonButtonLayout,
@@ -158,6 +159,11 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         for button, function in buttons_connection_map.items():
             button.clicked.connect(function)
 
+        for button in buttons_connection_map.keys():
+            font = button.font()
+            font.setPointSize(font.pointSize() + 1)
+            button.setFont(font)
+            
     @staticmethod
     def backup():
         rotator: SpecFilesRotator = SpecFilesRotator()
@@ -226,7 +232,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
     def set_read_only(self, readonly: bool):
         self.read_only = readonly
 
-        for button in (self.PlusButton, self.MinusButton, self.NextLevelButton):
+        for button in self.PlusButton, self.MinusButton, self.NextLevelButton, self.RedoButton, self.UndoButton:
             button.setDisabled(readonly)
 
         self.SpecView.set_read_only(readonly)

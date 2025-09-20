@@ -97,6 +97,9 @@ class Ui_SpecificationWindow(object):
         font.setPointSize(10)
         self.ButtonSetMti.setFont(font)
         self.ButtonSetMti.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.ButtonSetMti.setStyleSheet("        QPushButton {\n"
+"            padding: 6px 12px;      /* top/bottom, left/right */\n"
+"        }")
         self.ButtonSetMti.setObjectName("ButtonSetMti")
         self.horizontalLayout_5.addWidget(self.ButtonSetMti)
         self.ButtonSetValidators = QtWidgets.QPushButton(parent=SpecificationWindow)
@@ -104,6 +107,9 @@ class Ui_SpecificationWindow(object):
         font.setPointSize(10)
         self.ButtonSetValidators.setFont(font)
         self.ButtonSetValidators.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.ButtonSetValidators.setStyleSheet("        QPushButton {\n"
+"            padding: 6px 12px;      /* top/bottom, left/right */\n"
+"        }")
         self.ButtonSetValidators.setObjectName("ButtonSetValidators")
         self.horizontalLayout_5.addWidget(self.ButtonSetValidators)
         self.ButtonApply = QtWidgets.QPushButton(parent=SpecificationWindow)
@@ -111,6 +117,9 @@ class Ui_SpecificationWindow(object):
         font.setPointSize(10)
         self.ButtonApply.setFont(font)
         self.ButtonApply.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.ButtonApply.setStyleSheet("        QPushButton {\n"
+"            padding: 6px 12px;      /* top/bottom, left/right */\n"
+"        }")
         self.ButtonApply.setObjectName("ButtonApply")
         self.horizontalLayout_5.addWidget(self.ButtonApply)
         self.ButtonReset = QtWidgets.QPushButton(parent=SpecificationWindow)
@@ -118,6 +127,9 @@ class Ui_SpecificationWindow(object):
         font.setPointSize(10)
         self.ButtonReset.setFont(font)
         self.ButtonReset.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.ButtonReset.setStyleSheet("        QPushButton {\n"
+"            padding: 6px 12px;      /* top/bottom, left/right */\n"
+"        }")
         self.ButtonReset.setObjectName("ButtonReset")
         self.horizontalLayout_5.addWidget(self.ButtonReset)
         self.ButtonBackup = QtWidgets.QPushButton(parent=SpecificationWindow)
@@ -125,6 +137,9 @@ class Ui_SpecificationWindow(object):
         font.setPointSize(10)
         self.ButtonBackup.setFont(font)
         self.ButtonBackup.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.ButtonBackup.setStyleSheet("        QPushButton {\n"
+"            padding: 6px 12px;      /* top/bottom, left/right */\n"
+"        }")
         self.ButtonBackup.setObjectName("ButtonBackup")
         self.horizontalLayout_5.addWidget(self.ButtonBackup)
         self.ParseFile = QtWidgets.QPushButton(parent=SpecificationWindow)
@@ -132,6 +147,9 @@ class Ui_SpecificationWindow(object):
         font.setPointSize(10)
         self.ParseFile.setFont(font)
         self.ParseFile.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.ParseFile.setStyleSheet("        QPushButton {\n"
+"            padding: 6px 12px;      /* top/bottom, left/right */\n"
+"        }")
         self.ParseFile.setObjectName("ParseFile")
         self.horizontalLayout_5.addWidget(self.ParseFile)
         self.ButtonClean = QtWidgets.QPushButton(parent=SpecificationWindow)
@@ -139,6 +157,9 @@ class Ui_SpecificationWindow(object):
         font.setPointSize(10)
         self.ButtonClean.setFont(font)
         self.ButtonClean.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.ButtonClean.setStyleSheet("        QPushButton {\n"
+"            padding: 6px 12px;      /* top/bottom, left/right */\n"
+"        }")
         self.ButtonClean.setObjectName("ButtonClean")
         self.horizontalLayout_5.addWidget(self.ButtonClean)
         self.ButtonClearLog = QtWidgets.QPushButton(parent=SpecificationWindow)
@@ -146,6 +167,9 @@ class Ui_SpecificationWindow(object):
         font.setPointSize(10)
         self.ButtonClearLog.setFont(font)
         self.ButtonClearLog.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.ButtonClearLog.setStyleSheet("        QPushButton {\n"
+"            padding: 6px 12px;      /* top/bottom, left/right */\n"
+"        }")
         self.ButtonClearLog.setObjectName("ButtonClearLog")
         self.horizontalLayout_5.addWidget(self.ButtonClearLog)
         self.ButtonCopyLog = QtWidgets.QPushButton(parent=SpecificationWindow)
@@ -153,6 +177,9 @@ class Ui_SpecificationWindow(object):
         font.setPointSize(10)
         self.ButtonCopyLog.setFont(font)
         self.ButtonCopyLog.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.ButtonCopyLog.setStyleSheet("        QPushButton {\n"
+"            padding: 6px 12px;      /* top/bottom, left/right */\n"
+"        }")
         self.ButtonCopyLog.setObjectName("ButtonCopyLog")
         self.horizontalLayout_5.addWidget(self.ButtonCopyLog)
         self.ButtonClose = QtWidgets.QPushButton(parent=SpecificationWindow)
@@ -160,6 +187,9 @@ class Ui_SpecificationWindow(object):
         font.setPointSize(10)
         self.ButtonClose.setFont(font)
         self.ButtonClose.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.ButtonClose.setStyleSheet("        QPushButton {\n"
+"            padding: 6px 12px;      /* top/bottom, left/right */\n"
+"        }")
         self.ButtonClose.setObjectName("ButtonClose")
         self.horizontalLayout_5.addWidget(self.ButtonClose)
         spacerItem1 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)

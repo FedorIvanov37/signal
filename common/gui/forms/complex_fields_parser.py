@@ -70,6 +70,9 @@ class Ui_ComplexFieldsParser(object):
         font.setPointSize(10)
         self.ButtonMainWindow.setFont(font)
         self.ButtonMainWindow.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.ButtonMainWindow.setStyleSheet("        QPushButton {\n"
+"            padding: 6px 12px;      /* top/bottom, left/right */\n"
+"        }")
         self.ButtonMainWindow.setObjectName("ButtonMainWindow")
         self.horizontalLayout.addWidget(self.ButtonMainWindow)
         self.ButtonCopy = QtWidgets.QPushButton(parent=ComplexFieldsParser)
@@ -77,6 +80,9 @@ class Ui_ComplexFieldsParser(object):
         font.setPointSize(10)
         self.ButtonCopy.setFont(font)
         self.ButtonCopy.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.ButtonCopy.setStyleSheet("        QPushButton {\n"
+"            padding: 6px 12px;      /* top/bottom, left/right */\n"
+"        }")
         self.ButtonCopy.setObjectName("ButtonCopy")
         self.horizontalLayout.addWidget(self.ButtonCopy)
         self.ButtonClearString = QtWidgets.QPushButton(parent=ComplexFieldsParser)
@@ -84,6 +90,9 @@ class Ui_ComplexFieldsParser(object):
         font.setPointSize(10)
         self.ButtonClearString.setFont(font)
         self.ButtonClearString.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.ButtonClearString.setStyleSheet("        QPushButton {\n"
+"            padding: 6px 12px;      /* top/bottom, left/right */\n"
+"        }")
         self.ButtonClearString.setObjectName("ButtonClearString")
         self.horizontalLayout.addWidget(self.ButtonClearString)
         self.ButtonClose = QtWidgets.QPushButton(parent=ComplexFieldsParser)
@@ -91,6 +100,9 @@ class Ui_ComplexFieldsParser(object):
         font.setPointSize(10)
         self.ButtonClose.setFont(font)
         self.ButtonClose.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.ButtonClose.setStyleSheet("        QPushButton {\n"
+"            padding: 6px 12px;      /* top/bottom, left/right */\n"
+"        }")
         self.ButtonClose.setObjectName("ButtonClose")
         self.horizontalLayout.addWidget(self.ButtonClose)
         spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)

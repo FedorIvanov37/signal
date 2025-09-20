@@ -100,6 +100,11 @@
        <property name="focusPolicy">
         <enum>Qt::NoFocus</enum>
        </property>
+       <property name="styleSheet">
+        <string notr="true">        QPushButton {
+            padding: 6px 12px;      /* top/bottom, left/right */
+        }</string>
+       </property>
        <property name="text">
         <string>Field Data</string>
        </property>
@@ -114,6 +119,11 @@
        </property>
        <property name="focusPolicy">
         <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">        QPushButton {
+            padding: 6px 12px;      /* top/bottom, left/right */
+        }</string>
        </property>
        <property name="text">
         <string>Copy</string>
@@ -130,6 +140,11 @@
        <property name="focusPolicy">
         <enum>Qt::NoFocus</enum>
        </property>
+       <property name="styleSheet">
+        <string notr="true">        QPushButton {
+            padding: 6px 12px;      /* top/bottom, left/right */
+        }</string>
+       </property>
        <property name="text">
         <string>Clear</string>
        </property>
@@ -144,6 +159,11 @@
        </property>
        <property name="focusPolicy">
         <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">        QPushButton {
+            padding: 6px 12px;      /* top/bottom, left/right */
+        }</string>
        </property>
        <property name="text">
         <string>Close</string>

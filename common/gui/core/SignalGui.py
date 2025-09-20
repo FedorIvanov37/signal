@@ -53,22 +53,14 @@ TransactionQueue for interaction with the target system, Connector for TCP integ
  
 Always tries not to do the work itself, managing corresponding modules instead
 
-TerminalGui is a basic executor for all user requests. Inherited from Terminal class, which does not interact 
+SignalGui is a basic executor for all user requests. Inherited from Terminal class, which does not interact 
 with GUI anyhow. Low-level data processing performs using the basic Terminal class.
 
 Usually get data in the Transaction format. In any other case targeting to transform data into the Transaction and 
-proceed to work with this. The Transaction is a common I/O format for TerminalGui. 
+proceed to work with this. The Transaction is a common I/O format for SignalGui. 
  
 Starts MainWindow when starting its work, being a kind of low-level adapter between the GUI and the system's core
 """
-
-
-class LogStream:
-    def __init__(self, log_browser):
-        self.log_browser = log_browser
-
-    def write(self, data):
-        self.log_browser.append(data)
 
 
 class SignalGui(Terminal):
@@ -164,7 +156,7 @@ class SignalGui(Terminal):
             window.reconnect: self.reconnect,
             window.parse_file: lambda: self.parse_file(new_tab=True),
             window.window_close: self.stop_signal,
-            window.reverse: self.perform_reversal,
+            window.reverse: self.make_reversal,
             window.print: self.print_data,
             window.save: self.save_transaction_to_file,
             window.field_changed: self.set_bitmap,
@@ -232,7 +224,7 @@ class SignalGui(Terminal):
             self.window.json_view.focusNextChild()
 
     @staticmethod
-    def show_document():
+    def show_document():  # Open the User guide in a default browser
         doc_path = normpath(f"{getcwd()}/{GuiFilesPath.DOC}")
         open_url(doc_path)
 
@@ -455,7 +447,7 @@ class SignalGui(Terminal):
 
         self.window.unblock_connection_buttons()
 
-    def perform_reversal(self, command: str) -> None:
+    def make_reversal(self, command: str) -> None:
         transaction_source_map: dict[str, Callable] = {
             ButtonActions.ReversalMenuActions.LAST: self.trans_queue.get_last_reversible_transaction_id,
             ButtonActions.ReversalMenuActions.OTHER: self.show_reversal_window,

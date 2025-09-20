@@ -3,30 +3,33 @@ from ctypes import windll
 from itertools import batched
 from PyQt6.QtNetwork import QTcpSocket
 from PyQt6.QtCore import pyqtSignal, Qt
-from PyQt6.QtGui import QCloseEvent, QKeySequence, QShortcut, QPixmap, QFont
-from PyQt6.QtWidgets import QMainWindow, QMenu, QPushButton, QFrame
+from PyQt6.QtGui import QCloseEvent, QKeySequence, QShortcut, QPixmap
+from PyQt6.QtWidgets import QMainWindow, QMenu, QPushButton
+from common.lib.enums.MessageLength import MessageLength
+from common.lib.enums.DataFormats import OutputFilesFormat
+from common.lib.enums import KeepAlive
+from common.lib.enums.TextConstants import TextConstants
+from common.lib.core.EpaySpecification import EpaySpecification
+from common.lib.data_models.Config import Config
 from common.gui.forms.mainwindow import Ui_MainWindow
 from common.gui.decorators.window_settings import set_window_icon
-from common.lib.data_models.Config import Config
 from common.gui.enums import ButtonActions, MainFieldSpec as FieldsSpec
 from common.gui.enums.KeySequences import KeySequences
 from common.gui.enums.GuiFilesPath import GuiFilesPath
 from common.gui.enums import ApiMode
 from common.gui.enums.Buttons import Buttons
 from common.gui.enums.ConnectionStatus import ConnectionStatus, ConnectionIcon
-from common.lib.enums.MessageLength import MessageLength
-from common.lib.enums.DataFormats import OutputFilesFormat
-from common.lib.enums import KeepAlive
-from common.lib.enums.ReleaseDefinition import ReleaseDefinition
-from common.lib.enums.TextConstants import TextConstants
-from common.lib.core.EpaySpecification import EpaySpecification
 from common.gui.core.tab_view.TabView import TabView
 from common.gui.enums.ToolBarElements import ToolBarElements
 from common.gui.enums.ApiMode import ApiModes
+from common.gui.tools.create_gui_elements import create_button, create_vertical_line
 
 
 """
-MainWindow is a general SVTerminal GUI, Runs as an independent application, interacts with the backend using pyqtSignal 
+MainWindow is a general SVTerminal GUI
+
+It runs as an independent application, interacts with the backend using pyqtSignal 
+
 Can be run separately from the backend, but does nothing in this case. 
  
 The goals of MainWindow are interaction with the GUI user, user input data collection, and data processing requests 
@@ -36,11 +39,7 @@ using pyqtSignal. Better to not force it to process the data, validate values, a
 
 class MainWindow(Ui_MainWindow, QMainWindow):
 
-    """
-    Data processing request signals. Some of them send string modifiers as a hint on how to process the data
-    Each common has a corresponding @property for external interactions. The signals handling should be build
-    using their properties
-    """
+    # Data processing request signals. Some of them send string modifiers as a hint on how to process the data
 
     window_close: pyqtSignal = pyqtSignal()
     print: pyqtSignal = pyqtSignal(str)
@@ -104,7 +103,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self.setupUi(self)
         self._add_control_buttons()
         self._connect_all()
-        self.setWindowTitle(f"{TextConstants.SYSTEM_NAME.capitalize()} {ReleaseDefinition.VERSION} | Terminal GUI")
+        self.setWindowTitle(f"{TextConstants.SYSTEM_NAME.capitalize()} | Terminal GUI ")
         windll.shell32.SetCurrentProcessExplicitAppUserModelID("MainWindow")
         self.ButtonSend.setFocus()
         self.set_connection_status(QTcpSocket.SocketState.UnconnectedState)
@@ -117,19 +116,6 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             self.process_transaction_loop_change(KeepAlive.IntervalNames.KEEP_ALIVE_STOP, trans_type)
 
     def _add_control_buttons(self) -> None:
-
-        def create_button(name) -> QPushButton:
-            push_button: QPushButton = QPushButton()
-            push_button.setText(name)
-            push_button.setFont(QFont("Arial", 10))
-            push_button.setFocusPolicy(Qt.FocusPolicy.TabFocus)
-            return push_button
-
-        def create_vertical_line():
-            line = QFrame()
-            line.setFrameShape(QFrame.Shape.VLine)
-            line.setFrameShadow(QFrame.Shadow.Sunken)
-            return line
 
         # Create general control buttons
 
@@ -156,7 +142,9 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self.ButtonUndo: QPushButton = create_button(Buttons.UNDO)
         self.ButtonRedo: QPushButton = create_button(Buttons.REDO)
 
-        # Setup buttons to the destination layout
+        # Setup buttons to the destination layout. The order of button below will change their order on the MainWindow
+
+        # Transaction data tree control buttons
 
         json_control_buttons = (
             self.PlusButton,
@@ -169,7 +157,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             self.ButtonRedo,
         )
 
-        # Main control buttons. The order of button below will change their order on the MainWindow
+        # Main control buttons
 
         main_control_buttons = (
             self.ButtonSend,
