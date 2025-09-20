@@ -279,7 +279,7 @@ class FieldDateFormat:
     FIELD_015_SETTELMENT_DATE_YYMMDD: Final[str] = "%y%m%d"
 
 
-@dataclass(frozen=True)
+@dataclass
 class EpaySpecificationData:
     FIELD_SET: Final[FieldSet] = FieldSet()
     DATA_TYPES: Final[DataTypes] = DataTypes()

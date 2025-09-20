@@ -711,7 +711,7 @@ class SignalGui(Terminal):
                     transactions = {tab_name: self.parse_main_window_tab(clean=True, flat_fields=False)}
 
         except Exception as file_saving_error:
-            logger.error("File saving error: %s", file_saving_error)
+            logger.error(f"File saving error: {file_saving_error}")
             return
 
         for tab_name, transaction in transactions.items():

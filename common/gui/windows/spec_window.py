@@ -163,7 +163,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             font = button.font()
             font.setPointSize(font.pointSize() + 1)
             button.setFont(font)
-            
+
     @staticmethod
     def backup():
         rotator: SpecFilesRotator = SpecFilesRotator()
@@ -304,7 +304,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             self.SpecView.reload_spec(commit)
 
         except Exception as apply_error:
-            logger.error(apply_error)
+            logger.error(f"Specification apply error: {apply_error}")
             self.spec_rejected.emit()
             return
 

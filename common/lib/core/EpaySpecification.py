@@ -1,5 +1,6 @@
 from copy import deepcopy
 from loguru import logger
+from contextlib import suppress
 from dataclasses import asdict
 from pydantic import FilePath, ValidationError
 from common.lib.decorators.singleton import singleton
@@ -168,10 +169,8 @@ class EpaySpecification(EpaySpecificationData):
         self.spec.fields = spec.fields
         self.spec.name = spec.name
 
-        try:
+        with suppress(KeyError, AttributeError):
             self.spec.fields[self.FIELD_SET.FIELD_002_PRIMARY_ACCOUNT_NUMBER].is_secret = True
-        except KeyError | AttributeError:
-            pass
 
         if not commit:
             return
@@ -246,7 +245,7 @@ class EpaySpecification(EpaySpecificationData):
 
     @staticmethod
     def get_trans_id_path() -> FieldPath:
-        return ["47", "072"]
+        return [EpaySpecificationData.FIELD_SET.FIELD_047_PROPRIETARY_FIELD, "072"]
 
     def is_field_complex(self, field_path: FieldPath):
         if not (field_spec := self.get_field_spec(field_path)):

@@ -1,3 +1,4 @@
+from sys import exit
 from glob import glob
 from time import sleep
 from uuid import uuid1
@@ -154,6 +155,7 @@ class SignalCli(Terminal):
                 break
 
         logger.info(LogMarks.FINISH % self._job_id)
+        exit(int())
 
     def run_api_mode(self):
         logger.info("Run command line API mode")
