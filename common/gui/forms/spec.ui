@@ -68,19 +68,9 @@
     <layout class="QVBoxLayout" name="SpecTreeLayout"/>
    </item>
    <item row="3" column="0">
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
+    <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout">
-       <item>
-        <layout class="QHBoxLayout" name="PlusLayout"/>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="MinusLayout"/>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="NextLevelLayout"/>
-       </item>
-      </layout>
+      <layout class="QHBoxLayout" name="JsonButtonLayout"/>
      </item>
      <item>
       <widget class="QLineEdit" name="SearchLine">
@@ -223,6 +213,11 @@
        <property name="focusPolicy">
         <enum>Qt::NoFocus</enum>
        </property>
+       <property name="styleSheet">
+        <string notr="true">        QPushButton {
+            padding: 6px 12px;      /* top/bottom, left/right */
+        }</string>
+       </property>
        <property name="text">
         <string>Set MTI</string>
        </property>
@@ -237,6 +232,11 @@
        </property>
        <property name="focusPolicy">
         <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">        QPushButton {
+            padding: 6px 12px;      /* top/bottom, left/right */
+        }</string>
        </property>
        <property name="text">
         <string>Field Params</string>
@@ -253,6 +253,11 @@
        <property name="focusPolicy">
         <enum>Qt::NoFocus</enum>
        </property>
+       <property name="styleSheet">
+        <string notr="true">        QPushButton {
+            padding: 6px 12px;      /* top/bottom, left/right */
+        }</string>
+       </property>
        <property name="text">
         <string>Apply</string>
        </property>
@@ -267,6 +272,11 @@
        </property>
        <property name="focusPolicy">
         <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">        QPushButton {
+            padding: 6px 12px;      /* top/bottom, left/right */
+        }</string>
        </property>
        <property name="text">
         <string>Set Spec</string>
@@ -283,6 +293,11 @@
        <property name="focusPolicy">
         <enum>Qt::NoFocus</enum>
        </property>
+       <property name="styleSheet">
+        <string notr="true">        QPushButton {
+            padding: 6px 12px;      /* top/bottom, left/right */
+        }</string>
+       </property>
        <property name="text">
         <string>Backup</string>
        </property>
@@ -297,6 +312,11 @@
        </property>
        <property name="focusPolicy">
         <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">        QPushButton {
+            padding: 6px 12px;      /* top/bottom, left/right */
+        }</string>
        </property>
        <property name="text">
         <string>Parse File</string>
@@ -313,6 +333,11 @@
        <property name="focusPolicy">
         <enum>Qt::NoFocus</enum>
        </property>
+       <property name="styleSheet">
+        <string notr="true">        QPushButton {
+            padding: 6px 12px;      /* top/bottom, left/right */
+        }</string>
+       </property>
        <property name="text">
         <string>Clear Spec</string>
        </property>
@@ -327,6 +352,11 @@
        </property>
        <property name="focusPolicy">
         <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">        QPushButton {
+            padding: 6px 12px;      /* top/bottom, left/right */
+        }</string>
        </property>
        <property name="text">
         <string>Clear Log</string>
@@ -343,6 +373,11 @@
        <property name="focusPolicy">
         <enum>Qt::NoFocus</enum>
        </property>
+       <property name="styleSheet">
+        <string notr="true">        QPushButton {
+            padding: 6px 12px;      /* top/bottom, left/right */
+        }</string>
+       </property>
        <property name="text">
         <string>Copy Log</string>
        </property>
@@ -357,6 +392,11 @@
        </property>
        <property name="focusPolicy">
         <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">        QPushButton {
+            padding: 6px 12px;      /* top/bottom, left/right */
+        }</string>
        </property>
        <property name="text">
         <string>Close</string>

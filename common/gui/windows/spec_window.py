@@ -18,35 +18,20 @@ from common.gui.forms.spec import Ui_SpecificationWindow
 from common.gui.core.json_views.SpecView import SpecView
 from common.gui.enums.KeySequences import KeySequences
 from common.gui.decorators.window_settings import set_window_icon, has_close_button_only
-from common.gui.enums import ButtonActions, SpecFieldDef
+from common.gui.enums import ButtonActions, SpecFieldDef, Buttons
 from common.lib.enums.TermFilesPath import TermFilesPath
 from common.lib.enums.TextConstants import TextConstants
+from common.gui.tools.create_gui_elements import create_button
 
 
 class SpecWindow(Ui_SpecificationWindow, QDialog):
     _read_only: bool = True
-    _spec: EpaySpecification = EpaySpecification()
-    _spec_accepted: pyqtSignal = pyqtSignal(str)
-    _spec_rejected: pyqtSignal = pyqtSignal()
-    _reset_spec: pyqtSignal = pyqtSignal(str)
-    _load_remote_spec: pyqtSignal = pyqtSignal(bool)
     _clean_spec: EpaySpecModel = None
-
-    @property
-    def load_remote_spec(self):
-        return self._load_remote_spec
-
-    @property
-    def reset_spec(self):
-        return self._reset_spec
-
-    @property
-    def spec_accepted(self):
-        return self._spec_accepted
-
-    @property
-    def spec_rejected(self):
-        return self._spec_rejected
+    _spec: EpaySpecification = EpaySpecification()
+    spec_accepted: pyqtSignal = pyqtSignal(str)
+    spec_rejected: pyqtSignal = pyqtSignal()
+    reset_spec: pyqtSignal = pyqtSignal(str)
+    load_remote_spec: pyqtSignal = pyqtSignal(bool)
 
     @property
     def spec(self):
@@ -73,15 +58,18 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
 
         self.SpecView: SpecView = SpecView(self)
         self._clean_spec = deepcopy(self.SpecView.generate_spec())
-        self.PlusButton: QPushButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_PLUS_SIGN)
-        self.MinusButton: QPushButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_MINUS_SIGN)
-        self.NextLevelButton: QPushButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_NEXT_LEVEL_SIGN)
+        self.PlusButton: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_PLUS_SIGN)
+        self.MinusButton: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_MINUS_SIGN)
+        self.NextLevelButton: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_NEXT_LEVEL_SIGN)
+        self.UndoButton: QPushButton = create_button(Buttons.Buttons.UNDO)
+        self.RedoButton: QPushButton = create_button(Buttons.Buttons.REDO)
 
         widgets_layouts_map = {
-            self.PlusLayout: self.PlusButton,
-            self.MinusLayout: self.MinusButton,
-            self.NextLevelLayout: self.NextLevelButton,
-            self.SpecTreeLayout: self.SpecView,
+            self.PlusButton: self.JsonButtonLayout,
+            self.MinusButton: self.JsonButtonLayout,
+            self.NextLevelButton: self.JsonButtonLayout,
+            self.UndoButton: self.JsonButtonLayout,
+            self.RedoButton: self.JsonButtonLayout,
         }
 
         button_menu_structure = {
@@ -102,17 +90,19 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
                 button.menu().addAction(name, action)
                 button.menu().addSeparator()
 
-        for layout, widget in widgets_layouts_map.items():
-            layout.addWidget(widget)
+        for widget, layout in widgets_layouts_map.items():
+            layout.addWidget(widget, alignment=Qt.AlignmentFlag.AlignLeft)
 
         for box in (self.CheckBoxHideReverved, self.CheckBoxReadOnly):
             box.setChecked(bool(Qt.CheckState.Checked))
 
+        self.SpecTreeLayout.addWidget(self.SpecView)
         self.logger = Logger(self.config)
         self.handler_id = self.logger.add_wireless_handler(self.LogArea)
         self.connect_all()
         self.set_read_only(self.CheckBoxReadOnly.isChecked())
         self.set_hello_message()
+        self.setAcceptDrops(True)
 
     def connect_all(self):
 
@@ -141,6 +131,8 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             self.ButtonSetMti: self.set_mti,
             self.ButtonBackup: self.backup,
             self.ButtonSetValidators: self.set_field_custom_validations,
+            self.UndoButton: self.SpecView.undo,
+            self.RedoButton: self.SpecView.redo,
         }
 
         keys_connection_map = {
@@ -149,6 +141,8 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             QKeySequence.StandardKey.Delete: self.SpecView.minus,
             QKeySequence.StandardKey.Open: self.parse_file,
             QKeySequence.StandardKey.Save: self.backup,
+            QKeySequence.StandardKey.Undo: self.SpecView.undo,
+            QKeySequence.StandardKey.Redo: self.SpecView.redo,
             KeySequences.CTRL_SHIFT_N: self.SpecView.next_level,
             KeySequences.CTRL_W: lambda: self.SpecView.edit_column(SpecFieldDef.ColumnsOrder.FIELD),
             KeySequences.CTRL_E: lambda: self.SpecView.edit_column(SpecFieldDef.ColumnsOrder.DESCRIPTION),
@@ -165,14 +159,54 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         for button, function in buttons_connection_map.items():
             button.clicked.connect(function)
 
+        for button in buttons_connection_map.keys():
+            font = button.font()
+            font.setPointSize(font.pointSize() + 1)
+            button.setFont(font)
+
     @staticmethod
     def backup():
         rotator: SpecFilesRotator = SpecFilesRotator()
         backup_filename = rotator.backup_spec()
-        logger.info(f"Backup done! Filename: {backup_filename}")
+        logger.info(f"Backup is done. Filename: {backup_filename}")
 
     def set_hello_message(self):
         self.LogArea.setText(f"{TextConstants.HELLO_MESSAGE}\n")
+
+    def dragEnterEvent(self, event):
+        if not event.mimeData().hasUrls():
+            event.ignore()
+            return
+
+        event.acceptProposedAction()
+
+    def dragMoveEvent(self, event):
+        if not event.mimeData().hasUrls():
+            event.ignore()
+            return
+
+        event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        files: list[str] = list()
+
+        for url in event.mimeData().urls():
+            files.append(url.toLocalFile())
+
+        if not files:
+            event.ignore()
+
+        logger.debug(f"Spec files dropped: {files}")
+
+        for file in files:
+
+            try:
+                self.parse_file(file, log=True)
+
+            except Exception as parsing_error:
+                logger.error(f"Spec file {file} parsing error: {parsing_error}")
+
+        event.acceptProposedAction()
 
     def process_remote_spec(self, spec_data: str):
         spec: EpaySpecification = EpaySpecification()
@@ -198,7 +232,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
     def set_read_only(self, readonly: bool):
         self.read_only = readonly
 
-        for button in (self.PlusButton, self.MinusButton, self.NextLevelButton):
+        for button in self.PlusButton, self.MinusButton, self.NextLevelButton, self.RedoButton, self.UndoButton:
             button.setDisabled(readonly)
 
         self.SpecView.set_read_only(readonly)
@@ -270,7 +304,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             self.SpecView.reload_spec(commit)
 
         except Exception as apply_error:
-            logger.error(apply_error)
+            logger.error(f"Specification apply error: {apply_error}")
             self.spec_rejected.emit()
             return
 
@@ -281,7 +315,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
     def closeEvent(self, a0: QCloseEvent) -> None:
         self.process_close(a0)
 
-    def parse_file(self, filename: Optional[str] = None) -> None:
+    def parse_file(self, filename: Optional[str] = None, log: bool = False) -> None:
         if filename is None:
             try:
                 filename = QFileDialog.getOpenFileName()[0]
@@ -292,6 +326,8 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         if not filename:
             logger.info("No input filename recognized")
             return
+
+        specification: EpaySpecModel | None = None
 
         try:
             with open(filename) as json_file:
@@ -304,8 +340,18 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         except Exception as parsing_error:
             logger.error(f"File parsing error: {parsing_error}")
 
-        else:
+        if not specification:
+            return
+
+        try:
             self.SpecView.parse_spec(specification)
+
+        except Exception as parsing_error:
+            logger.error(f"File parsing error: {parsing_error}")
+            return
+
+        if log:
+            logger.info(f"Specification file parsed: {filename}")
 
     def reload(self):
         self.SpecView.reload()

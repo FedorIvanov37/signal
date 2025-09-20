@@ -2,12 +2,15 @@
 <ui version="4.0">
  <class>HotKeysHint</class>
  <widget class="QDialog" name="HotKeysHint">
+  <property name="windowModality">
+   <enum>Qt::NonModal</enum>
+  </property>
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>500</width>
-    <height>720</height>
+    <width>480</width>
+    <height>780</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -18,21 +21,24 @@
   </property>
   <property name="minimumSize">
    <size>
-    <width>500</width>
-    <height>720</height>
+    <width>480</width>
+    <height>780</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
-    <width>500</width>
-    <height>720</height>
+    <width>480</width>
+    <height>780</height>
    </size>
   </property>
   <property name="windowTitle">
    <string>Signal | Hotkeys</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
+  <property name="modal">
+   <bool>false</bool>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="0">
     <widget class="QTableWidget" name="HintTable">
      <property name="font">
       <font>
@@ -118,6 +124,16 @@
      <row>
       <property name="text">
        <string>Ctrl + Alt + Enter</string>
+      </property>
+     </row>
+     <row>
+      <property name="text">
+       <string>Ctrl + Z</string>
+      </property>
+     </row>
+     <row>
+      <property name="text">
+       <string>Ctrl + Y</string>
       </property>
      </row>
      <row>
@@ -262,180 +278,200 @@
      </item>
      <item row="4" column="0">
       <property name="text">
-       <string>Ctrl + N</string>
+       <string>Ctrl + Z</string>
       </property>
      </item>
      <item row="4" column="1">
       <property name="text">
-       <string>Add new field</string>
+       <string>Undo change</string>
       </property>
      </item>
      <item row="5" column="0">
       <property name="text">
-       <string>Ctrl + Shift + N</string>
+       <string>Ctrl + Y</string>
       </property>
      </item>
      <item row="5" column="1">
       <property name="text">
-       <string>Add new subfield </string>
+       <string>Redo change</string>
       </property>
      </item>
      <item row="6" column="0">
       <property name="text">
-       <string>Ctrl + Alt + V</string>
+       <string>Ctrl + N</string>
       </property>
      </item>
      <item row="6" column="1">
       <property name="text">
-       <string>Validate current message</string>
+       <string>Add new field</string>
       </property>
      </item>
      <item row="7" column="0">
       <property name="text">
-       <string>Ctrl + F</string>
+       <string>Ctrl + Shift + N</string>
       </property>
      </item>
      <item row="7" column="1">
       <property name="text">
-       <string>Search</string>
+       <string>Add new subfield </string>
       </property>
      </item>
      <item row="8" column="0">
       <property name="text">
-       <string>Delete</string>
+       <string>Ctrl + Alt + V</string>
       </property>
      </item>
      <item row="8" column="1">
       <property name="text">
-       <string>Remove field</string>
+       <string>Validate current message</string>
       </property>
      </item>
      <item row="9" column="0">
       <property name="text">
-       <string>Ctrl + E</string>
+       <string>Ctrl + F</string>
       </property>
      </item>
      <item row="9" column="1">
       <property name="text">
-       <string>Edit current field data</string>
+       <string>Search</string>
       </property>
      </item>
      <item row="10" column="0">
       <property name="text">
-       <string>Ctrl + W</string>
+       <string>Delete</string>
       </property>
      </item>
      <item row="10" column="1">
       <property name="text">
-       <string>Edit current field number</string>
+       <string>Remove field</string>
       </property>
      </item>
      <item row="11" column="0">
       <property name="text">
-       <string>Ctrl + R</string>
+       <string>Ctrl + E</string>
       </property>
      </item>
      <item row="11" column="1">
       <property name="text">
-       <string>Reconnect to host</string>
+       <string>Edit current field data</string>
       </property>
      </item>
      <item row="12" column="0">
       <property name="text">
-       <string>Ctrl + L</string>
+       <string>Ctrl + W</string>
       </property>
      </item>
      <item row="12" column="1">
       <property name="text">
-       <string>Clear log</string>
+       <string>Edit current field number</string>
       </property>
      </item>
      <item row="13" column="0">
       <property name="text">
-       <string>Ctrl + O</string>
+       <string>Ctrl + R</string>
       </property>
      </item>
      <item row="13" column="1">
       <property name="text">
-       <string>Open transaction file(s)</string>
+       <string>Reconnect to host</string>
       </property>
      </item>
      <item row="14" column="0">
       <property name="text">
-       <string>Ctrl + S</string>
+       <string>Ctrl + L</string>
       </property>
      </item>
      <item row="14" column="1">
       <property name="text">
-       <string>Save transaction(s) to file(s)</string>
+       <string>Clear log</string>
       </property>
      </item>
      <item row="15" column="0">
       <property name="text">
-       <string>Ctrl + P</string>
+       <string>Ctrl + O</string>
       </property>
      </item>
      <item row="15" column="1">
       <property name="text">
-       <string>Print transaction data</string>
+       <string>Open transaction file(s)</string>
       </property>
      </item>
      <item row="16" column="0">
       <property name="text">
-       <string>Ctrl + Alt + P</string>
+       <string>Ctrl + S</string>
       </property>
      </item>
      <item row="16" column="1">
       <property name="text">
-       <string>Print SIGNAL logo</string>
+       <string>Save transaction(s) to file(s)</string>
       </property>
      </item>
      <item row="17" column="0">
       <property name="text">
-       <string>Ctrl + T</string>
+       <string>Ctrl + P</string>
       </property>
      </item>
      <item row="17" column="1">
       <property name="text">
-       <string>New tab</string>
+       <string>Print transaction data</string>
       </property>
      </item>
      <item row="18" column="0">
       <property name="text">
-       <string>Ctrl + PgDn /  Ctrl + Tab</string>
+       <string>Ctrl + Alt + P</string>
       </property>
      </item>
      <item row="18" column="1">
       <property name="text">
-       <string>Next tab</string>
+       <string>Print SIGNAL logo</string>
       </property>
      </item>
      <item row="19" column="0">
       <property name="text">
-       <string>Ctrl + PgUp / Ctrl + Shift + Tab</string>
+       <string>Ctrl + T</string>
       </property>
      </item>
      <item row="19" column="1">
       <property name="text">
-       <string>Previous Tab</string>
+       <string>New tab</string>
       </property>
      </item>
      <item row="20" column="0">
       <property name="text">
-       <string>Ctrl + F4</string>
+       <string>Ctrl + PgDn /  Ctrl + Tab</string>
       </property>
      </item>
      <item row="20" column="1">
       <property name="text">
-       <string>Close current tab</string>
+       <string>Next tab</string>
       </property>
      </item>
      <item row="21" column="0">
       <property name="text">
-       <string>Ctrl + Alt + Q</string>
+       <string>Ctrl + PgUp / Ctrl + Shift + Tab</string>
       </property>
      </item>
      <item row="21" column="1">
+      <property name="text">
+       <string>Previous Tab</string>
+      </property>
+     </item>
+     <item row="22" column="0">
+      <property name="text">
+       <string>Ctrl + F4</string>
+      </property>
+     </item>
+     <item row="22" column="1">
+      <property name="text">
+       <string>Close current tab</string>
+      </property>
+     </item>
+     <item row="23" column="0">
+      <property name="text">
+       <string>Ctrl + Alt + Q</string>
+      </property>
+     </item>
+     <item row="23" column="1">
       <property name="text">
        <string>Quit SIGNAL</string>
       </property>

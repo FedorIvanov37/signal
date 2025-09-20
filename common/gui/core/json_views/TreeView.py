@@ -14,7 +14,7 @@ class TreeView(QTreeWidget):
 
     def __init__(self, parent=None):
         super(TreeView, self).__init__(parent=parent)
-        self.undo_stack = QUndoStack()
+        self.undo_stack = QUndoStack(self)
         self.setup()
 
     def setup(self):
@@ -103,10 +103,12 @@ class TreeView(QTreeWidget):
     def undo(self):
         self.undo_stack.undo()
         self.field_changed.emit()
+        self.setFocus()
 
     def redo(self):
         self.undo_stack.redo()
         self.field_changed.emit()
+        self.setFocus()
 
     def value_in_item(self, value: str, item, check_subfields=True):
         if value in item.field_number:

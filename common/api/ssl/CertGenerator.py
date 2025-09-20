@@ -36,7 +36,7 @@ cert = x509.CertificateBuilder().subject_name(
 ).not_valid_after(
     datetime.utcnow() + timedelta(days=365)
 ).add_extension(
-    x509.SubjectAlternativeName([x509.DNSName("localhost")]), critical=False
+    x509.SubjectAlternativeName([x509.DNSName("192.168.0.3")]), critical=False
 ).sign(key, hashes.SHA256(), default_backend())
 
 with open("private_key.pem", "wb") as private_key_file:

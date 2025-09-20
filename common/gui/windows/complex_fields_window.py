@@ -13,6 +13,7 @@ from common.lib.data_models.Transaction import Transaction
 from common.gui.forms.complex_fields_parser import Ui_ComplexFieldsParser
 from common.gui.decorators.window_settings import set_window_icon, has_close_button_only
 from common.gui.core.json_views.JsonView import JsonView
+from common.gui.tools.create_gui_elements import create_button
 from common.gui.enums import ButtonActions, MainFieldSpec
 from common.gui.enums.KeySequences import KeySequences
 from common.gui.enums.RootItemNames import RootItemNames
@@ -33,11 +34,11 @@ class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):
     @set_window_icon
     @has_close_button_only
     def _setup(self):
-        self.PlusButton: QPushButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_PLUS_SIGN)
-        self.MinusButton: QPushButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_MINUS_SIGN)
-        self.NextLevelButton: QPushButton = QPushButton(ButtonActions.ButtonActionSigns.BUTTON_NEXT_LEVEL_SIGN)
-        self.UpButton: QPushButton = QPushButton(f"{ButtonActions.ButtonActionSigns.BUTTON_UP_SIGN} To JSON ")
-        self.DownButton: QPushButton = QPushButton(f"{ButtonActions.ButtonActionSigns.BUTTON_DOWN_SIGN} To String ")
+        self.PlusButton: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_PLUS_SIGN)
+        self.MinusButton: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_MINUS_SIGN)
+        self.NextLevelButton: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_NEXT_LEVEL_SIGN)
+        self.UpButton: QPushButton = create_button(f"{ButtonActions.ButtonActionSigns.BUTTON_UP_SIGN} To JSON ")
+        self.DownButton: QPushButton = create_button(f"{ButtonActions.ButtonActionSigns.BUTTON_DOWN_SIGN} To String ")
         self.JsonView: JsonView = JsonView(self.config, RootItemNames.FIELD_CONSTRUCTOR_ROOT_NAME)
 
         widgets_layouts_map = {

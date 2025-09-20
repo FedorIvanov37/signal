@@ -49,13 +49,13 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
             self.sending_error.emit(trans_id, "Cannot send transaction data")
             return
 
-        logger.debug("bytes sent %s", bytes_sent)
+        logger.debug(f"bytes sent {bytes_sent}")
 
         self.flush()
         self.transaction_sent.emit(trans_id)
 
     def read_transaction_data(self):
-        logger.debug("Socket has %d bytes of an incoming data", self.bytesAvailable())
+        logger.debug(f"Socket has {self.bytesAvailable()} bytes of an incoming data")
         incoming_data = self.readAll()
         incoming_data = incoming_data.data()
         logger.debug(incoming_data)

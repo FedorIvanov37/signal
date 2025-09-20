@@ -1,7 +1,14 @@
 from typing import Callable
 from loguru import logger
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtWidgets import QTreeWidgetItem, QItemDelegate
+from PyQt6.QtGui import QUndoStack
+from common.gui.enums.UndoSteps import UndoSteps
+from common.gui.undo_commands.RemoveItemCommand import RemoveItemCommand
+from common.gui.undo_commands.InsertSubItemCommand import InsertSubItemCommand
+from common.gui.undo_commands.EditItemTextCommand import EditItemTextCommand
+from common.gui.undo_commands.SignalsBlocker import SignalsBlocker
+from common.gui.undo_commands.InsertItemCommand import InsertItemCommand
 from common.lib.core.EpaySpecification import EpaySpecification
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel, Validators
 from common.lib.data_models.EpaySpecificationModel import IsoField, FieldSet
@@ -16,6 +23,28 @@ from common.gui.enums.RootItemNames import RootItemNames
 
 
 class SpecView(TreeView):
+
+    class SpecViewDelegate(QItemDelegate):
+        def __init__(self, tree: TreeView, stack: QUndoStack):
+            super().__init__()
+
+            self.tree = tree
+            self.stack = stack
+
+        def setModelData(self, editor, model, idx):
+            role = Qt.ItemDataRole.EditRole
+
+            old = model.data(idx, role) or str()
+
+            with SignalsBlocker(self.tree):
+                super().setModelData(editor, model, idx)
+
+            new = model.data(idx, role) or str()
+
+            if new != old:
+                item = self.tree.itemFromIndex(idx)
+                self.stack.push(EditItemTextCommand(self.tree, item, idx.column(), old, new))
+
     _spec: EpaySpecification = EpaySpecification()
     search_finished = pyqtSignal()
 
@@ -47,10 +76,11 @@ class SpecView(TreeView):
     def _setup(self):
         self.setHeaderLabels(SpecFieldDef.Columns)
         self.addTopLevelItem(self.root)
+        self.setItemDelegate(self.SpecViewDelegate(self, self.undo_stack))
         self.itemDoubleClicked.connect(self.editItem)
         self.itemClicked.connect(self.process_item_click)
         self.itemChanged.connect(self.process_item_change)
-        self.currentItemChanged.connect(self.print_path)
+        # self.currentItemChanged.connect(self.print_path)
         self.parse_spec()
         self.make_order()
         self.collapseAll()
@@ -212,9 +242,14 @@ class SpecView(TreeView):
 
     @reject_in_read_only_mode
     def minus(self):
-        item: SpecItem = self.currentItem()
+        def callback(_item_parent: SpecItem, _item: SpecItem, step: UndoSteps):
+            if step == UndoSteps.UNDO:
+                self.setCurrentItem(_item)
+                item.setExpanded(True)
 
-        if item is None:
+            self.setFocus()
+
+        if not (item := self.currentItem()):
             return
 
         if item is self.root:
@@ -222,41 +257,41 @@ class SpecView(TreeView):
             self.setFocus()
             return
 
-        self.setFocus()
-
-        parent: SpecItem = item.parent()
-
-        parent.takeChild(parent.indexOfChild(item))
+        self.undo_stack.push(RemoveItemCommand(self, item, callback))
 
     @reject_in_read_only_mode
     def plus(self):
+        def callback(new_item: SpecItem, step: UndoSteps):
+            if step is not UndoSteps.REDO:
+                return
+
+            self.setCurrentItem(new_item)
+            self.setFocus()
+
         item = SpecItem([])
 
         if not (current_item := self.currentItem()):
             return
 
-        parent = current_item.parent()
-
-        if parent is None:
+        if not (parent := current_item.parent()):
             return
 
-        current_index = parent.indexOfChild(current_item)
-        parent.insertChild(current_index + 1, item)
-        self.scrollToItem(item)
-        self.editItem(item, 0)
-        self.setCurrentItem(item)
+        self.undo_stack.push(InsertItemCommand(self, item, parent, parent.indexOfChild(current_item) + 1, callback))
 
     @reject_in_read_only_mode
     def next_level(self):
-        item = SpecItem([])
-        current_item: SpecItem = self.currentItem()
+        def callback(_parent: SpecItem, _item: SpecItem, step: UndoSteps):
+            if step == UndoSteps.REDO:
+                self.setCurrentItem(_item)
 
-        if current_item is None:
+            self.setFocus()
+
+        if not (current_item := self.currentItem()):
             return
 
-        self.currentItem().addChild(item)
-        self.setCurrentItem(item)
-        self.editItem(item, int())
+        item = SpecItem([])
+
+        self.undo_stack.push(InsertSubItemCommand(self, current_item, item, callback))
 
     @void_qt_signals
     def parse_field_spec(self, field_spec: IsoField):

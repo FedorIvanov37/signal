@@ -303,11 +303,27 @@ To fix
 • GET /api/datamodels/{type}
 
 
+• Undo/redo
+        + Undo disable/enable
+        + Undo / redo field value
+        + Fix JSON mode
+        + Expand complex fields
+        + Remove empty fields from message
+        + Change validation
+        + Add buttons
+        + Add hotkeys on help window
+        + Add spec undo / redo
+        + Add spec buttons undo / redo
+
+        • Manual mode in config brakes the Signal
+
+
+
 • To do
     • Generate doc.html in TeamCity
     • TeamCity build correct settings
     • Checkable buttons
-    • Disable fields
+    + Disable fields
     + Buttons auto-repeat
     • Generate grip html-documentation in process of building
     • Prepare the release page for slack https://unlimit.slack.com/archives/G018EV1EY85/p1716830943695369
@@ -346,10 +362,12 @@ To fix
     + Gif copyright
     + Change the name
 
+
 Release v0.19
     • API mode experimental feature
     • Buttons optimization
     • Renovated Settings window
     • Buttons disable / enable
     • CLI mode marks
-    • New settings
+    • Drag n drop
+    • Undo / redo

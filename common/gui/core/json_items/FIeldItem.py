@@ -81,7 +81,7 @@ class FieldItem(Item):
     def set_disabled(self, disabled: bool):
         if parent := self.parent():
             if not disabled and parent.is_disabled:
-                raise ValueError("Cannot enable child item while parent is disabled")
+                raise ValueError("Cannot enable child row while its parent is disabled")
 
         if not self.is_disabled and not disabled:
             for item in self.get_children():
@@ -185,9 +185,8 @@ class FieldItem(Item):
             return
 
         column_number = FieldsSpec.ColumnsOrder.PROPERTY
-        state = Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked
         checkbox = QCheckBox()
-        checkbox.setCheckState(state)
+        checkbox.setChecked(checked)
 
         if not (tree := self.treeWidget()):
             return

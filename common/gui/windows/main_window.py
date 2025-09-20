@@ -1,31 +1,35 @@
 from sys import exit
 from ctypes import windll
+from itertools import batched
 from PyQt6.QtNetwork import QTcpSocket
 from PyQt6.QtCore import pyqtSignal, Qt
-from PyQt6.QtGui import QCloseEvent, QKeySequence, QShortcut, QPixmap, QFont
+from PyQt6.QtGui import QCloseEvent, QKeySequence, QShortcut, QPixmap
 from PyQt6.QtWidgets import QMainWindow, QMenu, QPushButton
+from common.lib.enums.MessageLength import MessageLength
+from common.lib.enums.DataFormats import OutputFilesFormat
+from common.lib.enums import KeepAlive
+from common.lib.enums.TextConstants import TextConstants
+from common.lib.core.EpaySpecification import EpaySpecification
+from common.lib.data_models.Config import Config
 from common.gui.forms.mainwindow import Ui_MainWindow
 from common.gui.decorators.window_settings import set_window_icon
-from common.lib.data_models.Config import Config
 from common.gui.enums import ButtonActions, MainFieldSpec as FieldsSpec
 from common.gui.enums.KeySequences import KeySequences
 from common.gui.enums.GuiFilesPath import GuiFilesPath
 from common.gui.enums import ApiMode
 from common.gui.enums.Buttons import Buttons
 from common.gui.enums.ConnectionStatus import ConnectionStatus, ConnectionIcon
-from common.lib.enums.MessageLength import MessageLength
-from common.lib.enums.DataFormats import OutputFilesFormat
-from common.lib.enums import KeepAlive
-from common.lib.enums.ReleaseDefinition import ReleaseDefinition
-from common.lib.enums.TextConstants import TextConstants
-from common.lib.core.EpaySpecification import EpaySpecification
 from common.gui.core.tab_view.TabView import TabView
 from common.gui.enums.ToolBarElements import ToolBarElements
 from common.gui.enums.ApiMode import ApiModes
+from common.gui.tools.create_gui_elements import create_button, create_vertical_line
 
 
 """
-MainWindow is a general SVTerminal GUI, Runs as an independent application, interacts with the backend using pyqtSignal 
+MainWindow is a general SVTerminal GUI
+
+It runs as an independent application, interacts with the backend using pyqtSignal 
+
 Can be run separately from the backend, but does nothing in this case. 
  
 The goals of MainWindow are interaction with the GUI user, user input data collection, and data processing requests 
@@ -35,11 +39,7 @@ using pyqtSignal. Better to not force it to process the data, validate values, a
 
 class MainWindow(Ui_MainWindow, QMainWindow):
 
-    """
-    Data processing request signals. Some of them send string modifiers as a hint on how to process the data
-    Each common has a corresponding @property for external interactions. The signals handling should be build
-    using their properties
-    """
+    # Data processing request signals. Some of them send string modifiers as a hint on how to process the data
 
     window_close: pyqtSignal = pyqtSignal()
     print: pyqtSignal = pyqtSignal(str)
@@ -73,6 +73,9 @@ class MainWindow(Ui_MainWindow, QMainWindow):
     disable_item: pyqtSignal = pyqtSignal()
     enable_item: pyqtSignal = pyqtSignal()
     enable_all_items: pyqtSignal = pyqtSignal()
+    files_dropped: pyqtSignal = pyqtSignal(list)
+    undo: pyqtSignal = pyqtSignal()
+    redo: pyqtSignal = pyqtSignal()
     _message_repeat_menu: QMenu = None
     _keep_alive_menu: QMenu = None
     _api_menu: QMenu = None
@@ -100,7 +103,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self.setupUi(self)
         self._add_control_buttons()
         self._connect_all()
-        self.setWindowTitle(f"{TextConstants.SYSTEM_NAME.capitalize()} {ReleaseDefinition.VERSION} | Terminal GUI")
+        self.setWindowTitle(f"{TextConstants.SYSTEM_NAME.capitalize()} | Terminal GUI ")
         windll.shell32.SetCurrentProcessExplicitAppUserModelID("MainWindow")
         self.ButtonSend.setFocus()
         self.set_connection_status(QTcpSocket.SocketState.UnconnectedState)
@@ -109,20 +112,10 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self.TabViewLayout.addWidget(self._tab_view)
         self.api_mode_changed.emit(ApiMode.ApiModes.NOT_RUN)
 
-        for transaction_type in (
-            KeepAlive.TransTypes.TRANS_TYPE_KEEP_ALIVE,
-            KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION
-        ):
-            self.process_transaction_loop_change(KeepAlive.IntervalNames.KEEP_ALIVE_STOP, transaction_type)
+        for trans_type in KeepAlive.TransTypes.TRANS_TYPE_KEEP_ALIVE, KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION:
+            self.process_transaction_loop_change(KeepAlive.IntervalNames.KEEP_ALIVE_STOP, trans_type)
 
     def _add_control_buttons(self) -> None:
-
-        def create_button(name) -> QPushButton:
-            push_button: QPushButton = QPushButton()
-            push_button.setText(name)
-            push_button.setFont(QFont("Arial", 10))
-            push_button.setFocusPolicy(Qt.FocusPolicy.TabFocus)
-            return push_button
 
         # Create general control buttons
 
@@ -146,35 +139,49 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self.ButtonDisable: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_DISABLE)
         self.ButtonEnable: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_ENABLE)
         self.ButtonEnableAll: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_ENABLE_ALL)
+        self.ButtonUndo: QPushButton = create_button(Buttons.UNDO)
+        self.ButtonRedo: QPushButton = create_button(Buttons.REDO)
 
-        # Setup buttons destination layout
+        # Setup buttons to the destination layout. The order of button below will change their order on the MainWindow
 
-        buttons_layouts_map = {
+        # Transaction data tree control buttons
 
-            # Transaction data control buttons
-            self.PlusButton: self.PlusLayout,
-            self.MinusButton: self.MinusLayout,
-            self.NextLevelButton: self.NextLevelLayout,
-            self.ButtonDisable: self.DisableLayout,
-            self.ButtonEnable: self.EnableLayout,
-            self.ButtonEnableAll: self.EnableAllLayout,
-            self.ButtonSend: self.ButtonsLayout,
+        json_control_buttons = (
+            self.PlusButton,
+            self.MinusButton,
+            self.NextLevelButton,
+            self.ButtonDisable,
+            self.ButtonEnable,
+            self.ButtonEnableAll,
+            self.ButtonUndo,
+            self.ButtonRedo,
+        )
 
-            # Main control buttons. The order of button below will change their order on the MainWindow
-            self.ButtonReverse: self.ButtonsLayout,
-            self.ButtonRepeat: self.ButtonsLayout,
-            self.ButtonLog: self.ButtonsLayout,
-            self.ButtonMessage: self.ButtonsLayout,
-            self.ButtonFiles: self.ButtonsLayout,
-            self.ButtonReconnect: self.ButtonsLayout,
-            self.ButtonEchoTest: self.ButtonsLayout,
-            self.ButtonPrint: self.ButtonsLayout,
-            self.ButtonTools: self.ButtonsLayout,
-            self.ButtonHelp: self.ButtonsLayout,
-        }
+        # Main control buttons
 
-        for button, layout in buttons_layouts_map.items():
-            layout.addWidget(button, alignment=Qt.AlignmentFlag.AlignLeft)
+        main_control_buttons = (
+            self.ButtonSend,
+            self.ButtonReverse,
+            self.ButtonRepeat,
+            self.ButtonLog,
+            self.ButtonMessage,
+            self.ButtonFiles,
+            self.ButtonReconnect,
+            self.ButtonEchoTest,
+            self.ButtonPrint,
+            self.ButtonTools,
+            self.ButtonHelp,
+        )
+
+        for button in main_control_buttons:
+            self.ButtonsLayout.addWidget(button, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        for batch in batched(json_control_buttons, 3):
+
+            for button in batch:
+                self.JsonButtonsLayout.addWidget(button, alignment=Qt.AlignmentFlag.AlignLeft)
+
+            self.JsonButtonsLayout.addWidget(create_vertical_line(), alignment=Qt.AlignmentFlag.AlignLeft)
 
     def _connect_all(self) -> None:
         """
@@ -195,6 +202,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             self.ButtonDisable: self.disable_item,
             self.ButtonEnable: self.enable_item,
             self.ButtonEnableAll: self.enable_all_items,
+            self.ButtonUndo: self.json_view.undo,
+            self.ButtonRedo: self.json_view.redo,
         }
 
         tab_view_connection_map = {
@@ -207,6 +216,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             self._tab_view.copy_bitmap: self.copy_bitmap,
             self._tab_view.trans_id_set: self.set_reversal_trans_id,
             self._tab_view.tab_changed: self.process_tab_change,
+            self._tab_view.files_dropped: self.files_dropped,
         }
 
         event_connection_map = {
@@ -310,8 +320,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
                 ToolBarElements.SET_REVERSAL_FIELDS: lambda: self.reverse.emit(ButtonActions.ReversalMenuActions.SET_REVERSAL),
             },
             self.ButtonMessage: {
-                ToolBarElements.RESET_MESSAGE: lambda: self.reset.emit(False),
                 ToolBarElements.VALIDATE: lambda: self.validate_message.emit(True),
+                ToolBarElements.RESET_MESSAGE: lambda: self.reset.emit(False),
                 ToolBarElements.CLEAR_MESSAGE: self.clear,
             },
             self.ButtonLog: {
@@ -356,7 +366,6 @@ class MainWindow(Ui_MainWindow, QMainWindow):
                     KeepAlive.IntervalNames.KEEP_ALIVE_300S: lambda: self.keep_alive.emit(KeepAlive.IntervalNames.KEEP_ALIVE_300S),
                     KeepAlive.IntervalNames.KEEP_ALIVE_STOP: lambda: self.keep_alive.emit(KeepAlive.IntervalNames.KEEP_ALIVE_STOP),
                 },
-
             },
             self.ButtonTools: {
                 ToolBarElements.SETTINGS: self.settings,

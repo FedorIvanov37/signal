@@ -8,6 +8,7 @@ from webbrowser import open as open_url
 from PyQt6.QtWidgets import QApplication, QFileDialog
 from PyQt6.QtNetwork import QTcpSocket
 from PyQt6.QtCore import pyqtSignal, QTimer, QDir, QThreadPool
+from common.gui.undo_commands.SetDisabledCommand import SetDisabledCommand
 from common.gui.enums.GuiFilesPath import GuiFilesPath
 from common.gui.windows.settings_window import SettingsWindow
 from common.gui.windows.main_window import MainWindow
@@ -17,11 +18,13 @@ from common.gui.windows.hotkeys_hint_window import HotKeysHintWindow
 from common.gui.windows.complex_fields_window import ComplexFieldsParser
 from common.gui.windows.license_window import LicenseWindow
 from common.gui.core.ConnectionThread import ConnectionThread
+from common.gui.enums.ApiMode import ApiModes
 from common.gui.enums import ButtonActions
 from common.gui.enums.Colors import Colors
+from common.gui.enums.GuiFilesPath import GuiDirs
+from common.gui.core.WirelessHandler import WirelessHandler
 from common.lib.enums import KeepAlive
 from common.lib.enums.TermFilesPath import TermFilesPath
-from common.gui.enums.GuiFilesPath import GuiDirs
 from common.lib.enums.DataFormats import DataFormats, PrintDataFormats, OutputFilesFormat, InputFilesFormat
 from common.lib.enums.MessageLength import MessageLength
 from common.lib.enums.TextConstants import TextConstants
@@ -32,9 +35,7 @@ from common.lib.data_models.Config import Config
 from common.lib.data_models.License import LicenseInfo
 from common.lib.data_models.Transaction import Transaction, TypeFields
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
-from common.gui.core.WirelessHandler import WirelessHandler
 from common.api.ApiThread import ApiThread
-from common.gui.enums.ApiMode import ApiModes
 from common.lib.exceptions.exceptions import (
     LicenceAlreadyAccepted,
     LicenseDataLoadingError,
@@ -52,22 +53,14 @@ TransactionQueue for interaction with the target system, Connector for TCP integ
  
 Always tries not to do the work itself, managing corresponding modules instead
 
-TerminalGui is a basic executor for all user requests. Inherited from Terminal class, which does not interact 
+SignalGui is a basic executor for all user requests. Inherited from Terminal class, which does not interact 
 with GUI anyhow. Low-level data processing performs using the basic Terminal class.
 
 Usually get data in the Transaction format. In any other case targeting to transform data into the Transaction and 
-proceed to work with this. The Transaction is a common I/O format for TerminalGui. 
+proceed to work with this. The Transaction is a common I/O format for SignalGui. 
  
 Starts MainWindow when starting its work, being a kind of low-level adapter between the GUI and the system's core
 """
-
-
-class LogStream:
-    def __init__(self, log_browser):
-        self.log_browser = log_browser
-
-    def write(self, data):
-        self.log_browser.append(data)
 
 
 class SignalGui(Terminal):
@@ -161,9 +154,9 @@ class SignalGui(Terminal):
             window.copy_log: self.copy_log,
             window.copy_bitmap: self.copy_bitmap,
             window.reconnect: self.reconnect,
-            window.parse_file: self.parse_file,
+            window.parse_file: lambda: self.parse_file(new_tab=True),
             window.window_close: self.stop_signal,
-            window.reverse: self.perform_reversal,
+            window.reverse: self.make_reversal,
             window.print: self.print_data,
             window.save: self.save_transaction_to_file,
             window.field_changed: self.set_bitmap,
@@ -183,7 +176,8 @@ class SignalGui(Terminal):
             window.show_license: lambda: self.show_license_dialog(force=True),
             window.disable_item: lambda: self.disable_item(disable=True),
             window.enable_item: lambda: self.disable_item(disable=False),
-            window.enable_all_items: lambda: self.disable_item(disable=False, item=self.window.json_view.root),
+            window.enable_all_items: lambda: self.disable_item(False, self.window.json_view.root, go_next=False),
+            window.files_dropped: self.process_files_drop,
             self.connector.stateChanged: self.set_connection_status,
             self.set_remote_spec: self.connector.get_remote_spec,
             self.connector.got_remote_spec: self.load_remote_spec,
@@ -208,12 +202,15 @@ class SignalGui(Terminal):
         if state == ApiModes.STOP:
             ...
 
-    def disable_item(self, disable: bool, item=None) -> None:
+    def disable_item(self, disable: bool, item=None, go_next=True) -> None:
         if item is None and not (item := self.window.json_view.currentItem()):
             return
 
+        self.window.json_view.undo_stack.push(SetDisabledCommand(item, disable))
+
         try:
             item.set_disabled(disable)
+
         except ValueError as err:
             logger.warning(err)
         else:
@@ -223,8 +220,11 @@ class SignalGui(Terminal):
 
         self.window.json_view.setFocus()
 
+        if go_next:
+            self.window.json_view.focusNextChild()
+
     @staticmethod
-    def show_document():
+    def show_document():  # Open the User guide in a default browser
         doc_path = normpath(f"{getcwd()}/{GuiFilesPath.DOC}")
         open_url(doc_path)
 
@@ -320,7 +320,7 @@ class SignalGui(Terminal):
             settings_window.open_user_guide.connect(self.show_document)
             settings_window.open_api_url.connect(self.open_api_url)
             settings_window.exec()
-
+            
         except Exception as settings_error:
             logger.error(settings_error)
 
@@ -418,16 +418,17 @@ class SignalGui(Terminal):
         except Exception as license_error:
             logger.error(f"Cannot save license params: {license_error}")
 
-    def read_config(self) -> None:
+    def read_config(self, config_file: str | None = None) -> None:
+
+        if config_file is None:
+            config_file = TermFilesPath.CONFIG
+
         try:
-            with open(TermFilesPath.CONFIG) as json_file:
-                config: Config = Config.model_validate_json(json_file.read())
+            with open(config_file) as json_file:
+                self.config: Config = Config.model_validate_json(json_file.read())
 
-        except ValidationError as parsing_error:
+        except Exception as parsing_error:
             logger.error(f"Cannot parse configuration file: {parsing_error}")
-            return
-
-        self.config.fields = config.fields
 
     def stop_signal(self) -> None:
         self.connector.stop_thread()
@@ -446,7 +447,7 @@ class SignalGui(Terminal):
 
         self.window.unblock_connection_buttons()
 
-    def perform_reversal(self, command: str) -> None:
+    def make_reversal(self, command: str) -> None:
         transaction_source_map: dict[str, Callable] = {
             ButtonActions.ReversalMenuActions.LAST: self.trans_queue.get_last_reversible_transaction_id,
             ButtonActions.ReversalMenuActions.OTHER: self.show_reversal_window,
@@ -710,7 +711,7 @@ class SignalGui(Terminal):
                     transactions = {tab_name: self.parse_main_window_tab(clean=True, flat_fields=False)}
 
         except Exception as file_saving_error:
-            logger.error("File saving error: %s", file_saving_error)
+            logger.error(f"File saving error: {file_saving_error}")
             return
 
         for tab_name, transaction in transactions.items():
@@ -798,7 +799,7 @@ class SignalGui(Terminal):
     @set_json_view_focus
     def set_default_values(self, log=True) -> None:
         try:
-            self.parse_file(str(TermFilesPath.DEFAULT_FILE), log=False)
+            self.parse_file(str(TermFilesPath.DEFAULT_FILE), log=False, new_tab=False)
 
         except Exception as parsing_error:
             logger.error(f"Default file parsing error! Exception: {parsing_error}")
@@ -806,50 +807,46 @@ class SignalGui(Terminal):
         else:
             logger.info("Default file parsed") if log else ...
 
+    def process_files_drop(self, incoming_files: list[str]):
+        for incoming_file in incoming_files:
+            self.parse_file(incoming_file, new_tab=True)
+
     @set_json_view_focus
-    def parse_file(self, filename: str | None = None, log=True) -> None:
+    def parse_file(self, incoming_filename: str | None = None, log=True, new_tab: bool = False) -> None:
+        filenames: list[str] = []
 
-        def _parse_file(_filename: str, _log: bool) -> None:
-            try:
-                transaction: Transaction = self.parser.parse_file(_filename)
+        if incoming_filename:
+            filenames.append(incoming_filename)
 
-            except (DataValidationError, ValidationError, ValueError) as validation_error:
-                logger.error(f"File parsing error: {validation_error}")
-                return
-
-            except Exception as parsing_error:
-                logger.error(f"File parsing error: {parsing_error}")
-                return
-
-            try:
-                self.parse_transaction(transaction)
-
-            except Exception as fields_setting_error:
-                logger.error(fields_setting_error)
-                return
-
-            if not log:
-                return
-
-            logger.info(f"File parsed: {filename}")
-
-        if filename:
-            _parse_file(filename, _log=log)
-            return
-
-        if not (filenames := self.get_input_filename(multiple_files=True)):
+        if not filenames and not (filenames := self.get_input_filename(multiple_files=True)):
             logger.warning("No input filename(s) recognized")
             return
 
         for filename in filenames:
+
             try:
+                transaction: Transaction = self.parser.parse_file(filename)
+
+            except (DataValidationError, ValidationError, ValueError) as validation_error:
+                logger.error(f"File parsing error: {validation_error}")
+                continue
+
+            except Exception as parsing_error:
+                logger.error(f"File parsing error: {parsing_error}")
+                continue
+
+            if new_tab:
                 self.window.tab_view.add_tab()
-            except IndexError:
-                break
+                self.window.set_tab_name(basename(filename))
 
-            self.window.set_tab_name(basename(filename))
+            try:
+                self.parse_transaction(transaction)
+            except Exception as fields_setting_error:
+                logger.error(fields_setting_error)
+                continue
 
-            _parse_file(filename, _log=log)
+            if log:
+                logger.info(f"File parsed: {filename}")
 
     @set_json_view_focus
     def parse_transaction(self, transaction: Transaction, generate_trans_id=True) -> None:

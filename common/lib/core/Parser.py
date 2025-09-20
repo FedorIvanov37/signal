@@ -95,7 +95,7 @@ class Parser:
 
         for field in sorted(transaction.data_fields.keys(), key=int):
             if not (text := transaction.data_fields.get(field)):
-                logger.warning("No value for field %s. IsoField was ignored" % field)
+                logger.warning(f"No value for field {field}. IsoField was ignored")
                 continue
 
             if isinstance(text, dict):
@@ -374,7 +374,7 @@ class Parser:
                     raise ValueError("Lost variable length")
 
             except(AttributeError, ValueError):
-                logger.error("Lost specification for field %s ", field)
+                logger.error(f"Lost specification for field {field}")
                 logger.error("The field and corresponding sub fields were absent")
                 return {}
 
@@ -530,7 +530,7 @@ class Parser:
 
         for option in ini.options(IniMessageDefinition.MESSAGE):
             if not option.startswith("f"):
-                raise ValueError("Wrong field name: %s. Should start from f. For example: f002", option)
+                raise ValueError(f"Wrong field name: {option}. Should start from f. For example: f002")
 
             field = str(int(option.removeprefix("f")))
             value = self.unpack_ini_field(ini.get(IniMessageDefinition.MESSAGE, option))

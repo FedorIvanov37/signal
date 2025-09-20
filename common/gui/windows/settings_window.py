@@ -27,9 +27,19 @@ from PyQt6.QtGui import (
 class SettingsWindow(Ui_SettingsWindow, QDialog):
     _open_user_guide: pyqtSignal = pyqtSignal()
     _open_api_url: pyqtSignal = pyqtSignal(str)
+    _config: Config = None
+    config_file_dropped: pyqtSignal = pyqtSignal(str)
     audio_output = QAudioOutput()
     player = QMediaPlayer()
     movie: QMovie
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config: Config):
+        self._config = config
 
     @property
     def open_api_url(self):
@@ -48,6 +58,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
     @set_window_icon
     @has_close_button_only
     def setup(self, about: bool = False) -> None:
+        self.setAcceptDrops(True)
         self.player.setAudioOutput(self.audio_output)
         self.player.setSource(QUrl.fromLocalFile(GuiFilesPath.VVVVVV))
         self.MainTabs.tabBar().setDocumentMode(True)
@@ -147,6 +158,51 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
             self.MaxAmount.insertItem(index, max_amount)
 
         self.MaxAmount.setCurrentIndex(index)
+
+    def dragEnterEvent(self, event):
+        if not event.mimeData().hasUrls():
+            event.ignore()
+            return
+
+        event.acceptProposedAction()
+
+    def dragMoveEvent(self, event):
+        if not event.mimeData().hasUrls():
+            event.ignore()
+            return
+
+        event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        if not event.mimeData().urls():
+            event.ignore()
+            return
+
+        for url in event.mimeData().urls():
+
+            if not (config_file := url.toLocalFile()):
+                continue
+
+            logger.debug(f"Config file dropped {config_file}")
+
+            try:
+                with open(config_file) as json_file:
+                    config: Config = Config.model_validate_json(json_file.read())
+
+            except Exception as config_parsing_error:
+                logger.error(f"Config parsing_error: {config_parsing_error}")
+                continue
+
+            try:
+                self.process_config(config)
+
+            except Exception as config_processing_error:
+                logger.error(config_processing_error)
+                continue
+
+            logger.info(f"Config file parsed: {config_file}")
+
+        event.acceptProposedAction()
 
     def set_api_url(self):
         api_url = self.get_api_url()
