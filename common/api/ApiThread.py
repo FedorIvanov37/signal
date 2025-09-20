@@ -1,7 +1,7 @@
 from logging import getLogger
 from PyQt6.QtCore import QObject, pyqtSignal, QThread, QCoreApplication
 from common.api.Api import Api
-from common.api.Api import ApiInterface
+from common.api.ApiInterface import ApiInterface
 from common.lib.data_models.Transaction import Transaction
 from common.gui.core.WirelessHandler import WirelessHandler
 from common.lib.data_models.Config import Config
@@ -10,10 +10,10 @@ from common.lib.core.EpaySpecification import EpaySpecification
 
 class ApiThread(QObject):
     _stop: bool = True
-    _api_interface: ApiInterface = ApiInterface()
+    _api_interface: ApiInterface = None
     _run_api: pyqtSignal = pyqtSignal()
     _create_transaction: pyqtSignal = pyqtSignal(Transaction)
-    _log_record: pyqtSignal = pyqtSignal(str)
+    log_record: pyqtSignal = pyqtSignal(str)
     _api_logger = None
     _wireless_handler = None
     _thread: QThread = None
@@ -23,10 +23,6 @@ class ApiThread(QObject):
     @property
     def stop(self):
         return self._stop
-
-    @property
-    def log_record(self):
-        return self._log_record
 
     @property
     def api_app(self):
@@ -43,6 +39,7 @@ class ApiThread(QObject):
     def __init__(self, config: Config):
         super(ApiThread, self).__init__()
         self.config = config
+        self._api_interface = ApiInterface(self.config, self)
         self._thread = QThread()
 
     def setup(self, terminal):

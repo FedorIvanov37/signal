@@ -1,5 +1,7 @@
 from sys import stdout
 from loguru import logger
+from logging import getLogger
+from common.api.ApiLogHandler import ApiLogHandler
 from common.lib.enums.TermFilesPath import TermFilesPath
 from common.lib.data_models.Config import Config
 from common.lib.constants import LogDefinition
@@ -22,6 +24,15 @@ class Logger:
     @staticmethod
     def remove():
         logger.remove()
+
+    def add_api_handler(self):
+        handler = ApiLogHandler()
+
+        for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+            log = getLogger(name)
+            log.handlers = [handler]
+            log.propagate = False
+            log.setLevel(self.config.debug.level)
 
     def add_file_handler(self, filename=TermFilesPath.LOG_FILE_NAME):
         logger.add(

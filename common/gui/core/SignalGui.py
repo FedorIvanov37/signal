@@ -132,6 +132,7 @@ class SignalGui(Terminal):
             self.reconnect()
 
         if self.config.terminal.run_api:
+            self.logger.add_api_handler()
             self.process_change_api_mode(state=ApiModes.START)
             self.window.process_api_mode_change(state=ApiModes.START)
 

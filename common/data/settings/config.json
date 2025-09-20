@@ -12,11 +12,11 @@
         "connect_on_startup": false,
         "load_remote_spec": false,
         "show_license_dialog": false,
-        "run_api": false
+        "run_api": true
     },
     "debug": {
         "level": "INFO",
-        "clear_log": true,
+        "clear_log": false,
         "parse_subfields": false,
         "backup_storage_depth": 10,
         "reduce_keep_alive": false

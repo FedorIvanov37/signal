@@ -315,6 +315,11 @@ To fix
         + Add spec undo / redo
         + Add spec buttons undo / redo
 
+        • Transactions ID - store or generate
+        • Catch API logs
+        • API basics
+        • Logs of every call
+        • Don't clear log when process API call
         • Manual mode in config brakes the Signal
 
 
