@@ -16,7 +16,7 @@
     },
     "debug": {
         "level": "INFO",
-        "clear_log": false,
+        "clear_log": true,
         "parse_subfields": false,
         "backup_storage_depth": 10,
         "reduce_keep_alive": false
@@ -45,9 +45,10 @@
     },
     "api": {
         "address": "0.0.0.0",
-        "port": 7777,
+        "port": 7778,
         "wait_remote_host_response": true,
-        "hide_secrets": true,
-        "parse_subfields": true
+        "waiting_timeout_seconds": 10,
+        "hide_secrets": false,
+        "parse_subfields": false
     }
 }

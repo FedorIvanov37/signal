@@ -17,11 +17,11 @@ from common.gui.enums import ButtonActions, MainFieldSpec as FieldsSpec
 from common.gui.enums.KeySequences import KeySequences
 from common.gui.enums.GuiFilesPath import GuiFilesPath
 from common.gui.enums import ApiMode
+from common.gui.enums.ApiMode import ApiModes
 from common.gui.enums.Buttons import Buttons
 from common.gui.enums.ConnectionStatus import ConnectionStatus, ConnectionIcon
 from common.gui.core.tab_view.TabView import TabView
 from common.gui.enums.ToolBarElements import ToolBarElements
-from common.gui.enums.ApiMode import ApiModes
 from common.gui.tools.create_gui_elements import create_button, create_vertical_line
 
 
@@ -66,7 +66,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
     parse_complex_field: pyqtSignal = pyqtSignal()
     validate_message: pyqtSignal = pyqtSignal(bool)
     spec: EpaySpecification = EpaySpecification()
-    api_mode_changed: pyqtSignal = pyqtSignal(str)
+    api_mode_changed: pyqtSignal = pyqtSignal(ApiModes)
     exit: pyqtSignal = pyqtSignal(int)
     show_document: pyqtSignal = pyqtSignal()
     show_license: pyqtSignal = pyqtSignal()
@@ -110,8 +110,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self.ButtonsLayout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.set_buttons_menu()
         self.TabViewLayout.addWidget(self._tab_view)
-        self.api_mode_changed.emit(ApiMode.ApiModes.NOT_RUN)
-
+        self.process_api_mode_change(ApiModes.NOT_RUN)
         for trans_type in KeepAlive.TransTypes.TRANS_TYPE_KEEP_ALIVE, KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION:
             self.process_transaction_loop_change(KeepAlive.IntervalNames.KEEP_ALIVE_STOP, trans_type)
 
@@ -222,7 +221,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         event_connection_map = {
             self.SearchLine.textChanged: self.search,
             self.SearchLine.editingFinished: self._tab_view.set_json_focus,
-            self.api_mode_changed: self.process_api_mode_change,
+            # self.api_mode_changed: self.process_api_mode_change,
         }
 
         keys_connection_map = {
@@ -434,8 +433,10 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             menu.addAction(interval, signal)
             menu.addSeparator()
 
-    def process_api_mode_change(self, state: str):
+    def process_api_mode_change(self, state: ApiModes):
+
         match state:
+
             case ApiMode.ApiModes.NOT_RUN:
                 icon = GuiFilesPath.GREY_CIRCLE
 
@@ -445,9 +446,9 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             case ApiMode.ApiModes.START:
                 icon = GuiFilesPath.GREEN_CIRCLE
 
-                if self._api_menu:
-                    for action in self._api_menu.actions():
-                        action.setDisabled(True)
+                # if self._api_menu:
+                #     for action in self._api_menu.actions():
+                #         action.setDisabled(True)
                 
             case _:
                 icon = GuiFilesPath.GREY_CIRCLE

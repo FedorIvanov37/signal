@@ -85,6 +85,7 @@ class ApiModel(BaseModel):
     address: str | None = "0.0.0.0"
     port: int = 7777
     wait_remote_host_response: bool = True
+    waiting_timeout_seconds: int = 10
     hide_secrets: bool = False
     parse_subfields: bool = False
 

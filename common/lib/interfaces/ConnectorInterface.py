@@ -2,6 +2,12 @@ from abc import abstractmethod, ABCMeta
 
 
 class ConnectionInterface(metaclass=ABCMeta):
+    @abstractmethod
+    def get_connected_host(self):
+        ...
+
+    def get_connected_port(self):
+        ...
 
     @abstractmethod
     def sending_error(self):

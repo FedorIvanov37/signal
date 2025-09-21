@@ -18,7 +18,7 @@ from common.lib.core.Terminal import Terminal
 from common.lib.enums.TermFilesPath import TermFilesPath
 from common.lib.data_models.License import LicenseInfo
 from common.lib.exceptions.exceptions import LicenseRejected
-from common.api.ApiThread import ApiThread
+# from common.api.ApiThread import ApiThread
 from common.lib.exceptions.exceptions import DataValidationWarning
 from common.cli.enums.LogMarks import LogMarks
 
@@ -26,7 +26,7 @@ from common.cli.enums.LogMarks import LogMarks
 class SignalCli(Terminal):
     _cli_config: CliConfig = None
     _finished: pyqtSignal = pyqtSignal()
-    _api_thread: ApiThread = None
+    # _api_thread: ApiThread = None
     _run_api: pyqtSignal = pyqtSignal()
     _job_id: str = str(uuid1())
 
@@ -159,7 +159,7 @@ class SignalCli(Terminal):
 
     def run_api_mode(self):
         logger.info("Run command line API mode")
-        self._api_thread = ApiThread(self.config)
+        # self._api_thread = ApiThread(self.config)
         self._api_thread.setup(terminal=self)
         self._api_thread.create_transaction.connect(self.send)
         self._api_thread.run_api.emit()

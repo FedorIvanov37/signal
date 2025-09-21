@@ -73,7 +73,7 @@ class Terminal(QObject):
         transaction.data_fields = {field: transaction.data_fields.get(field) for field in transaction.data_fields}
         return transaction
 
-    def get_transaction(self, trans_id: str) -> None:
+    def get_transaction(self, trans_id: str) -> Transaction:
         return self.trans_queue.get_transaction(trans_id)
 
     @staticmethod
@@ -256,8 +256,9 @@ class Terminal(QObject):
             field90 = self.generator.generate_original_data_elements(original_transaction)
             fields[self.spec.FIELD_SET.FIELD_090_ORIGINAL_DATA_ELEMENTS] = field90
 
-        reversal_mti: str = self.spec.get_reversal_mti(original_transaction.message_type)
-
+        if not (reversal_mti := self.spec.get_reversal_mti(original_transaction.message_type)):
+            raise LookupError(f"Original transaction has non-reversible MTI: {original_transaction.message_type}")
+        
         reversal: Transaction = Transaction(
             message_type=reversal_mti,
             data_fields=fields,

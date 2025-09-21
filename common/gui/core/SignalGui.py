@@ -1,4 +1,3 @@
-from click import unstyle
 from os.path import basename, normpath
 from os import getcwd, kill, getpid
 from typing import Callable
@@ -8,6 +7,7 @@ from webbrowser import open as open_url
 from PyQt6.QtWidgets import QApplication, QFileDialog
 from PyQt6.QtNetwork import QTcpSocket
 from PyQt6.QtCore import pyqtSignal, QTimer, QDir, QThreadPool
+from common.gui.enums.ConnectionStatus import ConnectionStatus
 from common.gui.undo_commands.SetDisabledCommand import SetDisabledCommand
 from common.gui.enums.GuiFilesPath import GuiFilesPath
 from common.gui.windows.settings_window import SettingsWindow
@@ -35,13 +35,15 @@ from common.lib.data_models.Config import Config
 from common.lib.data_models.License import LicenseInfo
 from common.lib.data_models.Transaction import Transaction, TypeFields
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
-from common.api.ApiThread import ApiThread
+from common.api.data_models.Connection import Connection
+from common.api.core.ApiInterface import ApiInterface
 from common.lib.exceptions.exceptions import (
     LicenceAlreadyAccepted,
     LicenseDataLoadingError,
     DataValidationWarning,
     DataValidationError
 )
+from common.api.core.ApiServer import ApiServer
 
 
 """
@@ -71,13 +73,7 @@ class SignalGui(Terminal):
     _run_timer = QTimer()
     _run_api = pyqtSignal()
     _stop_api = pyqtSignal()
-    _api_thread: ApiThread = None
-    _stop_api_thread: pyqtSignal = pyqtSignal()
     _generated_echo_test_transactions: list[Transaction] = []
-
-    @property
-    def stop_api_thread(self):
-        return self._stop_api_thread
 
     def set_json_view_focus(function: callable):
 
@@ -96,8 +92,12 @@ class SignalGui(Terminal):
         self.connector: ConnectionThread = ConnectionThread(config)
         super(SignalGui, self).__init__(config=config, connector=self.connector)
         self.window: MainWindow = MainWindow(self.config)
+
+        self.api_server = ApiServer(self.config)
+        self.api_interface = ApiInterface(self.config, self, self.api_server)
+        self.api_server.interface = self.api_interface
+
         self.thread_pool: QThreadPool = QThreadPool()
-        self._api_thread: ApiThread = ApiThread(self.config)
         self.connect_widgets()
         self.setup()
 
@@ -134,7 +134,7 @@ class SignalGui(Terminal):
         if self.config.terminal.run_api:
             self.logger.add_api_handler()
             self.process_change_api_mode(state=ApiModes.START)
-            self.window.process_api_mode_change(state=ApiModes.START)
+            # self.window.process_api_mode_change(state=ApiModes.START)
 
         self.window.json_view.enable_json_mode_checkboxes(enable=not self.config.specification.manual_input_mode)
 
@@ -185,23 +185,34 @@ class SignalGui(Terminal):
             self.trans_timer.send_transaction: window.send,
             self.trans_timer.interval_was_set: window.process_transaction_loop_change,
             self.keep_alive_timer.interval_was_set: window.process_transaction_loop_change,
+            self.api_interface.api_started: window.process_api_mode_change,
+            self.api_interface.api_stopped: window.process_api_mode_change,
+            self.trans_queue.incoming_transaction: self.api_interface.prepare_api_transaction_resp,
+            self.trans_queue.socket_error: self.api_interface.prepare_api_transaction_resp,
             self._run_timer.timeout: self.on_startup,
         }
 
         for signal, slot in terminal_connections_map.items():
             signal.connect(slot)
 
-    def process_change_api_mode(self, state) -> None:
-        if state == ApiModes.START:
-            logger.info("Starting API mode")
-            self._api_thread.setup(terminal=self)
-            self._api_thread.set_loger()
-            self._api_thread.log_record.connect(lambda record: logger.info(unstyle(record)))
-            self._api_thread.create_transaction.connect(self.send)
-            self._api_thread.run_api.emit()
+    def get_connection(self) -> Connection:
+        return Connection(
+            status=self.get_connection_status(),
+            host=self.connector.get_connected_host(),
+            port=self.connector.get_connected_port()
+        )
 
-        if state == ApiModes.STOP:
-            ...
+    def get_connection_status(self) -> ConnectionStatus:
+        return ConnectionStatus[self.connector.state().name]
+
+    def process_change_api_mode(self, state: ApiModes) -> None:
+        match state:
+
+            case ApiModes.START:
+                self.api_server.start()
+
+            case ApiModes.STOP:
+                self.api_server.stop()
 
     def disable_item(self, disable: bool, item=None, go_next=True) -> None:
         if item is None and not (item := self.window.json_view.currentItem()):
@@ -229,14 +240,14 @@ class SignalGui(Terminal):
         doc_path = normpath(f"{getcwd()}/{GuiFilesPath.DOC}")
         open_url(doc_path)
 
-    def open_api_url(self, url):
-        if not self._api_thread:
-            return
-
-        if self._api_thread.stop:
-            return
-        
-        open_url(url)
+    # def open_api_url(self, url):
+    #     if not self._api_thread:
+    #         return
+    #
+    #     if self._api_thread.stop:
+    #         return
+    #
+    #     open_url(url)
 
     def show_license_dialog(self, force: bool = False) -> None:
         try:
@@ -319,7 +330,7 @@ class SignalGui(Terminal):
             settings_window: SettingsWindow = SettingsWindow(self.config, about=about)
             settings_window.accepted.connect(lambda: self.process_config_change(old_config))
             settings_window.open_user_guide.connect(self.show_document)
-            settings_window.open_api_url.connect(self.open_api_url)
+            # settings_window.open_api_url.connect(self.open_api_url)
             settings_window.exec()
             
         except Exception as settings_error:
@@ -433,7 +444,7 @@ class SignalGui(Terminal):
 
     def stop_signal(self) -> None:
         self.connector.stop_thread()
-        self._api_thread.stop_thread()
+        # self._api_thread.stop_thread()
         kill(getpid(), 3)
 
     def reconnect(self) -> None:

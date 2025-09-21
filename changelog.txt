@@ -315,13 +315,20 @@ To fix
         + Add spec undo / redo
         + Add spec buttons undo / redo
 
+• API
+        + Catch API logs
+        + API basics
         • Transactions ID - store or generate
-        • Catch API logs
-        • API basics
         • Logs of every call
         • Don't clear log when process API call
         • Manual mode in config brakes the Signal
-
+        • API config window
+        • API from CLI
+        • Remove GUI dependency
+        • Server and Interface cross dependency\
+        • Reverse transaction
+        • Docs
+        • Tools
 
 
 • To do
