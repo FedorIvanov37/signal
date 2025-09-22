@@ -19,7 +19,8 @@ from common.gui.enums.GuiFilesPath import GuiFilesPath
 from common.gui.enums import ApiMode
 from common.gui.enums.ApiMode import ApiModes
 from common.gui.enums.Buttons import Buttons
-from common.gui.enums.ConnectionStatus import ConnectionStatus, ConnectionIcon
+from common.lib.enums.ConnectionStatus import ConnectionStatus
+from common.gui.enums.ConnectionStatus import ConnectionIcon
 from common.gui.core.tab_view.TabView import TabView
 from common.gui.enums.ToolBarElements import ToolBarElements
 from common.gui.tools.create_gui_elements import create_button, create_vertical_line

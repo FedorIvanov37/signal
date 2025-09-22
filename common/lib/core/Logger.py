@@ -41,6 +41,8 @@ class Logger:
             level=self.config.debug.level,
             rotation=self.rotation,
             compression=self.compression,
+            backtrace=False,
+            diagnose=False,
         )
 
     def add_stdout_handler(self):
@@ -48,6 +50,8 @@ class Logger:
             stdout,
             format=self.format,
             level=self.config.debug.level,
+            backtrace=False,
+            diagnose=False,
         )
 
     def add_wireless_handler(self, log_browser, wireless_handler: WirelessHandler | None = None) -> int:
@@ -59,7 +63,9 @@ class Logger:
         handler_id = logger.add(
             wireless_handler,
             format=LogDefinition.DISPLAY_DATE_FORMAT,
-            level=self.config.debug.level
+            level=self.config.debug.level,
+            backtrace=False,
+            diagnose=False,
         )
 
         return handler_id

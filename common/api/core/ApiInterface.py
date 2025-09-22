@@ -1,32 +1,86 @@
+from http import HTTPStatus
 from contextlib import suppress
 from PyQt6.QtCore import QObject, pyqtSignal
-from common.lib.enums.TermFilesPath import TermFilesPath
-from common.api.data_models.ApiRequests import Transaction, Connection, ApiRequest
-from common.api.enums.ApiRequestType import ApiRequestType
-from common.lib.core.SpecFilesRotator import SpecFilesRotator
 from common.lib.data_models.Config import Config
+from common.api.enums.ApiRequestType import ApiRequestType
 from common.gui.enums.ApiMode import ApiModes
+from common.api.core.Api import Api
+from common.api.data_models.ApiRequests import ApiRequest
+from common.lib.data_models.Transaction import Transaction
+from common.api.exceptions.api_exceptions import TerminalApiError
+
+
+"""
+This is an API interface, a bridge between FastAPI and PyQt Terminal application e.g. SignalGUI or SignalCLI
+
+Connected to FastAPI from one side and PyQt Terminal application from the other, supplies safe translation of API calls
+to PyQt event loop
+ 
+WARNING: data gathering tasks can call the PyQt application directly, for any data modification PyQt signals/slots
+functionality is strongly required. If your call will change any PyQt object no way to call any method directly. Follow
+this convenient to keep thread safety
+
+More about PyQt signal/slot concept here: https://doc.qt.io/qtforpython-6/tutorials/basictutorial/signals_and_slots.html
+
+The ApiInterface should not store any data-objects directly, using the PyQt application access to ge data. E.g. use
+self.terminal.config instead of self.config
+
+"""
 
 
 class ApiInterface(QObject):
+
+    @property
+    def get_connection(self):
+        return self.terminal.get_connection
+
+    @property
+    def get_spec(self):
+        return self.terminal.get_spec
+
+    @property
+    def get_transactions(self):
+        return self.terminal.get_transactions
+
+    @property
+    def get_transaction(self):
+        return self.terminal.get_transaction
+
+    @property
+    def get_config(self):
+        return self.terminal.get_config
+
     api_tasks = {}
     api_started: pyqtSignal = pyqtSignal(ApiModes)
     api_stopped: pyqtSignal = pyqtSignal(ApiModes)
-    api_transaction_request: pyqtSignal = pyqtSignal(ApiRequest)
+    api_trans_request: pyqtSignal = pyqtSignal(ApiRequest)
+    api_reconnect_request: pyqtSignal = pyqtSignal(ApiRequest)
+    api_disconnect_request: pyqtSignal = pyqtSignal(ApiRequest)
+    api_connect_request: pyqtSignal = pyqtSignal(ApiRequest)
+    api_update_spec: pyqtSignal = pyqtSignal(ApiRequest)
+    api_reverse_transaction: pyqtSignal = pyqtSignal(ApiRequest)
+    api_update_config: pyqtSignal = pyqtSignal(ApiRequest)
 
-    def __init__(self, config: Config = None, terminal=None, api_server=None):
+    def __init__(self, terminal, config: Config):
         super().__init__()
 
-        if api_server is not None:
-            self.api_server = api_server
+        self.config = config
+        self.terminal = terminal
+        self.api = Api(self, self.config)
+        self.terminal.start_api.connect(self.start_api)
+        self.terminal.stop_api.connect(self.stop_api)
+        self.terminal.trans_queue.incoming_transaction.connect(self.prepare_api_transaction_resp)
+        self.terminal.trans_queue.socket_error.connect(self.prepare_api_transaction_resp)
+        self.terminal.terminal_response.connect(self.api.process_backend_response)
+        self.api.api_started.connect(self.api_started)
+        self.api.api_stopped.connect(self.api_stopped)
+        self.api.api_request.connect(self.process_api_call)
 
-        if terminal is not None:
-            self.terminal = terminal
+    def start_api(self):
+        self.api.start()
 
-        if api_server is not None:
-            self.config = config
-
-        self.api_transaction_request.connect(self.process_api_call)
+    def stop_api(self):
+        self.api.stop()
 
     def prepare_api_transaction_resp(self, transaction: Transaction):
         for request_id, request in self.api_tasks.items():
@@ -38,192 +92,41 @@ class ApiInterface(QObject):
             if not any(conditions):
                 continue
 
-            request.transaction = transaction
+            request.response_data = transaction
+            request.http_status = HTTPStatus.OK
 
             self.delivery_api_response(request)
 
-            break
+            return
+
+
+
+    def process_api_call(self, request: ApiRequest):
+        self.api_tasks[request.request_id] = request
+
+        request_signal_map = {
+            ApiRequestType.OUTGOING_TRANSACTION: self.api_trans_request,
+            ApiRequestType.RECONNECT: self.api_reconnect_request,
+            ApiRequestType.DISCONNECT: self.api_disconnect_request,
+            ApiRequestType.CONNECT: self.api_connect_request,
+            ApiRequestType.UPDATE_SPEC: self.api_update_spec,
+            ApiRequestType.REVERSE_TRANSACTION: self.api_reverse_transaction,
+            ApiRequestType.UPDATE_CONFIG: self.api_update_config,
+        }
+
+        if not (signal := request_signal_map.get(request.request_type, False)):
+            raise TerminalApiError(
+                http_status=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail=f"Cannot process API call, unknown request type: {request.request_type}"
+            )
+
+        signal.emit(request)
 
     def delivery_api_response(self, response: ApiRequest):
-        if not self.api_server.api_started():
+        if not self.api.is_api_started():
             return
 
         with suppress(KeyError):
             self.api_tasks.pop(response.request_id)
 
-        self.api_server.process_signal_response(response)
-
-    def process_api_call(self, request: ApiRequest):
-        self.api_tasks[request.request_id] = request
-
-        match request.request_type:
-            case ApiRequestType.GET_CONNECTION:
-                request.connection = self.terminal.get_connection()
-                self.delivery_api_response(request)
-
-            case ApiRequestType.RECONNECT:
-                if self.terminal.connector.connection_in_progress():
-                    request.error = "connection is in progress"
-                    self.delivery_api_response(request)
-                    return
-
-                if not self.terminal.connector.is_connected():
-                    try:
-
-                        if error := self.terminal.connector.connect_sv(host=request.connection.host, port=request.connection.port):
-                            raise ConnectionError(error.name)
-
-                    except Exception as connection_error:
-                        request.error = connection_error
-                        self.delivery_api_response(request)
-                        return
-
-                    request.connection = self.terminal.get_connection()
-                    self.delivery_api_response(request)
-                    return
-
-                if self.terminal.connector.is_connected():
-                    try:
-                        self.terminal.connector.disconnect_sv()
-
-                    except Exception as disconnection_error:
-                        request.error = disconnection_error
-                        self.delivery_api_response(request)
-                        return
-
-                if not self.terminal.connector.is_connected():
-                    try:
-
-                        if error := self.terminal.connector.connect_sv(host=request.connection.host, port=request.connection.port):
-                            raise ConnectionError(error.name)
-
-                    except Exception as connection_error:
-                        request.error = connection_error
-                        self.delivery_api_response(request)
-                        return
-
-                request.connection = self.terminal.get_connection()
-                self.delivery_api_response(request)
-
-            case ApiRequestType.DISCONNECT:
-                if self.terminal.connector.connection_in_progress():
-                    request.error = "connection is in progress"
-                    self.delivery_api_response(request)
-                    return
-
-                if not self.terminal.connector.is_connected():
-                    request.connection = self.terminal.get_connection()
-                    request.error = "The host is already disconnected"
-                    self.delivery_api_response(request)
-                    return
-
-                try:
-                    self.terminal.connector.disconnect_sv()
-                    request.connection = self.terminal.get_connection()
-
-                except Exception as disconnection_error:
-                    request.error = disconnection_error
-
-                self.delivery_api_response(request)
-
-            case ApiRequestType.CONNECT:
-                if self.terminal.connector.connection_in_progress():
-                    request.error = "connection is in progress"
-                    self.delivery_api_response(request)
-                    return
-
-                if self.terminal.connector.is_connected():
-                    connection: Connection = self.terminal.get_connection()
-                    request.error = f"The host is connected already to {connection.host}:{connection.port}. Close connection first"
-                    self.delivery_api_response(request)
-
-                if not request.connection.host:
-                    request.connection.host = self.config.host.host
-
-                if not request.connection.port:
-                    request.connection.port = self.config.host.port
-
-                try:
-                    if error := self.terminal.connector.connect_sv(host=request.connection.host, port=request.connection.port):
-                        raise ConnectionError(error.name)
-
-                except Exception as connection_error:
-                    request.error = connection_error
-                    self.delivery_api_response(request)
-                    return
-
-                request.connection = self.terminal.get_connection()
-                self.delivery_api_response(request)
-
-            case ApiRequestType.UPDATE_SPEC:
-
-                try:
-                    SpecFilesRotator().backup_spec()
-                    self.terminal.spec.reload_spec(request.spec, commit=True)
-
-                except Exception as spec_update_error:
-                    request.error = spec_update_error
-
-                request.spec = self.terminal.spec.spec
-
-                self.delivery_api_response(request)
-
-            case ApiRequestType.GET_SPEC:
-                request.spec = self.terminal.spec.spec
-                self.delivery_api_response(request)
-
-            case ApiRequestType.GET_TRANSACTIONS:
-                for transaction in self.terminal.trans_queue.queue:
-                    request.transactions[transaction.trans_id] = transaction
-
-                self.delivery_api_response(request)
-
-            case ApiRequestType.OUTGOING_TRANSACTION:
-                self.terminal.send(request.transaction)
-
-            case ApiRequestType.REVERSE_TRANSACTION:
-                original_transaction: Transaction
-
-                if not (original_transaction := self.terminal.get_transaction(trans_id=request.original_trans_id)):
-                    request.error = "No original transaction found"
-                    self.delivery_api_response(request)
-                    return
-
-                request.transaction = self.terminal.build_reversal(original_transaction)
-
-                try:
-                    self.terminal.send(request.transaction)
-                except Exception as reversal_generate_error:
-                    request.error = str(reversal_generate_error)
-                    self.delivery_api_response(request)
-
-            case ApiRequestType.GET_TRANSACTION:
-                if not (transaction := self.terminal.trans_queue.get_transaction(request.trans_id)):
-                    request.error = "Transaction was not found"
-                    self.delivery_api_response(request)
-                    return
-
-                request.transaction = transaction
-                self.delivery_api_response(request)
-
-            case ApiRequestType.GET_CONFIG:
-                request.config = self.config
-                self.delivery_api_response(request)
-
-            case ApiRequestType.UPDATE_CONFIG:
-                try:
-                    old_config = self.config.model_copy(deep=True)
-
-                    with open(TermFilesPath.CONFIG, "w") as file:
-                        file.write(request.config.model_dump_json(indent=4))
-
-                    self.terminal.read_config()
-
-                    self.terminal.process_config_change(old_config)
-
-                    request.config = self.config
-
-                except Exception as config_update_error:
-                    request.error = str(config_update_error)
-
-                self.delivery_api_response(request)
+        self.api.process_backend_response(response)

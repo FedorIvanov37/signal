@@ -1,4 +1,6 @@
 from uuid import uuid4
+from http import HTTPStatus
+from typing import Any
 from pydantic import BaseModel
 from common.lib.data_models.Transaction import Transaction
 from common.api.enums.ApiRequestType import ApiRequestType
@@ -9,12 +11,14 @@ from common.api.data_models.Connection import Connection
 
 class ApiRequest(BaseModel):
     request_id: uuid4 = uuid4()
+    http_status: HTTPStatus = HTTPStatus.INTERNAL_SERVER_ERROR
     error: str | None = None
+    response_data: Any | None = None
 
 
 class ApiTransactionRequest(ApiRequest):
     request_type: ApiRequestType = ApiRequestType.OUTGOING_TRANSACTION
-    transaction: Transaction
+    transaction: Transaction | None = None
 
 
 class GetTransactionRequest(ApiRequest):

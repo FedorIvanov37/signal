@@ -21,6 +21,8 @@ from common.lib.data_models.Countries import Countries
 from common.lib.enums.DataFormats import DataFormats
 from common.lib.enums import KeepAlive
 from common.lib.enums.TermFilesPath import TermFilesPath
+from common.lib.data_models.License import LicenseInfo
+from common.lib.enums.ConnectionStatus import ConnectionStatus
 
 
 class Terminal(QObject):
@@ -73,6 +75,9 @@ class Terminal(QObject):
         transaction.data_fields = {field: transaction.data_fields.get(field) for field in transaction.data_fields}
         return transaction
 
+    def get_connection_status(self) -> ConnectionStatus:
+        return ConnectionStatus[self.connector.state().name]
+
     def get_transaction(self, trans_id: str) -> Transaction:
         return self.trans_queue.get_transaction(trans_id)
 
@@ -115,6 +120,52 @@ class Terminal(QObject):
 
     def send(self, transaction: Transaction) -> None:
         self.trans_queue.put_transaction(transaction)
+
+    def process_config_change(self, old_config: Config) -> None:
+        self.read_config()
+
+        if "" in (self.config.host.host, self.config.host.port):
+            logger.warning("Lost SV address or SV port! Check the parameters")
+
+        try:
+            if not self.config.host.port:
+                raise ValueError
+
+            if int(self.config.host.port) > 65535:
+                raise ValueError
+
+        except ValueError:
+            logger.warning(f"Incorrect SV port value: {self.config.host.port}. Must be a number in the range of 0 to 65535")
+
+        try:
+            with open(TermFilesPath.LICENSE_INFO, "r") as license_json:
+                license_info = LicenseInfo.model_validate_json(license_json.read())
+                license_info.show_agreement = self.config.terminal.show_license_dialog
+
+            if not license_info.accepted:
+                raise ValueError("License is not accepted")
+
+            with open(TermFilesPath.LICENSE_INFO, "w") as license_json:
+                license_json.write(license_info.model_dump_json(indent=4))
+
+        except ValueError as not_accepted:
+            logger.error(not_accepted)
+            exit(100)
+
+        except Exception as license_error:
+            logger.error(f"Cannot save license params: {license_error}")
+
+    def read_config(self, config_file: str | None = None) -> None:
+
+        if config_file is None:
+            config_file = TermFilesPath.CONFIG
+
+        try:
+            with open(config_file) as json_file:
+                self.config: Config = Config.model_validate_json(json_file.read())
+                
+        except Exception as parsing_error:
+            logger.error(f"Cannot parse configuration file: {parsing_error}")
 
     def transaction_sent(self, request: Transaction) -> None:
         try:

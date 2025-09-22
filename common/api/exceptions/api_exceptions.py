@@ -1,3 +1,6 @@
+from http import HTTPStatus
+
+
 class TransactionTimeout(Exception):
     pass
 
@@ -24,3 +27,9 @@ class HostConnectionError(Exception):
 
 class HostConnectionTimeout(Exception):
     pass
+
+
+class TerminalApiError(Exception):
+    def __init__(self, detail: str, http_status: HTTPStatus):
+        self.detail = detail
+        self.http_status = http_status

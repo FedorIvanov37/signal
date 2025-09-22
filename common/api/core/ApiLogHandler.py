@@ -9,6 +9,7 @@ class ApiLogHandler(Handler):
             level = logger.level(record.levelname).name
 
         except Exception as err:
+
             level = record.levelno
 
         message = record.getMessage()

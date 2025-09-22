@@ -318,18 +318,23 @@ To fix
 • API
         + Catch API logs
         + API basics
+        + Server and Interface cross dependency
+        + API interface functions
+        + Don't clear log when process API call
+        + Remove GUI dependency
+        + Reverse transaction
+        + Config do not wait for resp
+        + Exception handling
+        + update config
+
+        • Config split remote complex fieds
         • Transactions ID - store or generate
         • Logs of every call
-        • Don't clear log when process API call
         • Manual mode in config brakes the Signal
         • API config window
         • API from CLI
-        • Remove GUI dependency
-        • Server and Interface cross dependency\
-        • Reverse transaction
         • Docs
         • Tools
-
 
 • To do
     • Generate doc.html in TeamCity
