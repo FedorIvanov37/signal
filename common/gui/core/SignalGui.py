@@ -32,7 +32,7 @@ from common.lib.core.Terminal import Terminal
 from common.lib.data_models.Config import Config
 from common.lib.data_models.Transaction import Transaction, TypeFields
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
-from common.api.core.ApiTerminal import ApiTerminal
+from common.api.core.SignalApi import SignalApi
 from common.api.enums.ApiModes import ApiModes
 from common.lib.exceptions.exceptions import (
     LicenceAlreadyAccepted,
@@ -61,7 +61,7 @@ Starts MainWindow when starting its work, being a kind of low-level adapter betw
 """
 
 
-class SignalGui(ApiTerminal):
+class SignalGui(SignalApi):
     connector: ConnectionThread
     trans_timer: TransactionTimer = TransactionTimer(KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION)
     set_remote_spec: pyqtSignal = pyqtSignal()

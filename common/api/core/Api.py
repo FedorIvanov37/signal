@@ -1,13 +1,12 @@
 import uvicorn
 from typing import Union
-from threading import Thread
-from loguru import logger
 from http import HTTPStatus
+from loguru import logger
+from threading import Thread
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from common.api.data_models.ExceptionContent import ExceptionContent
-from fastapi.exceptions import HTTPException
 from PyQt6.QtCore import QObject, pyqtSignal
+from common.api.data_models.ExceptionContent import ExceptionContent
 from common.lib.data_models.Config import Config
 from common.gui.enums.ApiMode import ApiModes
 from common.lib.data_models.Transaction import Transaction
@@ -15,7 +14,7 @@ from common.api.data_models.Connection import Connection
 from common.api.data_models.TransactionResp import TransactionResp
 from common.api.enums.ApiRequestType import ApiRequestType
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
-from common.api.exceptions.api_exceptions import TerminalApiError
+from common.api.exceptions.TerminalApiError import TerminalApiError
 
 from common.api.data_models.ApiRequests import (
     ApiRequest,
@@ -23,7 +22,7 @@ from common.api.data_models.ApiRequests import (
     ConfigAction,
     ReversalRequest,
     SpecAction,
-    ConnectionAction
+    ConnectionAction,
 )
 
 from asyncio import (
@@ -33,11 +32,19 @@ from asyncio import (
     get_running_loop,
     Queue,
     Future,
-    wait_for
+    wait_for,
 )
 
 
+"""
+
+Signal Application Program Interface (API) 
+
+"""
+
+
 class Api(QObject):
+
     api_started: pyqtSignal = pyqtSignal(ApiModes)
     api_stopped: pyqtSignal = pyqtSignal(ApiModes)
     api_request: pyqtSignal = pyqtSignal(ApiRequest)
@@ -167,35 +174,22 @@ class Api(QObject):
 
         @api.get("/api/specification", response_model=EpaySpecModel)
         def get_specification():
-            try:
-                return self.backend.get_spec()
-            except Exception as spec_getting_error:
-                raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(spec_getting_error))
+            return self.backend.get_spec()
 
         @api.get("/api/transactions", response_model=dict[str, Transaction])
         def get_transactions():
-            try:
-                return self.backend.get_transactions()
-            except Exception as transactions_getting_error:
-                raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(transactions_getting_error))
+            return self.backend.get_transactions()
 
         @api.get("/api/transactions/{trans_id}", response_model=Transaction)
         def get_transaction(trans_id: str):
             try:
                 return self.backend.get_transaction(trans_id)
-
-            except LookupError as not_found:
-                raise HTTPException(HTTPStatus.NOT_FOUND, detail=str(not_found))
-
-            except Exception as transaction_getting_error:
-                raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(transaction_getting_error))
+            except LookupError as transaction_lookup_error:
+                raise TerminalApiError(http_status=HTTPStatus.NOT_FOUND, detail=transaction_lookup_error)
 
         @api.get("/api/config", response_model=Config)
         def get_config():
-            try:
-                return self.backend.get_config()
-            except Exception as config_getting_error:
-                raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(config_getting_error))
+            return self.backend.get_config()
 
         """
         Read-write API endpoints. Modify the PyQt application thread members
@@ -225,7 +219,9 @@ class Api(QObject):
             if connection is None:
                 connection = Connection()
 
-            return await self.backend_request(ConnectionAction(request_type=ApiRequestType.RECONNECT, connection=connection))
+            return await self.backend_request(
+                ConnectionAction(request_type=ApiRequestType.RECONNECT, connection=connection)
+            )
 
         @api.put("/api/connection/close", response_model=Connection)
         async def disconnect():
@@ -236,7 +232,9 @@ class Api(QObject):
             if connection is None:
                 connection = Connection()
 
-            return await self.backend_request(ConnectionAction(request_type=ApiRequestType.CONNECT, connection=connection))
+            return await self.backend_request(
+                ConnectionAction(request_type=ApiRequestType.CONNECT, connection=connection)
+            )
 
         @api.put("/api/config", response_model=Config)
         async def update_config(config: Config):

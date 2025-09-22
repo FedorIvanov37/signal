@@ -7,7 +7,7 @@ from common.gui.enums.ApiMode import ApiModes
 from common.api.core.Api import Api
 from common.api.data_models.ApiRequests import ApiRequest
 from common.lib.data_models.Transaction import Transaction
-from common.api.exceptions.api_exceptions import TerminalApiError
+from common.api.exceptions.TerminalApiError import TerminalApiError
 
 
 """
@@ -98,8 +98,6 @@ class ApiInterface(QObject):
             self.delivery_api_response(request)
 
             return
-
-
 
     def process_api_call(self, request: ApiRequest):
         self.api_tasks[request.request_id] = request

@@ -14,7 +14,7 @@ from common.lib.enums.TermFilesPath import TermFilesPath
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
 
 
-class ApiTerminal(Terminal):
+class SignalApi(Terminal):
     start_api: pyqtSignal = pyqtSignal()
     stop_api: pyqtSignal = pyqtSignal()
     terminal_response: pyqtSignal = pyqtSignal(ApiRequest)
@@ -180,8 +180,6 @@ class ApiTerminal(Terminal):
         self.connector.disconnect_sv()
 
         self.sent_response(request, HTTPStatus.OK, message=self.get_connection())
-
-
 
     def process_change_api_mode(self, state: ApiModes) -> None:
         signals_map = {

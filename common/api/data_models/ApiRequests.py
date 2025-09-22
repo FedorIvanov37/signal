@@ -21,17 +21,6 @@ class ApiTransactionRequest(ApiRequest):
     transaction: Transaction | None = None
 
 
-class GetTransactionRequest(ApiRequest):
-    request_type: ApiRequestType = ApiRequestType.GET_TRANSACTION
-    transaction: Transaction | None = None
-    trans_id: str
-
-
-class GetTransactionsRequest(ApiRequest):
-    request_type: ApiRequestType = ApiRequestType.GET_TRANSACTIONS
-    transactions: dict[str, Transaction] = {}
-
-
 class ReversalRequest(ApiRequest):
     request_type: ApiRequestType = ApiRequestType.REVERSE_TRANSACTION
     transaction: Transaction | None = None
@@ -39,15 +28,15 @@ class ReversalRequest(ApiRequest):
 
 
 class ConfigAction(ApiRequest):
-    request_type: ApiRequestType = ApiRequestType.GET_CONFIG
+    request_type: ApiRequestType
     config: Config | None = None
 
 
 class SpecAction(ApiRequest):
-    request_type: ApiRequestType = ApiRequestType.GET_SPEC
+    request_type: ApiRequestType
     spec: EpaySpecModel | None = None
 
 
 class ConnectionAction(ApiRequest):
-    request_type: ApiRequestType | None = ApiRequestType.GET_CONNECTION
+    request_type: ApiRequestType
     connection: Connection | None = None
