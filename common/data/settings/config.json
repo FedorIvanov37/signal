@@ -48,7 +48,7 @@
         "port": 7778,
         "wait_remote_host_response": true,
         "waiting_timeout_seconds": 10,
-        "hide_secrets": false,
-        "parse_subfields": false
+        "hide_secrets": true,
+        "parse_subfields": true
     }
 }

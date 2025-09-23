@@ -1,7 +1,6 @@
 from common.gui.forms.settings_window import Ui_SettingsWindow
 from logging import getLogger, getLevelName
 from loguru import logger
-from socket import gethostname, gethostbyname
 from PyQt6.QtCore import QRegularExpression, pyqtSignal
 from common.lib.constants import LogDefinition
 from common.lib.data_models.Config import Config
@@ -25,8 +24,7 @@ from PyQt6.QtGui import (
 
 
 class SettingsWindow(Ui_SettingsWindow, QDialog):
-    _open_user_guide: pyqtSignal = pyqtSignal()
-    _open_api_url: pyqtSignal = pyqtSignal(str)
+    open_user_guide: pyqtSignal = pyqtSignal()
     _config: Config = None
     config_file_dropped: pyqtSignal = pyqtSignal(str)
     audio_output = QAudioOutput()
@@ -40,14 +38,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
     @config.setter
     def config(self, config: Config):
         self._config = config
-
-    @property
-    def open_api_url(self):
-        return self._open_api_url
-
-    @property
-    def open_user_guide(self):
-        return self._open_user_guide
 
     def __init__(self, config: Config, about: bool = False):
         super().__init__()
@@ -69,6 +59,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.MaxAmount.setValidator(QIntValidator(1, 2_100_000_000, self.MaxAmount))
         self.DebugLevel.addItems(LogDefinition.LOG_LEVEL)
         self.ParseSubfields.setHidden(True)  # TODO
+        self.UserGuideLink.setText('<a href=\"url.com\">User Reference Guide</a>')
 
         for button_box in self.GeneralButtonBox, self.FieldsButtonBox, self.ApiButtonBox, self.SpecificationButtonBox:
             button_box.accepted.connect(self.ok)
@@ -84,8 +75,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.ValidationEnabled.stateChanged.connect(self.process_validation_change)
         self.ManualInputMode.stateChanged.connect(lambda: self.ValidationEnabled.setChecked(not self.ManualInputMode.isChecked()))
         self.ApiInfoLabel.linkActivated.connect(lambda: self.open_user_guide.emit())
-        self.ApiAddress.linkActivated.connect(lambda: self.open_api_url.emit(self.get_api_url()))
-        self.ApiPort.textChanged.connect(self.set_api_url)
         self.MusicOnOfButton.clicked.connect(self.switch_music)
         self.ContactLabel.linkActivated.connect(self.open_url)
         self.process_validation_change()
@@ -93,6 +82,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.set_data_about()
         self.MainTabs.setCurrentIndex(self.MainTabs.count() - 1 if about else int())
         self.ValidationEnabled.setChecked(not self.ManualInputMode.isChecked())
+        self.UserGuideLink.linkActivated.connect(self.open_user_guide)
 
     def process_config(self, config: Config) -> None:
         checkboxes_state_map = {
@@ -130,6 +120,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
             self.StorageDepth: config.specification.backup_storage_depth,
             self.LogStorageDepth: config.debug.backup_storage_depth,
             self.ApiPort: self.config.api.port,
+            self.ApiTimeout: self.config.api.waiting_timeout_seconds,
         }
 
         for checkbox, state in checkboxes_state_map.items():
@@ -146,7 +137,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.RemoteSpecUrl.setText(config.specification.remote_spec_url)
         self.RemoteSpecUrl.setCursorPosition(int())
         self.ValidationReaction.setCurrentIndex(self.ValidationReaction.findText(config.validation.validation_mode))
-        self.set_api_url()
+        # self.set_api_url()
 
         if not config.fields.max_amount_limited:
             return
@@ -203,14 +194,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
             logger.info(f"Config file parsed: {config_file}")
 
         event.acceptProposedAction()
-
-    def set_api_url(self):
-        api_url = self.get_api_url()
-        api_url_link = f'<html><head/><body><p><a href="www.a.com"><span style=" text-decoration: underline; color:#0000ff;">{api_url}</span></a></p></body></html>'
-        self.ApiAddress.setText(api_url_link)
-
-    def get_api_url(self):
-        return f"http://{gethostbyname(gethostname())}:{self.ApiPort.value()}/api"
 
     def process_default_button(self, button):
         for button_box in self.GeneralButtonBox, self.FieldsButtonBox, self.ApiButtonBox, self.SpecificationButtonBox:
@@ -312,6 +295,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         config.api.port = self.ApiPort.value()
         config.api.wait_remote_host_response = self.WaitForRemoteHost.isChecked()
         config.api.hide_secrets = self.HideSecretsApi.isChecked()
+        config.api.waiting_timeout_seconds = self.ApiTimeout.value()
         config.terminal.run_api = self.ApiRun.isChecked()
         config.api.parse_subfields = self.ParseComplexFields.isChecked()
 

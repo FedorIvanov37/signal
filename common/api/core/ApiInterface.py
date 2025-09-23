@@ -8,6 +8,7 @@ from common.api.core.Api import Api
 from common.api.data_models.ApiRequests import ApiRequest
 from common.lib.data_models.Transaction import Transaction
 from common.api.exceptions.TerminalApiError import TerminalApiError
+from common.api.data_models.TransactionResp import TransactionResp
 
 
 """
@@ -49,6 +50,14 @@ class ApiInterface(QObject):
     @property
     def get_config(self):
         return self.terminal.get_config
+
+    @property
+    def convert_to(self):
+        return self.terminal.convert_to
+
+    @property
+    def clean_transaction(self):
+        return self.terminal.clean_transaction
 
     api_tasks = {}
     api_started: pyqtSignal = pyqtSignal(ApiModes)
@@ -92,6 +101,8 @@ class ApiInterface(QObject):
             if not any(conditions):
                 continue
 
+            transaction: Transaction = self.terminal.clean_transaction(transaction)
+
             request.response_data = transaction
             request.http_status = HTTPStatus.OK
 
@@ -119,6 +130,14 @@ class ApiInterface(QObject):
             )
 
         signal.emit(request)
+
+        if request.request_type not in (ApiRequestType.OUTGOING_TRANSACTION, ApiRequestType.REVERSE_TRANSACTION):
+            return
+
+        if not self.terminal.config.api.wait_remote_host_response:
+            request.http_status = HTTPStatus.OK
+            request.response_data = TransactionResp()
+            self.delivery_api_response(request)
 
     def delivery_api_response(self, response: ApiRequest):
         if not self.api.is_api_started():

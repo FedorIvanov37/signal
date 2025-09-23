@@ -326,15 +326,22 @@ To fix
         + Config do not wait for resp
         + Exception handling
         + update config
+        + API router
+        + Clear resp
+        + Wait for host
+        + API do not clear screen
+        + Hide secret answer
+        + Config split remote complex fields
+        + API from CLI
+        + API config window
+        + Tools
+        + Logs of every call
 
-        • Config split remote complex fieds
         • Transactions ID - store or generate
-        • Logs of every call
         • Manual mode in config brakes the Signal
-        • API config window
-        • API from CLI
         • Docs
-        • Tools
+        • Postman collection
+
 
 • To do
     • Generate doc.html in TeamCity

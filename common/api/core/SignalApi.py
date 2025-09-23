@@ -1,5 +1,6 @@
 from loguru import logger
 from typing import Any
+from fastapi import HTTPException
 from http import HTTPStatus
 from PyQt6.QtCore import pyqtSignal
 from common.lib.core.Terminal import Terminal
@@ -12,6 +13,8 @@ from common.lib.core.SpecFilesRotator import SpecFilesRotator
 from common.lib.data_models.Transaction import Transaction
 from common.lib.enums.TermFilesPath import TermFilesPath
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
+from common.api.enums.DataCoversionFormats import DataConversionFormats
+from common.lib.core.FieldsGenerator import FieldsGenerator
 
 
 class SignalApi(Terminal):
@@ -72,6 +75,23 @@ class SignalApi(Terminal):
     def get_config(self) -> Config:
         return self.config
 
+    def convert_to(self, transaction: Transaction, to_format: DataConversionFormats):
+        transaction: Transaction = FieldsGenerator().set_generated_fields(transaction)
+
+        match to_format:
+
+            case DataConversionFormats.DUMP:
+                return self.parser.create_sv_dump(transaction)
+
+            case DataConversionFormats.INI:
+                return self.parser.transaction_to_ini_string(transaction)
+
+            case DataConversionFormats.JSON:
+                return self.clean_transaction(transaction)
+
+            case _:
+                raise HTTPException(HTTPStatus.UNPROCESSABLE_ENTITY, detail=f"Unknown data format {to_format}")
+
     def process_api_update_config(self, request: ApiRequest):
         try:
             old_config = self.config.model_copy(deep=True)
@@ -93,7 +113,9 @@ class SignalApi(Terminal):
     def process_api_reverse_transaction(self, request: ApiRequest):
         original_transaction: Transaction
 
-        if not (original_transaction := self.get_transaction(trans_id=request.original_trans_id)):
+        try:
+            original_transaction = self.get_transaction(trans_id=request.original_trans_id)
+        except LookupError:
             self.sent_response(request, HTTPStatus.NOT_FOUND, error="No original transaction found")
             return
 
@@ -192,3 +214,24 @@ class SignalApi(Terminal):
             return
 
         signal.emit()
+
+    def clean_transaction(self, transaction: Transaction) -> Transaction:
+        transaction = self.parser.parse_complex_fields(transaction, split=self.config.api.parse_subfields)
+
+        if self.config.api.hide_secrets:
+            transaction = self.parser.hide_secret_fields(transaction)
+
+        del (
+            transaction.json_fields,
+            transaction.matched,
+            transaction.success,
+            transaction.error,
+            transaction.sending_time,
+            transaction.is_request,
+            transaction.is_reversal,
+            transaction.is_keep_alive,
+            transaction.generate_fields,
+            transaction.max_amount,
+        )
+
+        return transaction
