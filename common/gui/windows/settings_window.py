@@ -1,4 +1,5 @@
 from common.gui.forms.settings_window import Ui_SettingsWindow
+from common.lib.enums.TextConstants import TextConstants
 from logging import getLogger, getLevelName
 from loguru import logger
 from PyQt6.QtCore import QRegularExpression, pyqtSignal
@@ -24,7 +25,7 @@ from PyQt6.QtGui import (
 
 
 class SettingsWindow(Ui_SettingsWindow, QDialog):
-    open_user_guide: pyqtSignal = pyqtSignal()
+    open_user_guide: pyqtSignal = pyqtSignal(str)
     _config: Config = None
     config_file_dropped: pyqtSignal = pyqtSignal(str)
     audio_output = QAudioOutput()
@@ -59,7 +60,8 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.MaxAmount.setValidator(QIntValidator(1, 2_100_000_000, self.MaxAmount))
         self.DebugLevel.addItems(LogDefinition.LOG_LEVEL)
         self.ParseSubfields.setHidden(True)  # TODO
-        self.UserGuideLink.setText('<a href=\"url.com\">User Reference Guide</a>')
+        self.UserGuideLink.setText(TextConstants.USER_REFERENCE_GUIDE)
+        self.ApiInfoLabel.setText(TextConstants.API_EXPLANATION)
 
         for button_box in self.GeneralButtonBox, self.FieldsButtonBox, self.ApiButtonBox, self.SpecificationButtonBox:
             button_box.accepted.connect(self.ok)
@@ -74,7 +76,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.LoadSpec.stateChanged.connect(lambda: self.LoadSpec2.setChecked(self.LoadSpec.isChecked()))
         self.ValidationEnabled.stateChanged.connect(self.process_validation_change)
         self.ManualInputMode.stateChanged.connect(lambda: self.ValidationEnabled.setChecked(not self.ManualInputMode.isChecked()))
-        self.ApiInfoLabel.linkActivated.connect(lambda: self.open_user_guide.emit())
+        self.ApiInfoLabel.linkActivated.connect(self.open_user_guide)
         self.MusicOnOfButton.clicked.connect(self.switch_music)
         self.ContactLabel.linkActivated.connect(self.open_url)
         self.process_validation_change()
@@ -83,6 +85,9 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.MainTabs.setCurrentIndex(self.MainTabs.count() - 1 if about else int())
         self.ValidationEnabled.setChecked(not self.ManualInputMode.isChecked())
         self.UserGuideLink.linkActivated.connect(self.open_user_guide)
+
+        self.ManualInputMode.setChecked(False)
+        self.ManualInputMode.hide()
 
     def process_config(self, config: Config) -> None:
         checkboxes_state_map = {
@@ -302,8 +307,14 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         if not config.fields.max_amount_limited:
             config.fields.max_amount = 9_999_999_999
 
-        with open(TermFilesPath.CONFIG, "w") as file:
-            file.write(self.config.model_dump_json(indent=4))
+        try:
+            with open(TermFilesPath.CONFIG, "w") as file:
+                file.write(self.config.model_dump_json(indent=4))
+
+        except Exception as config_write_error:
+            logger.error(f"Cannon update config: {config_write_error}")
+            self.cancel()
+            return
 
         self.accept()
 
@@ -312,7 +323,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.reject()
 
     @staticmethod
-    def open_url(link) -> None:
+    def open_url(link, ) -> None:
         link = QUrl(link)
         QDesktopServices.openUrl(link)
 

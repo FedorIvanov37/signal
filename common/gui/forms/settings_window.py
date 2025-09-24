@@ -511,7 +511,7 @@ class Ui_SettingsWindow(object):
         self.gridLayout_10.addWidget(self.MainTabs, 0, 0, 1, 1)
 
         self.retranslateUi(SettingsWindow)
-        self.MainTabs.setCurrentIndex(4)
+        self.MainTabs.setCurrentIndex(2)
         QtCore.QMetaObject.connectSlotsByName(SettingsWindow)
 
     def retranslateUi(self, SettingsWindow):
@@ -560,7 +560,7 @@ class Ui_SettingsWindow(object):
         self.MaxAmount.setItemText(4, _translate("SettingsWindow", "100000"))
         self.BuildFld90.setText(_translate("SettingsWindow", "Build field 90 in reversal"))
         self.MainTabs.setTabText(self.MainTabs.indexOf(self.Fields), _translate("SettingsWindow", "Fields"))
-        self.ApiInfoLabel.setText(_translate("SettingsWindow", "<html><head/><body><p>Signal provides HTTP API for external integration. It also has a built-in Postman collection, which covers basic needs</p><p>Refer to the <a href=\"www.link.com\"><span style=\" text-decoration: underline; color:#0000ff;\">user reference guide</span></a> for details</p></body></html>"))
+        self.ApiInfoLabel.setText(_translate("SettingsWindow", "<html><head/><body><p>&gt;&gt;&gt;</p><p>&gt;&gt;&gt;</p><p>&gt;&gt;&gt;</p></body></html>"))
         self.ApiBox.setTitle(_translate("SettingsWindow", "API"))
         self.label_2.setText(_translate("SettingsWindow", "Local port"))
         self.label.setText(_translate("SettingsWindow", "API timeout"))

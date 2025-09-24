@@ -16,7 +16,7 @@ if __name__ != "__main__":  # Runs only by import command
     try:
         from sys import exit, argv
         from os import makedirs
-        from common.cli.SignalCli import SignalCli
+        from common.cli.core.SignalCli import SignalCli
         from common.cli.enums.CliDefinition import CliDefinition
         from common.lib.enums.TermFilesPath import TermFilesPath, TermDirs
         from common.lib.data_models.Config import Config

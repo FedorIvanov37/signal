@@ -20,6 +20,7 @@ from common.lib.core.FieldsGenerator import FieldsGenerator
 class SignalApi(Terminal):
     start_api: pyqtSignal = pyqtSignal()
     stop_api: pyqtSignal = pyqtSignal()
+    finish_api: pyqtSignal = pyqtSignal()
     terminal_response: pyqtSignal = pyqtSignal(ApiRequest)
     error_type = str | None | Exception
 
@@ -81,7 +82,7 @@ class SignalApi(Terminal):
         match to_format:
 
             case DataConversionFormats.DUMP:
-                return self.parser.create_sv_dump(transaction)
+                return self.parser.create_dump(transaction)
 
             case DataConversionFormats.INI:
                 return self.parser.transaction_to_ini_string(transaction)

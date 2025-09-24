@@ -35,7 +35,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="MainTabs">
      <property name="currentIndex">
-      <number>4</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="General">
       <attribute name="title">
@@ -638,7 +638,7 @@
        <item row="3" column="0">
         <widget class="QLabel" name="ApiInfoLabel">
          <property name="text">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Signal provides HTTP API for external integration. It also has a built-in Postman collection, which covers basic needs&lt;/p&gt;&lt;p&gt;Refer to the &lt;a href=&quot;www.link.com&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;user reference guide&lt;/span&gt;&lt;/a&gt; for details&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/p&gt;&lt;p&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/p&gt;&lt;p&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="wordWrap">
           <bool>true</bool>

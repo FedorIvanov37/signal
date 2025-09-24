@@ -113,7 +113,7 @@ class Api(QObject):
         self._loop = loop
         self._queue = Queue()
 
-        config = UvicornConfig(self.app, host="127.0.0.1", port=self.config.api.port, log_config=None, access_log=True)
+        config = UvicornConfig(self.app, host="0.0.0.0", port=self.config.api.port, log_config=None, access_log=True)
 
         self._server: UvicornServer = UvicornServer(config)
 
@@ -211,7 +211,7 @@ class Api(QObject):
 
         @api.get(ApiUrl.SIGNAL, response_class=PlainTextResponse)
         def get_logo():
-            return TextConstants.HELLO_MESSAGE
+            return PlainTextResponse(TextConstants.HELLO_MESSAGE)
 
         """
         Read-write API endpoints. Modify the PyQt application thread members

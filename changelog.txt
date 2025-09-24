@@ -336,11 +336,13 @@ To fix
         + API config window
         + Tools
         + Logs of every call
+        + Manual mode in config brakes the Signal
+        + Music error
 
         • Transactions ID - store or generate
-        • Manual mode in config brakes the Signal
         • Docs
         • Postman collection
+        • CLI finish mark
 
 
 • To do
