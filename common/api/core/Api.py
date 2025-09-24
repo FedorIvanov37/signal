@@ -167,8 +167,6 @@ class Api(QObject):
 
         app = FastAPI(docs_url=None, redoc_url=None)
 
-        app.mount("/docs", StaticFiles(directory="common/doc", html=True), name="docs")
-
         @app.exception_handler(TerminalApiError)
         def terminal_api_errors_handler(request, exception: TerminalApiError):
             return JSONResponse(ExceptionContent(detail=exception.detail).dict(), exception.http_status)
@@ -182,7 +180,7 @@ class Api(QObject):
         approach. Use for data-read functions only. In case of data modification, signals/slots required
         """
 
-        @app.get("/docs", include_in_schema=False)
+        @api.get(ApiUrl.DOCUMENT, include_in_schema=False)
         def docs():
             return FileResponse("common/doc/signal_user_reference_guide.html", media_type="text/html")
 

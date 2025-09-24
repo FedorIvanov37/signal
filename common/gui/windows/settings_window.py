@@ -1,8 +1,9 @@
+from loguru import logger
+from logging import getLogger, getLevelName
+from PyQt6.QtCore import QRegularExpression, pyqtSignal
 from common.gui.forms.settings_window import Ui_SettingsWindow
 from common.lib.enums.TextConstants import TextConstants
-from logging import getLogger, getLevelName
-from loguru import logger
-from PyQt6.QtCore import QRegularExpression, pyqtSignal
+from common.gui.enums.KeySequences import KeySequences
 from common.lib.constants import LogDefinition
 from common.lib.data_models.Config import Config
 from common.lib.enums.TermFilesPath import TermFilesPath
@@ -13,6 +14,8 @@ from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtWidgets import QDialog, QDialogButtonBox
 from PyQt6.QtGui import (
+    QKeySequence,
+    QShortcut,
     QRegularExpressionValidator,
     QIntValidator,
     QPixmap,
@@ -88,6 +91,14 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
 
         self.ManualInputMode.setChecked(False)
         self.ManualInputMode.hide()
+
+        QShortcut(QKeySequence(KeySequences.CTRL_PAGE_DOWN), self).activated.connect(
+            lambda: self.MainTabs.setCurrentIndex(self.MainTabs.currentIndex() + 1)
+        )
+        
+        QShortcut(QKeySequence(KeySequences.CTRL_PAGE_UP), self).activated.connect(
+            lambda: self.MainTabs.setCurrentIndex(self.MainTabs.currentIndex() - 1)
+        )
 
     def process_config(self, config: Config) -> None:
         checkboxes_state_map = {
