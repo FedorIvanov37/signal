@@ -63,6 +63,10 @@ class ApiInterface(QObject):
     def get_signal_info(self):
         return self.terminal.get_signal_info
 
+    @property
+    def validate_transaction(self):
+        return self.terminal.validate_transaction
+
     api_tasks = {}
     api_started: pyqtSignal = pyqtSignal(ApiModes)
     api_stopped: pyqtSignal = pyqtSignal(ApiModes)
@@ -82,6 +86,7 @@ class ApiInterface(QObject):
         self.api = Api(self, self.config)
         self.terminal.start_api.connect(self.start_api)
         self.terminal.stop_api.connect(self.stop_api)
+        self.terminal.restart_api.connect(self.restart_api)
         self.terminal.trans_queue.incoming_transaction.connect(self.prepare_api_transaction_resp)
         self.terminal.trans_queue.socket_error.connect(self.prepare_api_transaction_resp)
         self.terminal.terminal_response.connect(self.api.process_backend_response)
@@ -94,6 +99,9 @@ class ApiInterface(QObject):
 
     def stop_api(self):
         self.api.stop()
+
+    def restart_api(self):
+        self.api.restart()
 
     def prepare_api_transaction_resp(self, transaction: Transaction):
         for request_id, request in self.api_tasks.items():

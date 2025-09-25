@@ -4,6 +4,7 @@ from loguru import logger
 from threading import Thread
 from fastapi import FastAPI, APIRouter, Response
 from fastapi.staticfiles import StaticFiles
+from common.api.data_models.TransValidationErrors import TransValidationErrors
 from uvicorn import Config as UvicornConfig, Server as UvicornServer
 from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse, HTMLResponse
 from PyQt6.QtCore import QObject, pyqtSignal
@@ -22,7 +23,6 @@ from warnings import filterwarnings
 from common.gui.enums.GuiFilesPath import GuiFilesPath
 from os.path import normpath
 from os import getcwd
-
 
 from common.api.data_models.ApiRequests import (
     ApiRequest,
@@ -74,6 +74,8 @@ class Api(QObject):
         return self._thread and self._thread.is_alive()
 
     def restart(self):
+        logger.info("Restarting API")
+
         if not self.is_api_started():
             self.start()
             return
@@ -166,7 +168,7 @@ class Api(QObject):
 
         app = FastAPI(docs_url=None, redoc_url=None)
 
-        app.mount("/static", StaticFiles(directory="common/data/style"), name="static")
+        app.mount("/static", StaticFiles(directory="common/doc/static"), name="static")
 
         api = APIRouter(prefix=ApiUrl.API)
 
@@ -181,6 +183,10 @@ class Api(QObject):
         @app.get(ApiUrl.DOCUMENT, include_in_schema=False)
         def docs():
             return FileResponse("common/doc/signal_user_reference_guide.html", media_type="text/html")
+
+        @api.post(ApiUrl.VALIDATE_TRANSACTION, response_model=TransValidationErrors)
+        def validate_transaction(transaction: Transaction):
+            return self.backend.validate_transaction(transaction)
 
         """
         Read-only API endpoints. Read data from PYQt application

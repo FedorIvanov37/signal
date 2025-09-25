@@ -184,17 +184,19 @@ class SignalGui(SignalApi):
         if item is None and not (item := self.window.json_view.currentItem()):
             return
 
-        self.window.json_view.undo_stack.push(SetDisabledCommand(item, disable))
+        if item.is_disabled is not disable:
 
-        try:
-            item.set_disabled(disable)
+            self.window.json_view.undo_stack.push(SetDisabledCommand(item, disable))
 
-        except ValueError as err:
-            logger.warning(err)
-        else:
-            logger.debug(f"Field {item.get_field_path(string=True)} is {'disabled' if disable else 'enabled'}")
+            try:
+                item.set_disabled(disable)
 
-        self.set_bitmap()
+            except ValueError as err:
+                logger.warning(err)
+            else:
+                logger.debug(f"Field {item.get_field_path(string=True)} is {'disabled' if disable else 'enabled'}")
+
+            self.set_bitmap()
 
         self.window.json_view.setFocus()
 
@@ -380,22 +382,22 @@ class SignalGui(SignalApi):
 
         try:
             if not (transaction_source := transaction_source_map.get(command)):
-                raise LookupError
+                return
 
             if not (transaction_id := transaction_source()):
-                raise LookupError("lost transaction response or non-reversible transaction")
+                return
 
             if not (original_trans := self.trans_queue.get_transaction(transaction_id)):
-                raise LookupError
+                raise LookupError("lost transaction response or non-reversible transaction")
 
             if not self.spec.get_reversal_mti(original_trans.message_type):
-                raise LookupError
+                raise LookupError("lost transaction response or non-reversible transaction")
 
             if not (reversal := self.build_reversal(original_trans)):
-                raise LookupError
+                raise LookupError("lost transaction response or non-reversible transaction")
 
         except Exception as reversal_building_error:
-            logger.error(f"Reversal building error: {reversal_building_error}")
+            logger.warning(f"Reversal building error: {reversal_building_error}")
             return
 
         match command:
@@ -702,7 +704,7 @@ class SignalGui(SignalApi):
     def set_clipboard_text(data: str = str()) -> None:
         QApplication.clipboard().setText(data)
 
-    def show_reversal_window(self) -> str:
+    def show_reversal_window(self) -> str | None:
         reversible_transactions_list: list[Transaction] = self.trans_queue.get_reversible_transactions()
         reversible_transactions_list.sort(key=lambda transaction: transaction.trans_id, reverse=True)
 
@@ -710,9 +712,14 @@ class SignalGui(SignalApi):
         accepted: int = reversal_window.exec()
 
         if bool(accepted):
-            return reversal_window.reversal_id
+            try:
+                return reversal_window.reversal_id
 
-        raise LookupError
+            except AttributeError:
+                logger.error("Cannot create reversal. Wrong or empty transaction ID")
+                return ""
+
+        logger.warning("Reversal sending is cancelled")
 
     def copy_current_field(self):
         if not (field_data := self.window.tab_view.get_current_field_data()):

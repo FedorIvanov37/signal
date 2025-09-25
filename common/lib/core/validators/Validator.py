@@ -139,7 +139,7 @@ class Validator:
             length = len(field_value)
 
             if not field_value:  # Field should contain the data
-                errors.add(f"{path} - lost field value for field")
+                errors.add(f"Field {path} - lost field value for field")
 
             if not all(field.isdigit() for field in field_path):  # Field number should be digit
                 errors.add(f"Field numbers can be digits only. {path} is wrong value")

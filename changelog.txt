@@ -400,8 +400,23 @@ Release v0.19
     • Bugfix
 
 
-• Validate transaction
-• Fix the convertion
+
+
 • Egg
-• Buttons
-• Split API fields
+• Cursor color
+
+
+• default config
+• postman collection
+• Tests
+
++ document pictures
++ Put version
++ MW fields Validation warning color
++ Fix the convertion
++ Validate transaction
++ Reversal window order
++ Repeat marks
++ Buttons regroup
++ Split API fields
++ Clean transactions

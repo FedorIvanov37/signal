@@ -28,6 +28,7 @@ class ToolBarElements(StrEnum):
     API = "API"
     START = "Start"
     STOP = "Stop"
+    RESTART = "Restart"
     EXIT = "Exit"
     RECONNECT = "[Re]connect"
     ACTIONS = "Actions"

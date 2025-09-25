@@ -1,10 +1,13 @@
 from loguru import logger
 from typing import Any
 from fastapi import HTTPException
+from contextlib import suppress
 from http import HTTPStatus
 from PyQt6.QtCore import pyqtSignal
+from common.api.data_models.TransValidationErrors import TransValidationErrors
 from common.gui.enums.GuiFilesPath import GuiFiles
 from common.api.enums.ApiUrl import ApiUrl
+from common.lib.exceptions.exceptions import DataValidationError, DataValidationWarning
 from common.lib.enums.TextConstants import TextConstants, ReleaseDefinition
 from common.lib.core.Terminal import Terminal
 from common.lib.data_models.Config import Config
@@ -23,6 +26,7 @@ from common.lib.core.FieldsGenerator import FieldsGenerator
 class SignalApi(Terminal):
     start_api: pyqtSignal = pyqtSignal()
     stop_api: pyqtSignal = pyqtSignal()
+    restart_api: pyqtSignal = pyqtSignal()
     finish_api: pyqtSignal = pyqtSignal()
     terminal_response: pyqtSignal = pyqtSignal(ApiRequest)
     error_type = str | None | Exception
@@ -52,6 +56,14 @@ class SignalApi(Terminal):
         for signal, slot in connection_map.items():
             signal.connect(slot)
 
+    def validate_transaction(self, transaction: Transaction):
+        try:
+            self.trans_validator.validate_transaction(transaction)
+        except (DataValidationError, DataValidationWarning) as validation_error:
+            return TransValidationErrors(validation_errors=str(validation_error).split("\n"))
+
+        return TransValidationErrors()
+
     def get_connection(self) -> Connection:
         return Connection(
             status=self.get_connection_status(),
@@ -66,7 +78,7 @@ class SignalApi(Terminal):
         transactions: dict[str, Transaction] = dict()
 
         for transaction in self.trans_queue.queue:
-            transactions[transaction.trans_id] = transaction
+            transactions[transaction.trans_id] = self.clean_transaction(transaction)
 
         return transactions
 
@@ -74,7 +86,7 @@ class SignalApi(Terminal):
         if not (transaction := self.trans_queue.get_transaction(trans_id)):
             raise LookupError("Transaction was not found")
 
-        return transaction
+        return self.clean_transaction(transaction)
 
     def get_config(self) -> Config:
         return self.config
@@ -85,7 +97,7 @@ class SignalApi(Terminal):
         match to_format:
 
             case DataConversionFormats.DUMP:
-                return self.parser.create_dump(transaction)
+                return self.parser.create_sv_dump(transaction)
 
             case DataConversionFormats.INI:
                 return self.parser.transaction_to_ini_string(transaction)
@@ -210,7 +222,8 @@ class SignalApi(Terminal):
     def process_change_api_mode(self, state: ApiModes) -> None:
         signals_map = {
             ApiModes.START: self.start_api,
-            ApiModes.STOP: self.stop_api
+            ApiModes.STOP: self.stop_api,
+            ApiModes.RESTART: self.restart_api,
         }
 
         if not (signal := signals_map.get(state)):
@@ -219,7 +232,8 @@ class SignalApi(Terminal):
 
         signal.emit()
 
-    def get_signal_info(self):
+    @staticmethod
+    def get_signal_info():
         elements = (
             TextConstants.HELLO_MESSAGE,
             f"<a href=\"{ApiUrl.DOCUMENT}\">User Reference Guide</a>",
@@ -236,7 +250,8 @@ class SignalApi(Terminal):
                         <title>Signal {ReleaseDefinition.VERSION} | About </title>
                         <link rel="icon" type="image/png" href="/static/{GuiFiles.MAIN_LOGO}">
                       </head>
-                        <body style="font-size:20px; background-color: #012e4f; color: #ffffff; padding: 10px; border-radius: 6px;">
+                        <body style="font-size:20px; background-color: #012e4f; color: #ffffff; padding: 10px; 
+                        border-radius: 6px;">
                          <pre>
                            <code>{message}</code>
                          </pre>
@@ -245,10 +260,13 @@ class SignalApi(Terminal):
         return message
 
     def clean_transaction(self, transaction: Transaction) -> Transaction:
-        transaction = self.parser.parse_complex_fields(transaction, split=self.config.api.parse_subfields)
+        transaction: Transaction = transaction.model_copy(deep=True)
 
-        if self.config.api.hide_secrets:
-            transaction = self.parser.hide_secret_fields(transaction)
+        with suppress(Exception):
+            transaction = self.parser.hide_secret_fields(transaction) if self.config.api.hide_secrets else transaction
+
+        with suppress(Exception):
+            transaction = self.parser.parse_complex_fields(transaction, split=self.config.api.parse_subfields)
 
         del (
             transaction.json_fields,
