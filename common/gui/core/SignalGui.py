@@ -1,4 +1,5 @@
 from os.path import basename, normpath
+from sys import exit
 from os import getcwd, kill, getpid
 from typing import Callable
 from loguru import logger
@@ -184,19 +185,18 @@ class SignalGui(SignalApi):
         if item is None and not (item := self.window.json_view.currentItem()):
             return
 
-        if item.is_disabled is not disable:
+        self.window.json_view.undo_stack.push(SetDisabledCommand(item, disable))
 
-            self.window.json_view.undo_stack.push(SetDisabledCommand(item, disable))
+        try:
+            item.set_disabled(disable)
 
-            try:
-                item.set_disabled(disable)
+        except ValueError as err:
+            logger.warning(err)
 
-            except ValueError as err:
-                logger.warning(err)
-            else:
-                logger.debug(f"Field {item.get_field_path(string=True)} is {'disabled' if disable else 'enabled'}")
+        else:
+            logger.debug(f"Field {item.get_field_path(string=True)} is {'disabled' if disable else 'enabled'}")
 
-            self.set_bitmap()
+        self.set_bitmap()
 
         self.window.json_view.setFocus()
 
