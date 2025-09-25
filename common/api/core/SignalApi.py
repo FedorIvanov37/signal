@@ -227,16 +227,16 @@ class SignalApi(Terminal):
             f"Version {ReleaseDefinition.VERSION}",
             f"Released in {ReleaseDefinition.RELEASE}",
             f"Developed by {ReleaseDefinition.AUTHOR}",
-            f"Contact {ReleaseDefinition.EMAIL}"
+            f"Contact {ReleaseDefinition.CONTACT}"
         )
 
         message = "\n\n  ".join(elements)
 
         message = f"""<head>
-                        <title>Signal {ReleaseDefinition.VERSION}</title>
+                        <title>Signal {ReleaseDefinition.VERSION} | About </title>
                         <link rel="icon" type="image/png" href="/static/{GuiFiles.MAIN_LOGO}">
                       </head>
-                        <body style="background-color: #00006d; color: #ffffff; padding: 10px; border-radius: 6px;">
+                        <body style="font-size:20px; background-color: #012e4f; color: #ffffff; padding: 10px; border-radius: 6px;">
                          <pre>
                            <code>{message}</code>
                          </pre>
