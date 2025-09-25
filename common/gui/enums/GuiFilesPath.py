@@ -12,7 +12,7 @@ class GuiFiles(StrEnum):
     SIGNED_LOGO = "triforce_signed.png"
     MUSIC_ON = "music_on.png"
     MUSIC_OFF = "music_off.png"
-    VVVVVV = "VVVVVV.mp3"
+    VVVVVV = "VVVVVV.wav"
     GREEN_CIRCLE = "green_circle.ico"
     GREY_CIRCLE = "grey_circle.ico"
     RED_CIRCLE = "red_circle.ico"

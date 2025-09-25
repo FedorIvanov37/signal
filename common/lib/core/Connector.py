@@ -27,6 +27,12 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
     def connection_in_progress(self):
         return self.state() == self.SocketState.ConnectingState
 
+    def get_connected_host(self) -> str:
+        return self.peerAddress().toString()
+
+    def get_connected_port(self) -> int:
+        return self.peerPort()
+
     def send_transaction_data(self, trans_id: str, transaction_data: bytes):
         if not self.state() == self.SocketState.ConnectedState:
             logger.warning("Host disconnected. Trying to establish the connection")
@@ -83,10 +89,7 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
         if self.state() is self.SocketState.ConnectedState:
             return
 
-        if self.error() is not QTcpSocket.SocketError.SocketTimeoutError:
-            return
-
-        self.errorOccurred.emit(QTcpSocket.SocketError.SocketTimeoutError)
+        return self.error()
 
     def disconnect_sv(self):
         if not self.state() == QTcpSocket.SocketState.ConnectedState:

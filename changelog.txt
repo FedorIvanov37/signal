@@ -315,8 +315,34 @@ To fix
         + Add spec undo / redo
         + Add spec buttons undo / redo
 
-        • Manual mode in config brakes the Signal
+• API
+        + Catch API logs
+        + API basics
+        + Server and Interface cross dependency
+        + API interface functions
+        + Don't clear log when process API call
+        + Remove GUI dependency
+        + Reverse transaction
+        + Config do not wait for resp
+        + Exception handling
+        + update config
+        + API router
+        + Clear resp
+        + Wait for host
+        + API do not clear screen
+        + Hide secret answer
+        + Config split remote complex fields
+        + API from CLI
+        + API config window
+        + Tools
+        + Logs of every call
+        + Manual mode in config brakes the Signal
+        + Music error
+        + Postman collection
 
+        • Transactions ID - store or generate
+        • Docs
+        • CLI finish mark
 
 
 • To do
@@ -347,7 +373,7 @@ To fix
 
 
 • Bugs
-    • Error on console when run AboutWindow - Could not update timestamps for skipped samples
+    + Error on console when run AboutWindow - Could not update timestamps for skipped samples
     • Last tab bug - cannot process tab limits correctly
     • No data in socket if delete field in spec
     • Fields constructor cannot set field when if does not exist
@@ -364,10 +390,33 @@ To fix
 
 
 Release v0.19
-    • API mode experimental feature
+    • API mode + collection
     • Buttons optimization
     • Renovated Settings window
     • Buttons disable / enable
     • CLI mode marks
     • Drag n drop
     • Undo / redo
+    • Bugfix
+
+
+
+
+• Egg
+• Cursor color
+
+
+• default config
+• postman collection
+• Tests
+
++ document pictures
++ Put version
++ MW fields Validation warning color
++ Fix the convertion
++ Validate transaction
++ Reversal window order
++ Repeat marks
++ Buttons regroup
++ Split API fields
++ Clean transactions

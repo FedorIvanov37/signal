@@ -25,12 +25,12 @@ class ConnectionThread(ConnectionInterface, QObject, metaclass=QObjectAbcMeta):
     stop: bool = False
 
     @property
-    def peerAddress(self):
-        return self.connector.peerAddress
+    def get_connected_host(self):
+        return self.connector.get_connected_host
 
     @property
-    def peerPort(self):
-        return self.connector.peerPort
+    def get_connected_port(self):
+        return self.connector.get_connected_port
 
     @property
     def sending_error(self):

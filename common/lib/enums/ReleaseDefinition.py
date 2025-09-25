@@ -7,7 +7,7 @@ class ReleaseDefinition(StrEnum):
     VERSION = "v0.19"
     VERSION_NUMBER = "19"
     NAME = "signal"
-    RELEASE = "May 2025"
-    CONTACT = (f"<a href=\"mailto:{EMAIL}?subject=SIGNAL's user request&body=Dear Fedor,\n\n\n"
+    RELEASE = "Oct 2025"
+    CONTACT = (f"<a href=\"mailto:{EMAIL}?subject=Signal's user request&body=Dear Fedor,\n\n\n"
                f"> Put your request here < \n\n\n\n"
-               f"My SIGNAL version is {VERSION} | Released in {RELEASE}\">{EMAIL}</a>")
+               f"My Signal version is {VERSION} | Released in {RELEASE}\">{EMAIL}</a>")

@@ -2,7 +2,7 @@ from enum import StrEnum
 
 
 class Buttons(StrEnum):
-    FILE = 'File'
+    FILE = 'Open file'
     TOOLS = 'Tools'
     ACTIONS = 'Actions'
     HELP = 'Help'
@@ -10,7 +10,7 @@ class Buttons(StrEnum):
     CLEAR_LOG = 'Clear log'
     ECHO_TEST = 'Echo-Test'
     RECONNECT = '[Re]connect'
-    SAVE = 'Save'
+    SAVE = 'Save file'
     LOG = 'Log'
     MESSAGE = 'Message'
     REVERSE = 'Reverse'
@@ -18,4 +18,5 @@ class Buttons(StrEnum):
     PRINT = 'Print'
     UNDO = "Undo"
     REDO = "Redo"
-
+    KEEP_ALIVE = "Keep alive"
+    API = "API"

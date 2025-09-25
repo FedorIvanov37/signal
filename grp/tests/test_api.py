@@ -57,7 +57,7 @@ def test_directory_reader():
     input_path = 'input'
     markdown_path = posixpath.join(input_path, 'gfm-test.md')
     default_path = posixpath.join(input_path, 'default')
-    input_img_path = posixpath.join(input_path, 'img.png')
+    input_img_path = posixpath.join(input_path, 'main_window.png')
 
     input_dir = os.path.join(DIRNAME, 'input')
     markdown_file = os.path.join(input_dir, 'gfm-test.md')

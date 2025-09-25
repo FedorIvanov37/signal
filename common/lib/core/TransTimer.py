@@ -6,16 +6,8 @@ from common.lib.enums import KeepAlive
 
 class TransactionTimer(QObject):
     _trans_loop_timer: QTimer = QTimer()
-    _send_transaction: pyqtSignal = pyqtSignal()
-    _interval_was_set: pyqtSignal = pyqtSignal(str, str)
-
-    @property
-    def send_transaction(self):
-        return self._send_transaction
-
-    @property
-    def interval_was_set(self):
-        return self._interval_was_set
+    send_transaction: pyqtSignal = pyqtSignal()
+    interval_was_set: pyqtSignal = pyqtSignal(str, str)
 
     def __init__(self, trans_type: str):
         super().__init__()

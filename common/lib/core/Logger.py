@@ -1,5 +1,7 @@
 from sys import stdout
 from loguru import logger
+from logging import getLogger
+from common.api.core.ApiLogHandler import ApiLogHandler
 from common.lib.enums.TermFilesPath import TermFilesPath
 from common.lib.data_models.Config import Config
 from common.lib.constants import LogDefinition
@@ -23,6 +25,15 @@ class Logger:
     def remove():
         logger.remove()
 
+    def add_api_handler(self):
+        handler = ApiLogHandler()
+
+        for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+            log = getLogger(name)
+            log.handlers = [handler]
+            log.propagate = False
+            log.setLevel(self.config.debug.level)
+
     def add_file_handler(self, filename=TermFilesPath.LOG_FILE_NAME):
         logger.add(
             filename,
@@ -30,6 +41,8 @@ class Logger:
             level=self.config.debug.level,
             rotation=self.rotation,
             compression=self.compression,
+            backtrace=False,
+            diagnose=False,
         )
 
     def add_stdout_handler(self):
@@ -37,6 +50,8 @@ class Logger:
             stdout,
             format=self.format,
             level=self.config.debug.level,
+            backtrace=False,
+            diagnose=False,
         )
 
     def add_wireless_handler(self, log_browser, wireless_handler: WirelessHandler | None = None) -> int:
@@ -48,7 +63,9 @@ class Logger:
         handler_id = logger.add(
             wireless_handler,
             format=LogDefinition.DISPLAY_DATE_FORMAT,
-            level=self.config.debug.level
+            level=self.config.debug.level,
+            backtrace=False,
+            diagnose=False,
         )
 
         return handler_id

@@ -156,7 +156,7 @@
                 "must_not_start_with": [],
                 "must_not_contain_only": [],
                 "justification": null,
-                "justification_element": null,
+                "justification_element": "0",
                 "justification_length": 0,
                 "field_type_validators": {
                     "currency_a3": false,

@@ -1,4 +1,3 @@
-from click import unstyle
 from os.path import basename, normpath
 from os import getcwd, kill, getpid
 from typing import Callable
@@ -18,7 +17,6 @@ from common.gui.windows.hotkeys_hint_window import HotKeysHintWindow
 from common.gui.windows.complex_fields_window import ComplexFieldsParser
 from common.gui.windows.license_window import LicenseWindow
 from common.gui.core.ConnectionThread import ConnectionThread
-from common.gui.enums.ApiMode import ApiModes
 from common.gui.enums import ButtonActions
 from common.gui.enums.Colors import Colors
 from common.gui.enums.GuiFilesPath import GuiDirs
@@ -32,10 +30,10 @@ from common.lib.core.TransTimer import TransactionTimer
 from common.lib.core.SpecFilesRotator import SpecFilesRotator
 from common.lib.core.Terminal import Terminal
 from common.lib.data_models.Config import Config
-from common.lib.data_models.License import LicenseInfo
 from common.lib.data_models.Transaction import Transaction, TypeFields
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
-from common.api.ApiThread import ApiThread
+from common.api.core.SignalApi import SignalApi
+from common.api.enums.ApiModes import ApiModes
 from common.lib.exceptions.exceptions import (
     LicenceAlreadyAccepted,
     LicenseDataLoadingError,
@@ -63,21 +61,13 @@ Starts MainWindow when starting its work, being a kind of low-level adapter betw
 """
 
 
-class SignalGui(Terminal):
+class SignalGui(SignalApi):
     connector: ConnectionThread
     trans_timer: TransactionTimer = TransactionTimer(KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION)
     set_remote_spec: pyqtSignal = pyqtSignal()
     _wireless_handler: WirelessHandler = WirelessHandler()
     _run_timer = QTimer()
-    _run_api = pyqtSignal()
-    _stop_api = pyqtSignal()
-    _api_thread: ApiThread = None
-    _stop_api_thread: pyqtSignal = pyqtSignal()
     _generated_echo_test_transactions: list[Transaction] = []
-
-    @property
-    def stop_api_thread(self):
-        return self._stop_api_thread
 
     def set_json_view_focus(function: callable):
 
@@ -97,7 +87,6 @@ class SignalGui(Terminal):
         super(SignalGui, self).__init__(config=config, connector=self.connector)
         self.window: MainWindow = MainWindow(self.config)
         self.thread_pool: QThreadPool = QThreadPool()
-        self._api_thread: ApiThread = ApiThread(self.config)
         self.connect_widgets()
         self.setup()
 
@@ -133,7 +122,6 @@ class SignalGui(Terminal):
 
         if self.config.terminal.run_api:
             self.process_change_api_mode(state=ApiModes.START)
-            self.window.process_api_mode_change(state=ApiModes.START)
 
         self.window.json_view.enable_json_mode_checkboxes(enable=not self.config.specification.manual_input_mode)
 
@@ -184,39 +172,31 @@ class SignalGui(Terminal):
             self.trans_timer.send_transaction: window.send,
             self.trans_timer.interval_was_set: window.process_transaction_loop_change,
             self.keep_alive_timer.interval_was_set: window.process_transaction_loop_change,
+            self.api.api_started: window.process_api_mode_change,
+            self.api.api_stopped: window.process_api_mode_change,
             self._run_timer.timeout: self.on_startup,
         }
 
         for signal, slot in terminal_connections_map.items():
             signal.connect(slot)
 
-    def process_change_api_mode(self, state) -> None:
-        if state == ApiModes.START:
-            logger.info("Starting API mode")
-            self._api_thread.setup(terminal=self)
-            self._api_thread.set_loger()
-            self._api_thread.log_record.connect(lambda record: logger.info(unstyle(record)))
-            self._api_thread.create_transaction.connect(self.send)
-            self._api_thread.run_api.emit()
-
-        if state == ApiModes.STOP:
-            ...
-
     def disable_item(self, disable: bool, item=None, go_next=True) -> None:
         if item is None and not (item := self.window.json_view.currentItem()):
             return
 
-        self.window.json_view.undo_stack.push(SetDisabledCommand(item, disable))
+        if item.is_disabled is not disable:
 
-        try:
-            item.set_disabled(disable)
+            self.window.json_view.undo_stack.push(SetDisabledCommand(item, disable))
 
-        except ValueError as err:
-            logger.warning(err)
-        else:
-            logger.debug(f"Field {item.get_field_path(string=True)} is {'disabled' if disable else 'enabled'}")
+            try:
+                item.set_disabled(disable)
 
-        self.set_bitmap()
+            except ValueError as err:
+                logger.warning(err)
+            else:
+                logger.debug(f"Field {item.get_field_path(string=True)} is {'disabled' if disable else 'enabled'}")
+
+            self.set_bitmap()
 
         self.window.json_view.setFocus()
 
@@ -227,15 +207,6 @@ class SignalGui(Terminal):
     def show_document():  # Open the User guide in a default browser
         doc_path = normpath(f"{getcwd()}/{GuiFilesPath.DOC}")
         open_url(doc_path)
-
-    def open_api_url(self, url):
-        if not self._api_thread:
-            return
-
-        if self._api_thread.stop:
-            return
-        
-        open_url(url)
 
     def show_license_dialog(self, force: bool = False) -> None:
         try:
@@ -318,34 +289,18 @@ class SignalGui(Terminal):
             settings_window: SettingsWindow = SettingsWindow(self.config, about=about)
             settings_window.accepted.connect(lambda: self.process_config_change(old_config))
             settings_window.open_user_guide.connect(self.show_document)
-            settings_window.open_api_url.connect(self.open_api_url)
+            # settings_window.open_api_url.connect(self.open_api_url)
             settings_window.exec()
             
         except Exception as settings_error:
             logger.error(settings_error)
 
     def process_config_change(self, old_config: Config) -> None:
-        self.read_config()
+        Terminal.process_config_change(self, old_config)
 
         if self.config.debug.level != old_config.debug.level:
             self.logger.remove()
             self.logger.add_wireless_handler(self.window.log_browser)
-
-        if "" in (self.config.host.host, self.config.host.port):
-            logger.warning("Lost SV address or SV port! Check the parameters")
-
-        try:
-            if not self.config.host.port:
-                raise ValueError
-
-            if int(self.config.host.port) > 65535:
-                raise ValueError
-
-        except ValueError:
-            logger.warning(f"Incorrect SV port value: {self.config.host.port}. "
-                           f"Must be a number in the range of 0 to 65535")
-
-        logger.info("Settings applied")
 
         self.window.json_view.enable_json_mode_checkboxes(enable=self.config.validation.validate_window)
 
@@ -400,39 +355,10 @@ class SignalGui(Terminal):
 
             self.keep_alive_timer.set_trans_loop_interval(interval_name)
 
-        try:
-            with open(TermFilesPath.LICENSE_INFO, "r") as license_json:
-                license_info = LicenseInfo.model_validate_json(license_json.read())
-                license_info.show_agreement = self.config.terminal.show_license_dialog
-
-            if not license_info.accepted:
-                raise ValueError("License is not accepted")
-
-            with open(TermFilesPath.LICENSE_INFO, "w") as license_json:
-                license_json.write(license_info.model_dump_json(indent=4))
-
-        except ValueError as not_accepted:
-            logger.error(not_accepted)
-            exit(100)
-
-        except Exception as license_error:
-            logger.error(f"Cannot save license params: {license_error}")
-
-    def read_config(self, config_file: str | None = None) -> None:
-
-        if config_file is None:
-            config_file = TermFilesPath.CONFIG
-
-        try:
-            with open(config_file) as json_file:
-                self.config: Config = Config.model_validate_json(json_file.read())
-
-        except Exception as parsing_error:
-            logger.error(f"Cannot parse configuration file: {parsing_error}")
+        logger.info("Settings applied")
 
     def stop_signal(self) -> None:
         self.connector.stop_thread()
-        self._api_thread.stop_thread()
         kill(getpid(), 3)
 
     def reconnect(self) -> None:
@@ -456,22 +382,22 @@ class SignalGui(Terminal):
 
         try:
             if not (transaction_source := transaction_source_map.get(command)):
-                raise LookupError
+                return
 
             if not (transaction_id := transaction_source()):
-                raise LookupError("lost transaction response or non-reversible transaction")
+                return
 
             if not (original_trans := self.trans_queue.get_transaction(transaction_id)):
-                raise LookupError
+                raise LookupError("lost transaction response or non-reversible transaction")
 
             if not self.spec.get_reversal_mti(original_trans.message_type):
-                raise LookupError
+                raise LookupError("lost transaction response or non-reversible transaction")
 
             if not (reversal := self.build_reversal(original_trans)):
-                raise LookupError
+                raise LookupError("lost transaction response or non-reversible transaction")
 
         except Exception as reversal_building_error:
-            logger.error(f"Reversal building error: {reversal_building_error}")
+            logger.warning(f"Reversal building error: {reversal_building_error}")
             return
 
         match command:
@@ -553,7 +479,7 @@ class SignalGui(Terminal):
 
         return transactions
 
-    def send(self, transaction: Transaction | None = None) -> None:
+    def send(self, transaction: Transaction | None = None, is_api_call=False) -> None:
         if self.connector.connection_in_progress():
             transaction.success = False
             transaction.error = "Cannot send the transaction while the host connection is in progress"
@@ -571,7 +497,7 @@ class SignalGui(Terminal):
                 [logger.error(err) for err in str(building_error).splitlines()]
                 return
 
-        if self.config.debug.clear_log and not transaction.is_keep_alive:
+        if self.config.debug.clear_log and not transaction.is_keep_alive and not is_api_call:
             self.window.clean_window_log()
 
         reversal_suffix_conditions = (
@@ -778,7 +704,7 @@ class SignalGui(Terminal):
     def set_clipboard_text(data: str = str()) -> None:
         QApplication.clipboard().setText(data)
 
-    def show_reversal_window(self) -> str:
+    def show_reversal_window(self) -> str | None:
         reversible_transactions_list: list[Transaction] = self.trans_queue.get_reversible_transactions()
         reversible_transactions_list.sort(key=lambda transaction: transaction.trans_id, reverse=True)
 
@@ -786,9 +712,14 @@ class SignalGui(Terminal):
         accepted: int = reversal_window.exec()
 
         if bool(accepted):
-            return reversal_window.reversal_id
+            try:
+                return reversal_window.reversal_id
 
-        raise LookupError
+            except AttributeError:
+                logger.error("Cannot create reversal. Wrong or empty transaction ID")
+                return ""
+
+        logger.warning("Reversal sending is cancelled")
 
     def copy_current_field(self):
         if not (field_data := self.window.tab_view.get_current_field_data()):

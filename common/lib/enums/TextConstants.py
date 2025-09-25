@@ -20,3 +20,9 @@ class TextConstants(StrEnum):
     LICENSE_AGREEMENT = LicenseAgreement.AGREEMENT
 
     CLI_DESCRIPTION = f"{SYSTEM_NAME} {ReleaseDefinition.VERSION}"
+
+    API_EXPLANATION = ("Signal provides HTTP API for external integration. It also has a built-in "
+                       "Postman collection, which covers basic needs.<br><br>Refer to the <a href=\"url.com\">User "
+                       "Reference Guide</a> for details")
+
+    USER_REFERENCE_GUIDE = '<a href=\"url.com\">User Reference Guide</a>'

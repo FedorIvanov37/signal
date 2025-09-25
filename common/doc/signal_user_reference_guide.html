@@ -10447,7 +10447,7 @@
                     
                     <div class="Box-body px-5 pb-5">
                       <article id="grip-content" class="markdown-body entry-content container-lg">
-                        <p align="center"><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/431a8641885b71f32c7870cbfb2258ac5ed2082da045cff876c3a449c53176d3/68747470733a2f2f692e696d6775722e636f6d2f4b7242714479332e706e67"><img src="https://camo.githubusercontent.com/431a8641885b71f32c7870cbfb2258ac5ed2082da045cff876c3a449c53176d3/68747470733a2f2f692e696d6775722e636f6d2f4b7242714479332e706e67" alt="Signal" width="500" height="500" data-canonical-src="https://i.imgur.com/KrBqDy3.png" style="max-width: 100%;"></a></p>
+                        <p align="center"><a target="_blank" rel="noopener noreferrer" href="static/triforce_signed.png"><img src="static/triforce_signed.png" alt="Signal" width="500" height="500" style="max-width: 100%; height: auto; max-height: 500px;"></a></p>
 <div class="markdown-heading"><h1 align="center" class="heading-element">Signal user reference guide</h1><a id="user-content-signal-user-reference-guide" class="anchor" aria-label="Permalink: Signal user reference guide" href="#signal-user-reference-guide"><span aria-hidden="true" class="octicon octicon-link"></span></a></div>
 <p align="center">This guide describes the Signal basic concept, usage, settings, and library re-usage <br><br>
 The document is currently under construction</p> 
@@ -10707,8 +10707,7 @@ Windows 10-11 only</p>
 binary <code>.exe</code> file. No dependencies need to run the SIGNAL, it is ready to use from the box. No installation or
 settings are needed to run SIGNAL GUI on a Windows machine. Run the <code>signal.exe</code> executable file to start the SIGNAL</p>
 <p>Check the parameters, opened by the "Configuration" button to make your settings</p>
-<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/3505ef929f743d61286152eeb1aa07f0753547c35bb09ce0f529f6932a763ddf/68747470733a2f2f692e696d6775722e636f6d2f6775507a6354542e706e67"><img src="https://camo.githubusercontent.com/3505ef929f743d61286152eeb1aa07f0753547c35bb09ce0f529f6932a763ddf/68747470733a2f2f692e696d6775722e636f6d2f6775507a6354542e706e67" alt="image" data-canonical-src="https://i.imgur.com/guPzcTT.png" style="max-width: 100%;"></a></p>
-<div class="markdown-heading"><h2 class="heading-element">Main Window</h2><a id="user-content-main-window" class="anchor" aria-label="Permalink: Main Window" href="#main-window"><span aria-hidden="true" class="octicon octicon-link"></span></a></div>
+<p><a target="_blank" rel="noopener noreferrer" href="static/main_window.png"><img src="static/main_window.png" alt="image" style="max-width: 100%;"></a></p>
 <p>The MainWidow is a generic user interaction point. The main purpose is transaction data representation, data
 validations, and generators, access to the transaction processing tools, sending and receiving transactions</p>
 <div class="markdown-heading"><h3 class="heading-element">Main Window tools</h3><a id="user-content-main-window-tools" class="anchor" aria-label="Permalink: Main Window tools" href="#main-window-tools"><span aria-hidden="true" class="octicon octicon-link"></span></a></div>
@@ -11127,11 +11126,11 @@ key, see <a href="#cli-Usage">usage</a></p>
 02:57:15 [INFO]  #+#    #+#     #+#     #+#    #+#  #+#   #+#+#  #+#     #+#  #+#        
 02:57:15 [INFO]   ########  ###########  ########   ###    ####  ###     ###  ########## 
 02:57:15 [INFO] 
-02:57:15 [INFO]   Simplified ISO generation algorithm v0.18
+02:57:15 [INFO]   Simplified ISO generation algorithm v0.19
 02:57:15 [INFO] 
 02:57:15 [INFO]   Use only on test environment
 02:57:15 [INFO] 
-02:57:15 [INFO]   Version v0.18
+02:57:15 [INFO]   Version v0.19
 02:57:15 [INFO] 
 02:57:15 [INFO]   Released in May 2024
 02:57:15 [INFO] 
@@ -11238,7 +11237,7 @@ are already familiar with those packages, just go forth</p>
 <div class="markdown-heading"><h2 class="heading-element">Requirements</h2><a id="user-content-requirements" class="anchor" aria-label="Permalink: Requirements" href="#requirements"><span aria-hidden="true" class="octicon octicon-link"></span></a></div>
 <p>Unlike GUI the Signal library requires you to install dependencies, defined in the "requirements.txt" file from the
 Signal's root directory. See the actual dependencies in the file, here are listed requirements, which are actually
-for Signal v0.18</p>
+for Signal v0.19</p>
 <p>The following dependencies are required to install to run the library</p>
 <table>
 <thead>
@@ -11322,24 +11321,24 @@ the dependencies</p>
 <span class="pl-s">"""</span>
 
 <span class="pl-c"># Create Config object. The Config is a crucial data object, contains basic settings for all the application</span>
-<span class="pl-s1">config</span>: <span class="pl-v">Config</span> <span class="pl-c1">=</span> <span class="pl-v">Config</span>.<span class="pl-en">parse_file</span>(<span class="pl-v">TermFilesPath</span>.<span class="pl-v">CONFIG</span>)
+<span class="pl-s1">config</span>: <span class="pl-smi">Config</span> <span class="pl-c1">=</span> <span class="pl-v">Config</span>.<span class="pl-c1">parse_file</span>(<span class="pl-v">TermFilesPath</span>.<span class="pl-c1">CONFIG</span>)
 <span class="pl-c"># After the config is created you can set the parameters as you prefer</span>
 <span class="pl-c"># e.g.: config.host.port = 16677 and so on</span>
 
 <span class="pl-c"># The Terminal - core of the application, which will be used for sending the transaction</span>
-<span class="pl-s1">terminal</span>: <span class="pl-v">Terminal</span> <span class="pl-c1">=</span> <span class="pl-v">Terminal</span>(<span class="pl-s1">config</span>)
+<span class="pl-s1">terminal</span>: <span class="pl-smi">Terminal</span> <span class="pl-c1">=</span> <span class="pl-en">Terminal</span>(<span class="pl-s1">config</span>)
 
 <span class="pl-c"># This object will update transaction fields to avoid transaction duplicates</span>
-<span class="pl-s1">data_generator</span> <span class="pl-c1">=</span> <span class="pl-v">FieldsGenerator</span>()
+<span class="pl-s1">data_generator</span> <span class="pl-c1">=</span> <span class="pl-en">FieldsGenerator</span>()
 
 <span class="pl-c"># Parse default transaction file</span>
-<span class="pl-s1">transaction</span>: <span class="pl-v">Transaction</span> <span class="pl-c1">=</span> <span class="pl-v">Transaction</span>.<span class="pl-en">parse_file</span>(<span class="pl-v">TermFilesPath</span>.<span class="pl-v">DEFAULT_FILE</span>)
+<span class="pl-s1">transaction</span>: <span class="pl-smi">Transaction</span> <span class="pl-c1">=</span> <span class="pl-v">Transaction</span>.<span class="pl-c1">parse_file</span>(<span class="pl-v">TermFilesPath</span>.<span class="pl-c1">DEFAULT_FILE</span>)
 
 <span class="pl-c"># Update fields dynamic values such as ID, date and so on</span>
-<span class="pl-s1">transaction</span>: <span class="pl-v">Transaction</span> <span class="pl-c1">=</span> <span class="pl-s1">data_generator</span>.<span class="pl-en">set_generated_fields</span>(<span class="pl-s1">transaction</span>)
+<span class="pl-s1">transaction</span>: <span class="pl-smi">Transaction</span> <span class="pl-c1">=</span> <span class="pl-s1">data_generator</span>.<span class="pl-c1">set_generated_fields</span>(<span class="pl-s1">transaction</span>)
 
 <span class="pl-c"># Send the previously-made transaction to the host</span>
-<span class="pl-s1">terminal</span>.<span class="pl-en">send</span>(<span class="pl-s1">transaction</span>)
+<span class="pl-s1">terminal</span>.<span class="pl-c1">send</span>(<span class="pl-s1">transaction</span>)
 
 <span class="pl-c"># exit</span></pre></div>
 </details>
@@ -11367,39 +11366,39 @@ the dependencies</p>
 <span class="pl-c"># The objects preparation</span>
 
 <span class="pl-c"># In case when your solution does not use GUI it is required to create QCoreApplication and set in on the Terminal</span>
-<span class="pl-s1">application</span> <span class="pl-c1">=</span> <span class="pl-v">QCoreApplication</span>([])  <span class="pl-c"># Create the Signal PyQt application</span>
+<span class="pl-s1">application</span> <span class="pl-c1">=</span> <span class="pl-en">QCoreApplication</span>([])  <span class="pl-c"># Create the Signal PyQt application</span>
 
 <span class="pl-c"># Create Config object. The Config is a crucial data object, contains basic settings for all the application</span>
-<span class="pl-s1">config</span>: <span class="pl-v">Config</span> <span class="pl-c1">=</span> <span class="pl-v">Config</span>.<span class="pl-en">parse_file</span>(<span class="pl-v">TermFilesPath</span>.<span class="pl-v">CONFIG</span>)
+<span class="pl-s1">config</span>: <span class="pl-smi">Config</span> <span class="pl-c1">=</span> <span class="pl-v">Config</span>.<span class="pl-c1">parse_file</span>(<span class="pl-v">TermFilesPath</span>.<span class="pl-c1">CONFIG</span>)
 <span class="pl-c"># After the config is created you can set the parameters as you prefer</span>
 <span class="pl-c"># e.g.: config.host.port = 16677 and so on</span>
 
 <span class="pl-c"># The Terminal - core of the application, which will be used for sending the transaction</span>
-<span class="pl-s1">terminal</span>: <span class="pl-v">Terminal</span> <span class="pl-c1">=</span> <span class="pl-v">Terminal</span>(<span class="pl-s1">config</span><span class="pl-c1">=</span><span class="pl-s1">config</span>, <span class="pl-s1">application</span><span class="pl-c1">=</span><span class="pl-s1">application</span>)  <span class="pl-c"># Send previously-made QCoreApplication</span>
+<span class="pl-s1">terminal</span>: <span class="pl-smi">Terminal</span> <span class="pl-c1">=</span> <span class="pl-en">Terminal</span>(<span class="pl-s1">config</span><span class="pl-c1">=</span><span class="pl-s1">config</span>, <span class="pl-s1">application</span><span class="pl-c1">=</span><span class="pl-s1">application</span>)  <span class="pl-c"># Send previously-made QCoreApplication</span>
 
 <span class="pl-c"># Set the default screen logger up</span>
-<span class="pl-v">Logger</span>().<span class="pl-en">create_logger</span>()
+<span class="pl-en">Logger</span>().<span class="pl-c1">create_logger</span>()
 
 <span class="pl-c"># This object will update transaction fields to avoid transaction duplicates</span>
-<span class="pl-s1">data_generator</span> <span class="pl-c1">=</span> <span class="pl-v">FieldsGenerator</span>()
+<span class="pl-s1">data_generator</span> <span class="pl-c1">=</span> <span class="pl-en">FieldsGenerator</span>()
 
 <span class="pl-c"># Parse default transaction file</span>
-<span class="pl-s1">transaction</span>: <span class="pl-v">Transaction</span> <span class="pl-c1">=</span> <span class="pl-v">Transaction</span>.<span class="pl-en">parse_file</span>(<span class="pl-v">TermFilesPath</span>.<span class="pl-v">DEFAULT_FILE</span>)
+<span class="pl-s1">transaction</span>: <span class="pl-smi">Transaction</span> <span class="pl-c1">=</span> <span class="pl-v">Transaction</span>.<span class="pl-c1">parse_file</span>(<span class="pl-v">TermFilesPath</span>.<span class="pl-c1">DEFAULT_FILE</span>)
 
 <span class="pl-c"># Update fields dynamic values such as ID, date and so on</span>
-<span class="pl-s1">transaction</span>: <span class="pl-v">Transaction</span> <span class="pl-c1">=</span> <span class="pl-s1">data_generator</span>.<span class="pl-en">set_generated_fields</span>(<span class="pl-s1">transaction</span>)
+<span class="pl-s1">transaction</span>: <span class="pl-smi">Transaction</span> <span class="pl-c1">=</span> <span class="pl-s1">data_generator</span>.<span class="pl-c1">set_generated_fields</span>(<span class="pl-s1">transaction</span>)
 
 
 <span class="pl-c"># Create a delayed start timer. This workaround will help to begin the task after the application is started</span>
-<span class="pl-s1">timer</span> <span class="pl-c1">=</span> <span class="pl-v">QTimer</span>()  <span class="pl-c"># This timer will be processed in QEventloop right after the application is executed</span>
-<span class="pl-s1">timer</span>.<span class="pl-en">setSingleShot</span>(<span class="pl-c1">True</span>)  <span class="pl-c"># It signals once the application start</span>
-<span class="pl-s1">timer</span>.<span class="pl-s1">timeout</span>.<span class="pl-en">connect</span>(<span class="pl-k">lambda</span>: <span class="pl-s1">terminal</span>.<span class="pl-en">send</span>(<span class="pl-s1">transaction</span>))  <span class="pl-c"># Transaction will be one of the first events</span>
-<span class="pl-s1">timer</span>.<span class="pl-en">start</span>(<span class="pl-c1">0</span>)  <span class="pl-c"># Signals timeout immediately</span>
+<span class="pl-s1">timer</span> <span class="pl-c1">=</span> <span class="pl-en">QTimer</span>()  <span class="pl-c"># This timer will be processed in QEventloop right after the application is executed</span>
+<span class="pl-s1">timer</span>.<span class="pl-c1">setSingleShot</span>(<span class="pl-c1">True</span>)  <span class="pl-c"># It signals once the application start</span>
+<span class="pl-s1">timer</span>.<span class="pl-c1">timeout</span>.<span class="pl-c1">connect</span>(<span class="pl-k">lambda</span>: <span class="pl-s1">terminal</span>.<span class="pl-c1">send</span>(<span class="pl-s1">transaction</span>))  <span class="pl-c"># Transaction will be one of the first events</span>
+<span class="pl-s1">timer</span>.<span class="pl-c1">start</span>(<span class="pl-c1">0</span>)  <span class="pl-c"># Signals timeout immediately</span>
 
 
 <span class="pl-c"># Finally run the application, which begin the QEventloop and send the transaction</span>
 <span class="pl-c"># Due to the part below the application proceed to work, processing PyQt events and signals</span>
-<span class="pl-s1">terminal</span>.<span class="pl-en">run</span>()  <span class="pl-c"># Run the QCoreApplication</span></pre></div>
+<span class="pl-s1">terminal</span>.<span class="pl-c1">run</span>()  <span class="pl-c"># Run the QCoreApplication</span></pre></div>
 </details>
 <p>Also, the modules can be valuable in ISO 8583 transaction data processing, without sending the transaction</p>
 <details>
@@ -11431,7 +11430,7 @@ specification settings are required for transaction processing.</p>
 <p>The specification can be set using the button "Specification" of MainWindow. Settings through GUI are highly recommended
 by the author.</p>
 <div class="markdown-heading"><h2 class="heading-element">Settings description</h2><a id="user-content-settings-description" class="anchor" aria-label="Permalink: Settings description" href="#settings-description"><span aria-hidden="true" class="octicon octicon-link"></span></a></div>
-<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/6f719267a6879661a6603c659c9c798d28be2fc2996927187b8c5656c10b32cc/68747470733a2f2f692e696d6775722e636f6d2f577667384575582e706e67"><img src="https://camo.githubusercontent.com/6f719267a6879661a6603c659c9c798d28be2fc2996927187b8c5656c10b32cc/68747470733a2f2f692e696d6775722e636f6d2f577667384575582e706e67" alt="image" data-canonical-src="https://i.imgur.com/Wvg8EuX.png" style="max-width: 100%;"></a></p>
+<p><a target="_blank" rel="noopener noreferrer" href="static/spec_window.png"><img src="static/spec_window.png" alt="image" style="max-width: 100%;"></a></p>
 <p>The table below describes the settings window columns from left to right</p>
 <table>
 <thead>
@@ -11568,7 +11567,7 @@ by the author.</p>
 </li>
 </ol>
 <p><strong>Test of remote specification endpoint</strong></p>
-<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/211d2996d9865dfdc9f6bbbdf2b34a7be08e5c83601038cafd23735c56b1692d/68747470733a2f2f692e696d6775722e636f6d2f6168676b4d64532e706e67"><img src="https://camo.githubusercontent.com/211d2996d9865dfdc9f6bbbdf2b34a7be08e5c83601038cafd23735c56b1692d/68747470733a2f2f692e696d6775722e636f6d2f6168676b4d64532e706e67" alt="image" data-canonical-src="https://i.imgur.com/ahgkMdS.png" style="max-width: 100%;"></a></p>
+<p><a target="_blank" rel="noopener noreferrer" href="static/remote_spec.png"><img src="static/remote_spec.png" alt="image" style="max-width: 100%;"></a></p>
 <div class="markdown-heading"><h2 class="heading-element">Remote spec endpoint code example</h2><a id="user-content-remote-spec-endpoint-code-example" class="anchor" aria-label="Permalink: Remote spec endpoint code example" href="#remote-spec-endpoint-code-example"><span aria-hidden="true" class="octicon octicon-link"></span></a></div>
 <div class="highlight highlight-source-python"><pre><span class="pl-k">from</span> <span class="pl-s1">http</span> <span class="pl-k">import</span> <span class="pl-v">HTTPStatus</span>
 <span class="pl-k">from</span> <span class="pl-s1">http</span>.<span class="pl-s1">server</span> <span class="pl-k">import</span> <span class="pl-v">BaseHTTPRequestHandler</span>, <span class="pl-v">HTTPServer</span>
@@ -11581,36 +11580,36 @@ by the author.</p>
 <span class="pl-s">Was tested on Python3 only</span>
 <span class="pl-s">"""</span>
 
-<span class="pl-v">SERVER_ADDRESS</span> <span class="pl-c1">=</span> <span class="pl-s">'127.0.0.1'</span>  <span class="pl-c"># The address of the server machine</span>
-<span class="pl-v">PORT</span> <span class="pl-c1">=</span> <span class="pl-c1">4242</span>  <span class="pl-c"># Port for incoming connection</span>
-<span class="pl-v">PATH</span> <span class="pl-c1">=</span> <span class="pl-s">'/specification'</span>  <span class="pl-c"># URL path to get the specification file</span>
-<span class="pl-v">FILE</span> <span class="pl-c1">=</span> <span class="pl-s">'/opt/spec/specification.json'</span>  <span class="pl-c"># The Specification file path, the file should be returned by GET request</span>
+<span class="pl-c1">SERVER_ADDRESS</span> <span class="pl-c1">=</span> <span class="pl-s">'127.0.0.1'</span>  <span class="pl-c"># The address of the server machine</span>
+<span class="pl-c1">PORT</span> <span class="pl-c1">=</span> <span class="pl-c1">4242</span>  <span class="pl-c"># Port for incoming connection</span>
+<span class="pl-c1">PATH</span> <span class="pl-c1">=</span> <span class="pl-s">'/specification'</span>  <span class="pl-c"># URL path to get the specification file</span>
+<span class="pl-c1">FILE</span> <span class="pl-c1">=</span> <span class="pl-s">'/opt/spec/specification.json'</span>  <span class="pl-c"># The Specification file path, the file should be returned by GET request</span>
 
 <span class="pl-c"># By these settings we create URL http://127.0.0.1:4242/specification which returns file /opt/spec/specification.json</span>
 
 <span class="pl-k">class</span> <span class="pl-v">HttpSpec</span>(<span class="pl-v">BaseHTTPRequestHandler</span>):
     <span class="pl-k">def</span> <span class="pl-en">do_GET</span>(<span class="pl-s1">self</span>):
-        <span class="pl-k">if</span> <span class="pl-s1">self</span>.<span class="pl-s1">path</span> <span class="pl-c1">!=</span> <span class="pl-v">PATH</span>:
-            <span class="pl-s1">self</span>.<span class="pl-en">send_response</span>(<span class="pl-v">HTTPStatus</span>.<span class="pl-v">NOT_FOUND</span>)
-            <span class="pl-s1">self</span>.<span class="pl-en">end_headers</span>()
+        <span class="pl-k">if</span> <span class="pl-s1">self</span>.<span class="pl-c1">path</span> <span class="pl-c1">!=</span> <span class="pl-c1">PATH</span>:
+            <span class="pl-s1">self</span>.<span class="pl-c1">send_response</span>(<span class="pl-v">HTTPStatus</span>.<span class="pl-c1">NOT_FOUND</span>)
+            <span class="pl-s1">self</span>.<span class="pl-c1">end_headers</span>()
             <span class="pl-k">return</span>
 
-        <span class="pl-s1">self</span>.<span class="pl-en">send_response</span>(<span class="pl-v">HTTPStatus</span>.<span class="pl-v">OK</span>)
-        <span class="pl-s1">self</span>.<span class="pl-en">send_header</span>(<span class="pl-s">"Content-type"</span>, <span class="pl-s">"application/json"</span>)
-        <span class="pl-s1">self</span>.<span class="pl-en">end_headers</span>()
+        <span class="pl-s1">self</span>.<span class="pl-c1">send_response</span>(<span class="pl-v">HTTPStatus</span>.<span class="pl-c1">OK</span>)
+        <span class="pl-s1">self</span>.<span class="pl-c1">send_header</span>(<span class="pl-s">"Content-type"</span>, <span class="pl-s">"application/json"</span>)
+        <span class="pl-s1">self</span>.<span class="pl-c1">end_headers</span>()
 
-        <span class="pl-k">with</span> <span class="pl-en">open</span>(<span class="pl-v">FILE</span>) <span class="pl-k">as</span> <span class="pl-s1">json_file</span>:
-            <span class="pl-s1">self</span>.<span class="pl-s1">wfile</span>.<span class="pl-en">write</span>(<span class="pl-s1">json_file</span>.<span class="pl-en">read</span>().<span class="pl-en">encode</span>())
+        <span class="pl-k">with</span> <span class="pl-en">open</span>(<span class="pl-c1">FILE</span>) <span class="pl-k">as</span> <span class="pl-s1">json_file</span>:
+            <span class="pl-s1">self</span>.<span class="pl-c1">wfile</span>.<span class="pl-c1">write</span>(<span class="pl-s1">json_file</span>.<span class="pl-c1">read</span>().<span class="pl-c1">encode</span>())
 
 
-<span class="pl-s1">server</span> <span class="pl-c1">=</span> <span class="pl-v">HTTPServer</span>((<span class="pl-v">SERVER_ADDRESS</span>, <span class="pl-v">PORT</span>), <span class="pl-v">HttpSpec</span>)
+<span class="pl-s1">server</span> <span class="pl-c1">=</span> <span class="pl-en">HTTPServer</span>((<span class="pl-c1">SERVER_ADDRESS</span>, <span class="pl-c1">PORT</span>), <span class="pl-v">HttpSpec</span>)
 
 <span class="pl-k">try</span>:
-    <span class="pl-s1">server</span>.<span class="pl-en">serve_forever</span>()
+    <span class="pl-s1">server</span>.<span class="pl-c1">serve_forever</span>()
 <span class="pl-k">except</span> <span class="pl-v">KeyboardInterrupt</span>:
     <span class="pl-k">pass</span>
 
-<span class="pl-s1">server</span>.<span class="pl-en">server_close</span>()</pre></div>
+<span class="pl-s1">server</span>.<span class="pl-c1">server_close</span>()</pre></div>
 <div class="markdown-heading"><h1 class="heading-element">Fields validation</h1><a id="user-content-fields-validation" class="anchor" aria-label="Permalink: Fields validation" href="#fields-validation"><span aria-hidden="true" class="octicon octicon-link"></span></a></div>
 <div class="markdown-heading"><h2 class="heading-element">Main validation</h2><a id="user-content-main-validation" class="anchor" aria-label="Permalink: Main validation" href="#main-validation"><span aria-hidden="true" class="octicon octicon-link"></span></a></div>
 <div class="markdown-heading"><h2 class="heading-element">Extended validation</h2><a id="user-content-extended-validation" class="anchor" aria-label="Permalink: Extended validation" href="#extended-validation"><span aria-hidden="true" class="octicon octicon-link"></span></a></div>
@@ -11728,7 +11727,7 @@ pattern one by one. Better to set the correct extension for each format. Refer t
  #+#    #+#     #+#     #+#    #+#  #+#   #+#+#  #+#     #+#  #+#        
   ########  ###########  ########   ###    ####  ###     ###  ########## 
 
-  Simplified ISO generation algorithm v0.18 | Released in May 2024
+  Simplified ISO generation algorithm v0.19 | Released in October 2025
 </code></pre>
 <div class="markdown-heading"><h2 class="heading-element">Concept</h2><a id="user-content-concept" class="anchor" aria-label="Permalink: Concept" href="#concept"><span aria-hidden="true" class="octicon octicon-link"></span></a></div>
 <p>The main idea behind Signal is to make simple things easy to do. It targets to simplification of complicated everyday
@@ -12439,7 +12438,8 @@ It helped to save thousands of working hours and meet hundreds of deadlines. The
 SIGNAL is free, always, and for everyone, not depending on usage. All the licensing and copyright targeting firstly
 to protect usage for free</p>
 <p>However, the project needs your support. If you want to support the project you can spend your time, working on it or
-make a voluntary donation directly to the author. <g-emoji class="g-emoji" alias="warning">⚠️</g-emoji> Any donation can be voluntary only</p>
+make a voluntary donation directly to the author.</p>
+<p><g-emoji class="g-emoji" alias="warning">⚠️</g-emoji> Any donation can be voluntary only</p>
 <p>The project needs help</p>
 <ul>
 <li>Code review, architecture development, advice</li>
@@ -12451,7 +12451,7 @@ make a voluntary donation directly to the author. <g-emoji class="g-emoji" alias
 <details>
  <summary>️❤️Support the project</summary>
  <p align="left">
-  <a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/850af9e6a3a4b89345b241d5e6b42a5d3470f6ee661e47af65b3f164ed39dddf/68747470733a2f2f692e696d6775722e636f6d2f4d7335694b516c2e706e67"><img src="https://camo.githubusercontent.com/850af9e6a3a4b89345b241d5e6b42a5d3470f6ee661e47af65b3f164ed39dddf/68747470733a2f2f692e696d6775722e636f6d2f4d7335694b516c2e706e67" alt="BTC wallet" width="200" data-canonical-src="https://i.imgur.com/Ms5iKQl.png" style="max-width: 100%;"></a>
+  <a target="_blank" rel="noopener noreferrer" href="static/support_qr_code.png"><img src="static/support_qr_code.png" alt="BTC wallet" width="200" style="max-width: 100%;"></a>
 </p>
 <pre><code>bc1qs2jaqpnse9qgzz9y9wyns50km0f5x4wxe8cggs
 </code></pre>
@@ -12459,7 +12459,7 @@ make a voluntary donation directly to the author. <g-emoji class="g-emoji" alias
 </details>
 <div class="markdown-heading"><h2 class="heading-element">Author</h2><a id="user-content-author" class="anchor" aria-label="Permalink: Author" href="#author"><span aria-hidden="true" class="octicon octicon-link"></span></a></div>
 <p>Designed and developed by <strong>Fedor Ivanov</strong></p>
-<p>In case of any question feel free to <a href="mailto:fedornivanov@gmail.com?subject=SIGNAL%27s%20user%20request&amp;body=Dear%20Fedor%2C%0A%0A%0A%3E%20Put%20your%20request%20here%20%3C%20%0A%0A%0A%0AMy%20SIGNAL%20version%20is%20v0.18%20%7C%20Released%20in%20May%202024%0A">contract author</a> directly</p>
+<p>In case of any question feel free to <a href="mailto:fedornivanov@gmail.com?subject=SIGNAL%27s%20user%20request&amp;body=Dear%20Fedor%2C%0A%0A%0A%3E%20Put%20your%20request%20here%20%3C%20%0A%0A%0A%0AMy%20SIGNAL%20version%20is%20v0.19%20%7C%20Released%20in%20October%202025%0A">contract author</a> directly</p>
 
                       </article>
                     </div>

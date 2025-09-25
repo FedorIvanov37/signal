@@ -1,8 +1,8 @@
-from common.gui.forms.settings_window import Ui_SettingsWindow
-from logging import getLogger, getLevelName
 from loguru import logger
-from socket import gethostname, gethostbyname
-from PyQt6.QtCore import QRegularExpression, pyqtSignal
+from logging import getLogger, getLevelName
+from common.gui.forms.settings_window import Ui_SettingsWindow
+from common.lib.enums.TextConstants import TextConstants
+from common.gui.enums.KeySequences import KeySequences
 from common.lib.constants import LogDefinition
 from common.lib.data_models.Config import Config
 from common.lib.enums.TermFilesPath import TermFilesPath
@@ -10,9 +10,11 @@ from common.gui.decorators.window_settings import set_window_icon, has_close_but
 from common.gui.enums.GuiFilesPath import GuiFilesPath
 from common.lib.enums.ReleaseDefinition import ReleaseDefinition
 from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer
-from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtCore import Qt, QUrl, QRegularExpression, pyqtSignal
 from PyQt6.QtWidgets import QDialog, QDialogButtonBox
 from PyQt6.QtGui import (
+    QKeySequence,
+    QShortcut,
     QRegularExpressionValidator,
     QIntValidator,
     QPixmap,
@@ -25,8 +27,7 @@ from PyQt6.QtGui import (
 
 
 class SettingsWindow(Ui_SettingsWindow, QDialog):
-    _open_user_guide: pyqtSignal = pyqtSignal()
-    _open_api_url: pyqtSignal = pyqtSignal(str)
+    open_user_guide: pyqtSignal = pyqtSignal(str)
     _config: Config = None
     config_file_dropped: pyqtSignal = pyqtSignal(str)
     audio_output = QAudioOutput()
@@ -41,19 +42,12 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
     def config(self, config: Config):
         self._config = config
 
-    @property
-    def open_api_url(self):
-        return self._open_api_url
-
-    @property
-    def open_user_guide(self):
-        return self._open_user_guide
-
     def __init__(self, config: Config, about: bool = False):
         super().__init__()
         self.setupUi(self)
         self.config = config
         self.setup(about=about)
+
 
     @set_window_icon
     @has_close_button_only
@@ -68,7 +62,8 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.RemoteSpecUrl.editingFinished.connect(lambda: self.RemoteSpecUrl.setCursorPosition(int()))
         self.MaxAmount.setValidator(QIntValidator(1, 2_100_000_000, self.MaxAmount))
         self.DebugLevel.addItems(LogDefinition.LOG_LEVEL)
-        self.ParseSubfields.setHidden(True)  # TODO
+        self.UserGuideLink.setText(TextConstants.USER_REFERENCE_GUIDE)
+        self.ApiInfoLabel.setText(TextConstants.API_EXPLANATION)
 
         for button_box in self.GeneralButtonBox, self.FieldsButtonBox, self.ApiButtonBox, self.SpecificationButtonBox:
             button_box.accepted.connect(self.ok)
@@ -83,9 +78,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.LoadSpec.stateChanged.connect(lambda: self.LoadSpec2.setChecked(self.LoadSpec.isChecked()))
         self.ValidationEnabled.stateChanged.connect(self.process_validation_change)
         self.ManualInputMode.stateChanged.connect(lambda: self.ValidationEnabled.setChecked(not self.ManualInputMode.isChecked()))
-        self.ApiInfoLabel.linkActivated.connect(lambda: self.open_user_guide.emit())
-        self.ApiAddress.linkActivated.connect(lambda: self.open_api_url.emit(self.get_api_url()))
-        self.ApiPort.textChanged.connect(self.set_api_url)
+        self.ApiInfoLabel.linkActivated.connect(self.open_user_guide)
         self.MusicOnOfButton.clicked.connect(self.switch_music)
         self.ContactLabel.linkActivated.connect(self.open_url)
         self.process_validation_change()
@@ -93,6 +86,18 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.set_data_about()
         self.MainTabs.setCurrentIndex(self.MainTabs.count() - 1 if about else int())
         self.ValidationEnabled.setChecked(not self.ManualInputMode.isChecked())
+        self.UserGuideLink.linkActivated.connect(self.open_user_guide)
+
+        self.ManualInputMode.setChecked(False)
+        self.ManualInputMode.hide()
+
+        QShortcut(QKeySequence(KeySequences.CTRL_PAGE_DOWN), self).activated.connect(
+            lambda: self.MainTabs.setCurrentIndex(self.MainTabs.currentIndex() + 1)
+        )
+        
+        QShortcut(QKeySequence(KeySequences.CTRL_PAGE_UP), self).activated.connect(
+            lambda: self.MainTabs.setCurrentIndex(self.MainTabs.currentIndex() - 1)
+        )
 
     def process_config(self, config: Config) -> None:
         checkboxes_state_map = {
@@ -100,7 +105,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
             self.ProcessDefaultDump: config.terminal.process_default_dump,
             self.ConnectOnStartup: config.terminal.connect_on_startup,
             self.ClearLog: config.debug.clear_log,
-            self.ParseSubfields: config.debug.parse_subfields,
             self.BuildFld90: config.fields.build_fld_90,
             self.SendInternalId: config.fields.send_internal_id,
             self.ValidateWindow: config.validation.validate_window,
@@ -130,6 +134,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
             self.StorageDepth: config.specification.backup_storage_depth,
             self.LogStorageDepth: config.debug.backup_storage_depth,
             self.ApiPort: self.config.api.port,
+            self.ApiTimeout: self.config.api.waiting_timeout_seconds,
         }
 
         for checkbox, state in checkboxes_state_map.items():
@@ -146,7 +151,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.RemoteSpecUrl.setText(config.specification.remote_spec_url)
         self.RemoteSpecUrl.setCursorPosition(int())
         self.ValidationReaction.setCurrentIndex(self.ValidationReaction.findText(config.validation.validation_mode))
-        self.set_api_url()
+        # self.set_api_url()
 
         if not config.fields.max_amount_limited:
             return
@@ -203,14 +208,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
             logger.info(f"Config file parsed: {config_file}")
 
         event.acceptProposedAction()
-
-    def set_api_url(self):
-        api_url = self.get_api_url()
-        api_url_link = f'<html><head/><body><p><a href="www.a.com"><span style=" text-decoration: underline; color:#0000ff;">{api_url}</span></a></p></body></html>'
-        self.ApiAddress.setText(api_url_link)
-
-    def get_api_url(self):
-        return f"http://{gethostbyname(gethostname())}:{self.ApiPort.value()}/api"
 
     def process_default_button(self, button):
         for button_box in self.GeneralButtonBox, self.FieldsButtonBox, self.ApiButtonBox, self.SpecificationButtonBox:
@@ -289,7 +286,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         config.terminal.connect_on_startup = self.ConnectOnStartup.isChecked()
         config.terminal.load_remote_spec = self.LoadSpec.isChecked()
         config.terminal.show_license_dialog = self.ShowLicense.isChecked()
-        config.debug.parse_subfields = self.ParseSubfields.isChecked()
         config.debug.backup_storage_depth = self.LogStorageDepth.value()
         config.debug.clear_log = self.ClearLog.isChecked()
         config.debug.level = self.DebugLevel.currentText()
@@ -312,14 +308,21 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         config.api.port = self.ApiPort.value()
         config.api.wait_remote_host_response = self.WaitForRemoteHost.isChecked()
         config.api.hide_secrets = self.HideSecretsApi.isChecked()
+        config.api.waiting_timeout_seconds = self.ApiTimeout.value()
         config.terminal.run_api = self.ApiRun.isChecked()
         config.api.parse_subfields = self.ParseComplexFields.isChecked()
 
         if not config.fields.max_amount_limited:
             config.fields.max_amount = 9_999_999_999
 
-        with open(TermFilesPath.CONFIG, "w") as file:
-            file.write(self.config.model_dump_json(indent=4))
+        try:
+            with open(TermFilesPath.CONFIG, "w") as file:
+                file.write(self.config.model_dump_json(indent=4))
+
+        except Exception as config_write_error:
+            logger.error(f"Cannon update config: {config_write_error}")
+            self.cancel()
+            return
 
         self.accept()
 
@@ -328,7 +331,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.reject()
 
     @staticmethod
-    def open_url(link) -> None:
+    def open_url(link, ) -> None:
         link = QUrl(link)
         QDesktopServices.openUrl(link)
 

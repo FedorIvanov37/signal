@@ -2,8 +2,8 @@ OUTPUT_FILE = "build/version_info.rc"
 
 VERSION_INFO = r"""
 1 VERSIONINFO
-FILEVERSION 0,0,0,18
-PRODUCTVERSION 0,0,0,18
+FILEVERSION 0,0,0,19
+PRODUCTVERSION 0,0,0,19
 FILEOS 0x40004
 FILETYPE 0x1
 {
@@ -17,8 +17,8 @@ BLOCK "StringFileInfo"
 		VALUE "CompanyName", ""
 		VALUE "LegalCopyright", "\xA9 Developed by Fedor Ivanov"
 		VALUE "ProductName", "SIGNAL"
-		VALUE "FileVersion", "v0.18"
-		VALUE "ProductVersion", "v0.18"
+		VALUE "FileVersion", "v0.19"
+		VALUE "ProductVersion", "v0.19"
 	}
 }
 

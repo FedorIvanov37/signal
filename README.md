@@ -1,4 +1,4 @@
-<p align="center"><img src="https://i.imgur.com/KrBqDy3.png" alt="Signal" width="500" height="500"></p>
+<p align="center"><img src="common/data/style/triforce_signed.png" alt="Signal" width="500" height="500"></p>
 
 <h1 align="center">Signal user reference guide</h1>
 <p align="center">This guide describes the Signal basic concept, usage, settings, and library re-usage <br><br>
@@ -204,9 +204,8 @@ settings are needed to run SIGNAL GUI on a Windows machine. Run the `signal.exe`
 
 Check the parameters, opened by the "Configuration" button to make your settings  
 
-![image](https://i.imgur.com/guPzcTT.png)
+![image](static/main_window.png)
 
-## Main Window
 
 The MainWidow is a generic user interaction point. The main purpose is transaction data representation, data 
 validations, and generators, access to the transaction processing tools, sending and receiving transactions
@@ -457,11 +456,11 @@ PS C:\signal> signal.exe --console --about
 02:57:15 [INFO]  #+#    #+#     #+#     #+#    #+#  #+#   #+#+#  #+#     #+#  #+#        
 02:57:15 [INFO]   ########  ###########  ########   ###    ####  ###     ###  ########## 
 02:57:15 [INFO] 
-02:57:15 [INFO]   Simplified ISO generation algorithm v0.18
+02:57:15 [INFO]   Simplified ISO generation algorithm v0.19
 02:57:15 [INFO] 
 02:57:15 [INFO]   Use only on test environment
 02:57:15 [INFO] 
-02:57:15 [INFO]   Version v0.18
+02:57:15 [INFO]   Version v0.19
 02:57:15 [INFO] 
 02:57:15 [INFO]   Released in May 2024
 02:57:15 [INFO] 
@@ -579,7 +578,7 @@ are already familiar with those packages, just go forth
 
 Unlike GUI the Signal library requires you to install dependencies, defined in the "requirements.txt" file from the 
 Signal's root directory. See the actual dependencies in the file, here are listed requirements, which are actually 
-for Signal v0.18
+for Signal v0.19
 
 The following dependencies are required to install to run the library
 
@@ -794,7 +793,7 @@ by the author.
 
 ## Settings description
 
-![image](https://i.imgur.com/Wvg8EuX.png)
+![image](common/doc/static/spec_window.png)
 
 The table below describes the settings window columns from left to right
 
@@ -854,7 +853,7 @@ The following [code](#remote-spec-endpoint-code-example) illustrates the endpoin
 
 **Test of remote specification endpoint**
 
-![image](https://i.imgur.com/ahgkMdS.png)
+![image](static/remote_spec.png)
 
 
 ## Remote spec endpoint code example
@@ -987,7 +986,7 @@ The text version of Signal's logo
  #+#    #+#     #+#     #+#    #+#  #+#   #+#+#  #+#     #+#  #+#        
   ########  ###########  ########   ###    ####  ###     ###  ########## 
 
-  Simplified ISO generation algorithm v0.18 | Released in May 2024
+  Simplified ISO generation algorithm v0.19 | Released in October 2025
 ```
 
 ## Concept
@@ -1713,7 +1712,12 @@ SIGNAL is free, always, and for everyone, not depending on usage. All the licens
 to protect usage for free 
 
 However, the project needs your support. If you want to support the project you can spend your time, working on it or 
-make a voluntary donation directly to the author. ⚠️ Any donation can be voluntary only
+make a voluntary donation directly to the author. 
+
+
+⚠️ Any donation can be voluntary only
+
+
 
 The project needs help
 
@@ -1726,7 +1730,7 @@ The project needs help
 <details>
  <summary>️❤️Support the project</summary>
  <p align="left">
-  <img src="https://i.imgur.com/Ms5iKQl.png" alt="BTC wallet" width="200"/>
+  <img src="static/support_qr_code.png" alt="BTC wallet" width="200"/>
 
 ```
 bc1qs2jaqpnse9qgzz9y9wyns50km0f5x4wxe8cggs
@@ -1739,4 +1743,4 @@ bc1qs2jaqpnse9qgzz9y9wyns50km0f5x4wxe8cggs
 
 Designed and developed by **Fedor Ivanov**   
 
-In case of any question feel free to [contract author](mailto:fedornivanov@gmail.com?subject=SIGNAL%27s%20user%20request&body=Dear%20Fedor%2C%0A%0A%0A%3E%20Put%20your%20request%20here%20%3C%20%0A%0A%0A%0AMy%20SIGNAL%20version%20is%20v0.18%20%7C%20Released%20in%20May%202024%0A) directly
+In case of any question feel free to [contract author](mailto:fedornivanov@gmail.com?subject=SIGNAL%27s%20user%20request&body=Dear%20Fedor%2C%0A%0A%0A%3E%20Put%20your%20request%20here%20%3C%20%0A%0A%0A%0AMy%20SIGNAL%20version%20is%20v0.19%20%7C%20Released%20in%20October%202025%0A) directly

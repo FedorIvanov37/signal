@@ -17,6 +17,7 @@ class TransactionQueue(QObject):
     outgoing_transaction: pyqtSignal = pyqtSignal(Transaction)
     transaction_timeout: pyqtSignal = pyqtSignal(Transaction, float)
     ready_to_send: pyqtSignal = pyqtSignal(str, bytes)
+    socket_error: pyqtSignal = pyqtSignal(Transaction)
 
     def __init__(self, connector: ConnectionInterface):
         QObject.__init__(self)
@@ -35,6 +36,7 @@ class TransactionQueue(QObject):
 
         transaction.success = False
         transaction.error = error_message
+        self.socket_error.emit(transaction)
         logger.error(error_message)
 
     def send_transaction_data(self, request: Transaction):
