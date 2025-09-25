@@ -46,7 +46,7 @@ if __name__ != "__main__":  # Runs only by import command
 
     try:  # Run in Graphic User Interface (GUI) mode
 
-        QLoggingCategory.setFilterRules(  # Reduce redundant log messages
+        QLoggingCategory.setFilterRules(  # Reduce redundant log messages from the output
             """qt.multimedia.*=false 
                qt.multimedia.ffmpeg.*=false"""
         )
