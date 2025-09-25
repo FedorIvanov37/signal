@@ -59,6 +59,10 @@ class ApiInterface(QObject):
     def clean_transaction(self):
         return self.terminal.clean_transaction
 
+    @property
+    def get_signal_info(self):
+        return self.terminal.get_signal_info
+
     api_tasks = {}
     api_started: pyqtSignal = pyqtSignal(ApiModes)
     api_stopped: pyqtSignal = pyqtSignal(ApiModes)

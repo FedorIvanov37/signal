@@ -11,7 +11,7 @@ from common.gui.decorators.window_settings import set_window_icon, has_close_but
 from common.gui.enums.GuiFilesPath import GuiFilesPath
 from common.lib.enums.ReleaseDefinition import ReleaseDefinition
 from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer
-from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtCore import Qt, QUrl, QLoggingCategory
 from PyQt6.QtWidgets import QDialog, QDialogButtonBox
 from PyQt6.QtGui import (
     QKeySequence,
@@ -49,9 +49,15 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.config = config
         self.setup(about=about)
 
+
     @set_window_icon
     @has_close_button_only
     def setup(self, about: bool = False) -> None:
+        QLoggingCategory.setFilterRules(
+            """qt.multimedia.*=false 
+               qt.multimedia.ffmpeg.*=false"""
+        )
+
         self.setAcceptDrops(True)
         self.player.setAudioOutput(self.audio_output)
         self.player.setSource(QUrl.fromLocalFile(GuiFilesPath.VVVVVV))
@@ -62,7 +68,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.RemoteSpecUrl.editingFinished.connect(lambda: self.RemoteSpecUrl.setCursorPosition(int()))
         self.MaxAmount.setValidator(QIntValidator(1, 2_100_000_000, self.MaxAmount))
         self.DebugLevel.addItems(LogDefinition.LOG_LEVEL)
-        self.ParseSubfields.setHidden(True)  # TODO
         self.UserGuideLink.setText(TextConstants.USER_REFERENCE_GUIDE)
         self.ApiInfoLabel.setText(TextConstants.API_EXPLANATION)
 
@@ -106,7 +111,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
             self.ProcessDefaultDump: config.terminal.process_default_dump,
             self.ConnectOnStartup: config.terminal.connect_on_startup,
             self.ClearLog: config.debug.clear_log,
-            self.ParseSubfields: config.debug.parse_subfields,
             self.BuildFld90: config.fields.build_fld_90,
             self.SendInternalId: config.fields.send_internal_id,
             self.ValidateWindow: config.validation.validate_window,
@@ -288,7 +292,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         config.terminal.connect_on_startup = self.ConnectOnStartup.isChecked()
         config.terminal.load_remote_spec = self.LoadSpec.isChecked()
         config.terminal.show_license_dialog = self.ShowLicense.isChecked()
-        config.debug.parse_subfields = self.ParseSubfields.isChecked()
         config.debug.backup_storage_depth = self.LogStorageDepth.value()
         config.debug.clear_log = self.ClearLog.isChecked()
         config.debug.level = self.DebugLevel.currentText()

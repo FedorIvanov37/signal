@@ -3,9 +3,9 @@ from http import HTTPStatus
 from loguru import logger
 from threading import Thread
 from fastapi import FastAPI, APIRouter, Response
-from uvicorn import Config as UvicornConfig, Server as UvicornServer
-from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from uvicorn import Config as UvicornConfig, Server as UvicornServer
+from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse, HTMLResponse
 from PyQt6.QtCore import QObject, pyqtSignal
 from common.api.data_models.ExceptionContent import ExceptionContent
 from common.lib.data_models.Config import Config
@@ -17,7 +17,6 @@ from common.api.data_models.TransactionResp import TransactionResp
 from common.api.enums.ApiRequestType import ApiRequestType
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
 from common.api.exceptions.TerminalApiError import TerminalApiError
-from common.lib.enums.TextConstants import TextConstants
 from common.api.enums.DataCoversionFormats import DataConversionFormats
 from warnings import filterwarnings
 from common.gui.enums.GuiFilesPath import GuiFilesPath
@@ -167,11 +166,21 @@ class Api(QObject):
 
         app = FastAPI(docs_url=None, redoc_url=None)
 
+        app.mount("/static", StaticFiles(directory="common/data/style"), name="static")
+
+        api = APIRouter(prefix=ApiUrl.API)
+
         @app.exception_handler(TerminalApiError)
         def terminal_api_errors_handler(request, exception: TerminalApiError):
             return JSONResponse(ExceptionContent(detail=exception.detail).dict(), exception.http_status)
 
-        api = APIRouter(prefix=ApiUrl.API)
+        @app.get(ApiUrl.SIGNAL, response_class=HTMLResponse)
+        def get_signal_info():
+            return HTMLResponse(self.backend.get_signal_info())
+
+        @app.get(ApiUrl.DOCUMENT, include_in_schema=False)
+        def docs():
+            return FileResponse("common/doc/signal_user_reference_guide.html", media_type="text/html")
 
         """
         Read-only API endpoints. Read data from PYQt application
@@ -179,10 +188,6 @@ class Api(QObject):
         A simple way to retrieve data from a PyQt application using the API bridge directly, without involving an async 
         approach. Use for data-read functions only. In case of data modification, signals/slots required
         """
-
-        @api.get(ApiUrl.DOCUMENT, include_in_schema=False)
-        def docs():
-            return FileResponse("common/doc/signal_user_reference_guide.html", media_type="text/html")
 
         @api.get(ApiUrl.GET_CONNECTION, response_model=Connection)
         def get_connection():
@@ -206,10 +211,6 @@ class Api(QObject):
         @api.get(ApiUrl.GET_CONFIG, response_model=Config)
         def get_config():
             return self.backend.get_config()
-
-        @api.get(ApiUrl.SIGNAL, response_class=PlainTextResponse)
-        def get_logo():
-            return PlainTextResponse(TextConstants.HELLO_MESSAGE)
 
         """
         Read-write API endpoints. Modify the PyQt application thread members

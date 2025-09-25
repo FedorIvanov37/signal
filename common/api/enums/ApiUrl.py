@@ -15,7 +15,7 @@ class ApiUrl(StrEnum):
     DISCONNECT = "/connection/close"
     CONNECT = "/connection/open"
     UPDATE_CONFIG = "/config"
-    SIGNAL = "/signal"
+    SIGNAL = "/about"
     CONVERT = "/tools/transactions/convert"
     VALIDATE_TRANSACTION = "/tools/transactions/validate"
     DOCUMENT = "/documentation"

@@ -3,6 +3,9 @@ from typing import Any
 from fastapi import HTTPException
 from http import HTTPStatus
 from PyQt6.QtCore import pyqtSignal
+from common.gui.enums.GuiFilesPath import GuiFiles
+from common.api.enums.ApiUrl import ApiUrl
+from common.lib.enums.TextConstants import TextConstants, ReleaseDefinition
 from common.lib.core.Terminal import Terminal
 from common.lib.data_models.Config import Config
 from common.api.data_models.Connection import Connection
@@ -215,6 +218,31 @@ class SignalApi(Terminal):
             return
 
         signal.emit()
+
+    def get_signal_info(self):
+        elements = (
+            TextConstants.HELLO_MESSAGE,
+            f"<a href=\"{ApiUrl.DOCUMENT}\">User Reference Guide</a>",
+            "Use only on test environment",
+            f"Version {ReleaseDefinition.VERSION}",
+            f"Released in {ReleaseDefinition.RELEASE}",
+            f"Developed by {ReleaseDefinition.AUTHOR}",
+            f"Contact {ReleaseDefinition.EMAIL}"
+        )
+
+        message = "\n\n  ".join(elements)
+
+        message = f"""<head>
+                        <title>Signal {ReleaseDefinition.VERSION}</title>
+                        <link rel="icon" type="image/png" href="/static/{GuiFiles.MAIN_LOGO}">
+                      </head>
+                        <body style="background-color: #00006d; color: #ffffff; padding: 10px; border-radius: 6px;">
+                         <pre>
+                           <code>{message}</code>
+                         </pre>
+                       </body>"""
+
+        return message
 
     def clean_transaction(self, transaction: Transaction) -> Transaction:
         transaction = self.parser.parse_complex_fields(transaction, split=self.config.api.parse_subfields)

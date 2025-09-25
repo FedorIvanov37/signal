@@ -403,3 +403,5 @@ Release v0.19
 • Validate transaction
 • Fix the convertion
 • Egg
+• Buttons
+• Split API fields
