@@ -1,6 +1,5 @@
 from loguru import logger
 from logging import getLogger, getLevelName
-from PyQt6.QtCore import QRegularExpression, pyqtSignal
 from common.gui.forms.settings_window import Ui_SettingsWindow
 from common.lib.enums.TextConstants import TextConstants
 from common.gui.enums.KeySequences import KeySequences
@@ -11,7 +10,7 @@ from common.gui.decorators.window_settings import set_window_icon, has_close_but
 from common.gui.enums.GuiFilesPath import GuiFilesPath
 from common.lib.enums.ReleaseDefinition import ReleaseDefinition
 from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer
-from PyQt6.QtCore import Qt, QUrl, QLoggingCategory
+from PyQt6.QtCore import Qt, QUrl, QRegularExpression, pyqtSignal
 from PyQt6.QtWidgets import QDialog, QDialogButtonBox
 from PyQt6.QtGui import (
     QKeySequence,
@@ -53,11 +52,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
     @set_window_icon
     @has_close_button_only
     def setup(self, about: bool = False) -> None:
-        QLoggingCategory.setFilterRules(
-            """qt.multimedia.*=false 
-               qt.multimedia.ffmpeg.*=false"""
-        )
-
         self.setAcceptDrops(True)
         self.player.setAudioOutput(self.audio_output)
         self.player.setSource(QUrl.fromLocalFile(GuiFilesPath.VVVVVV))

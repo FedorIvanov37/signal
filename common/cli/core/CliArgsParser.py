@@ -23,6 +23,7 @@ class CliArgsParser(ArgumentParser):
         self.add_argument("-r", "--repeat", action="store_true", help="Repeat transactions after sending")
         self.add_argument("--log-file", type=str, default=TermFilesPath.LOG_FILE_NAME, action="store", help=f"Set log file path. Default {TermFilesPath.LOG_FILE_NAME}")
         self.add_argument("-l", "--log-level", type=str, default=DebugLevels.INFO, action="store", help=f"Debug level: {', '.join(LOG_LEVEL)}")
+        self.add_argument("--no-print", action="store_true", default=False, help="Do not print the log to the screen")
         self.add_argument("-i", "--interval", type=int, default=0, action="store", help="Wait (seconds) before send next transaction")
         self.add_argument("--parallel", action="store_true", help="Send new transaction with no waiting of answer for previous one")
         self.add_argument("-t", "--timeout", type=int, default=60, help="Timeout of waiting resp")

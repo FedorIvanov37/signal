@@ -20,6 +20,7 @@ if __name__ != "__main__":  # Runs only by import command
         from common.cli.enums.CliDefinition import CliDefinition
         from common.lib.enums.TermFilesPath import TermFilesPath, TermDirs
         from common.lib.data_models.Config import Config
+        from PyQt6.QtCore import QLoggingCategory
 
         with open(TermFilesPath.CONFIG) as json_file:
             config: Config = Config.model_validate_json(json_file.read())
@@ -44,6 +45,12 @@ if __name__ != "__main__":  # Runs only by import command
         exit(int())
 
     try:  # Run in Graphic User Interface (GUI) mode
+
+        QLoggingCategory.setFilterRules(  # Reduce redundant log messages
+            """qt.multimedia.*=false 
+               qt.multimedia.ffmpeg.*=false"""
+        )
+
         from common.gui.core.SignalGui import SignalGui
 
         terminal: SignalGui = SignalGui(config)

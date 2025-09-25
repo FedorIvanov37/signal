@@ -5,7 +5,7 @@ from uuid import uuid1
 from os import listdir, path, system, getcwd, getpid, kill
 from os.path import normpath, basename, isfile
 from loguru import logger
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from pydantic import ValidationError
 from signal import signal, SIG_DFL, SIGINT
 from PyQt6.QtCore import QCoreApplication, QTimer, pyqtSignal
@@ -58,7 +58,8 @@ class SignalCli(SignalApi):
             self.logger.remove()
             self.logger.add_file_handler(filename=self._cli_config.log_file)
 
-        self.logger.add_stdout_handler()
+        if not self._cli_config.no_print:
+            self.logger.add_stdout_handler()
 
         try:
             self.show_license_dialog()
@@ -263,7 +264,7 @@ class SignalCli(SignalApi):
 
         license_info.accepted = True
         license_info.show_agreement = False
-        license_info.last_acceptance_date = datetime.now(UTC)
+        license_info.last_acceptance_date = datetime.now(timezone.utc)
 
         self.save_license_file(license_info)
 
