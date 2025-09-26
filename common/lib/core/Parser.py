@@ -23,6 +23,15 @@ from common.lib.enums.TermFilesPath import TermFilesPath
 
 class Parser:
     _spec: EpaySpecification = EpaySpecification()
+    _config: Config
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config):
+        self._config = config
 
     @property
     def spec(self):

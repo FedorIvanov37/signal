@@ -21,8 +21,13 @@ if __name__ != "__main__":  # Runs only by import command
         from common.lib.enums.TermFilesPath import TermFilesPath, TermDirs
         from common.lib.data_models.Config import Config
         from PyQt6.QtCore import QLoggingCategory
+        from common.lib.core.CustomConfigFile import CustomConfigFile
 
-        with open(TermFilesPath.CONFIG) as json_file:
+        custom_config: CustomConfigFile = CustomConfigFile(add_help=False)
+
+        config_file = custom_config.get_config_filename()
+        
+        with open(config_file) as json_file:
             config: Config = Config.model_validate_json(json_file.read())
 
         for directory in TermDirs:

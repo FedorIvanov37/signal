@@ -30,6 +30,15 @@ self.terminal.config instead of self.config
 
 
 class ApiInterface(QObject):
+    _config: Config
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config):
+        self._config = config
 
     @property
     def get_connection(self):
@@ -83,7 +92,7 @@ class ApiInterface(QObject):
 
         self.config = config
         self.terminal = terminal
-        self.api = Api(self, self.config)
+        self.api = Api(self)
         self.terminal.start_api.connect(self.start_api)
         self.terminal.stop_api.connect(self.stop_api)
         self.terminal.restart_api.connect(self.restart_api)

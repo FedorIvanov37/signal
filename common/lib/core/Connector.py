@@ -18,6 +18,15 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
     transaction_sent: pyqtSignal = pyqtSignal(str)
     got_remote_spec: pyqtSignal = pyqtSignal(str)
     sending_error: pyqtSignal = pyqtSignal(str, str)
+    _config: Config = None
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config):
+        self._config = config
 
     def __init__(self, config: Config):
         QTcpSocket.__init__(self)
@@ -80,7 +89,7 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
 
         port = int(port)
 
-        logger.debug(f"Connecting to {host}:{port}")
+        logger.info(f"Connecting to {host}:{port}")
 
         self.connectToHost(host, port)
 

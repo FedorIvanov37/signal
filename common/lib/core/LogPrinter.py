@@ -12,6 +12,15 @@ from PyQt6.QtCore import QObject
 class LogPrinter(QObject):
     spec: EpaySpecification = EpaySpecification()
     default_level = logger.info
+    _config: Config
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config):
+        self._config = config
 
     def __init__(self, config: Config):
         super().__init__()
@@ -103,4 +112,4 @@ class LogPrinter(QObject):
 
     @staticmethod
     def print_version(level=default_level):
-        level(f"SIGNAL {ReleaseDefinition.VERSION} | {ReleaseDefinition.RELEASE}")
+        level(f"{TextConstants.SYSTEM_NAME} {ReleaseDefinition.VERSION} | {ReleaseDefinition.RELEASE}")

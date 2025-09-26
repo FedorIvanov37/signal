@@ -124,6 +124,16 @@ class Terminal(QObject):
     def process_config_change(self, old_config: Config) -> None:
         self.read_config()
 
+        for tool in (
+            self.connector,
+            self.logger,
+            self.log_printer,
+            self.parser,
+            self.trans_validator,
+            self.data_validator,
+        ):
+            tool.config = self.config
+
         if "" in (self.config.host.host, self.config.host.port):
             logger.warning("Lost SV address or SV port! Check the parameters")
 

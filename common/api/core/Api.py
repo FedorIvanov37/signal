@@ -57,10 +57,9 @@ class Api(QObject):
     api_stopped: pyqtSignal = pyqtSignal(ApiModes)
     api_request: pyqtSignal = pyqtSignal(ApiRequest)
 
-    def __init__(self, backend, config: Config):
+    def __init__(self, backend):
         super().__init__()
 
-        self.config = config
         self.backend = backend
         self._thread = None
         self._server = None
@@ -74,7 +73,7 @@ class Api(QObject):
         return self._thread and self._thread.is_alive()
 
     def restart(self):
-        logger.info("Restarting API")
+        logger.debug("Restarting API")
 
         if not self.is_api_started():
             self.start()
@@ -114,7 +113,7 @@ class Api(QObject):
         self._loop = loop
         self._queue = Queue()
 
-        config = UvicornConfig(self.app, host="0.0.0.0", port=self.config.api.port, log_config=None, access_log=True)
+        config = UvicornConfig(self.app, host="0.0.0.0", port=self.backend.config.api.port, log_config=None, access_log=True)
 
         self._server: UvicornServer = UvicornServer(config)
 
@@ -135,10 +134,13 @@ class Api(QObject):
         self.api_request.emit(request)
 
         try:
-            return await wait_for(future, timeout=self.config.api.waiting_timeout_seconds)
+            return await wait_for(future, timeout=self.backend.config.api.waiting_timeout_seconds)
 
         except TimeoutError:
             raise TerminalApiError(http_status=HTTPStatus.GATEWAY_TIMEOUT, detail="request processing timeout")
+
+        except LookupError as lost_transaction:
+            raise TerminalApiError(http_status=HTTPStatus.NOT_FOUND, detail=lost_transaction)
 
         finally:
 

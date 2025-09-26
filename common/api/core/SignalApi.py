@@ -124,18 +124,23 @@ class SignalApi(Terminal):
             self.sent_response(request, HTTPStatus.UNPROCESSABLE_ENTITY, error=config_update_error)
             return
 
+        self.api.config = self.config
+
         self.sent_response(request, HTTPStatus.OK, message=config)
 
     def process_api_reverse_transaction(self, request: ApiRequest):
         original_transaction: Transaction
 
-        try:
-            original_transaction = self.get_transaction(trans_id=request.original_trans_id)
-        except LookupError:
+        if not (original_transaction := self.trans_queue.get_transaction(trans_id=request.original_trans_id)):
             self.sent_response(request, HTTPStatus.NOT_FOUND, error="No original transaction found")
             return
 
-        request.transaction = self.build_reversal(original_transaction)
+        try:
+            request.transaction = self.build_reversal(original_transaction)
+
+        except LookupError as reversal_building_error:
+            self.sent_response(request, HTTPStatus.UNPROCESSABLE_ENTITY, error=reversal_building_error)
+            return
 
         self.send(request.transaction)
 

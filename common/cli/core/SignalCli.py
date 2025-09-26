@@ -26,7 +26,6 @@ from common.cli.enums.LogMarks import LogMarks
 class SignalCli(SignalApi):
     _cli_config: CliConfig = None
     _finished: pyqtSignal = pyqtSignal()
-    _run_api: pyqtSignal = pyqtSignal()
     _job_id: str = str(uuid1())
 
     def __init__(self, config: Config):
@@ -69,7 +68,6 @@ class SignalCli(SignalApi):
     def connect_all(self):
         self.run_timer.timeout.connect(self.main)
         self._finished.connect(self.application.quit)
-        self._run_api.connect(self.run_api_mode)
 
     def run_application(self):
         self.run_timer.setSingleShot(True)
@@ -84,21 +82,20 @@ class SignalCli(SignalApi):
         The function goes by scenario
 
         1. Print data if requested
-        2. Tries to parse the requested files and send the transactions if needed
-        3. Check the api-mode request and runs the API
+        2. Check the api-mode request and runs the API
+        3. Tries to parse the requested files and send the transactions if needed
 
         Important: --repeat flag has a priority over --api-mode. When --repeat flag set along with the --api-mode
         the api-mode will newer be run because the files will be parsed and sent in endless cycle
 
         """
 
-        logger.info(LogMarks.BEGIN % self._job_id)
-
         if self._cli_config.repeat and self._cli_config.api_mode:
             logger.error("Mutually exclusive flags --repeat and --api-mode are set")
             kill(getpid(), 9)
 
         # 1. Print data if requested
+
         print_data_map = {
             self._cli_config.version: self.log_printer.print_version,
             self._cli_config.about: self.log_printer.print_about,
@@ -115,21 +112,30 @@ class SignalCli(SignalApi):
             except Exception as print_error:
                 logger.error(print_error)
 
-        if not any([self._cli_config.version, self._cli_config.about]):
-            logger.info("## Running SIGNAL in Console mode ##")
-            logger.info("Press CTRL+C to exit")
-            logger.info(str())
-
         # 2. Check the api-mode request and runs the API
-        if self._cli_config.api_mode:
-            self._run_api.emit()
 
-        # 3. Tries to parse the requested files and send the transactions if needed
-        if not (filenames := self.get_files_to_process()):
-            if not any([self._cli_config.about, self._cli_config.version]):
-                logger.info("No files specified to parse")
+        if self._cli_config.api_mode:
+            self.log_printer.print_multi_row(TextConstants.HELLO_MESSAGE)
+
+            if files := self.get_files_to_process():
+                logger.warning(f"Signal started in API mode, files processing ignored: {', '.join(files)}")
+
+            self.api.start_api()
 
             return
+
+        # 3. Tries to parse the requested files and send the transactions if needed
+
+        logger.info(LogMarks.BEGIN % self._job_id)
+
+        if not (filenames := self.get_files_to_process()):
+            if not any([self._cli_config.about, self._cli_config.version]):
+                logger.warning("No files specified to parse")
+
+            self.finish()
+
+        logger.info("Press CTRL+C to exit")
+        logger.info(str())
 
         while True:
             for file in filenames:
@@ -154,12 +160,13 @@ class SignalCli(SignalApi):
             if not self._cli_config.repeat:
                 break
 
-        logger.info(LogMarks.FINISH % self._job_id)
-        exit(int())
+        self.finish()
 
-    def run_api_mode(self):
-        logger.info("Run command line API mode")
-        self.api.start_api()
+    def finish(self, code=0, mark=True):
+        if mark:
+            logger.info(LogMarks.FINISH % self._job_id)
+
+        exit(code)
 
     def send(self, transaction: Transaction):
         if self.connector.connection_in_progress():
@@ -212,8 +219,11 @@ class SignalCli(SignalApi):
         license_info: LicenseInfo = self.get_license_info()
 
         if license_info.accepted:
-            logger.info("")
-            logger.info(f"License ID {license_info.license_id} accepted {license_info.last_acceptance_date:%d/%m/%Y %T} UTC")
+            logger.debug("")
+            logger.debug(
+                f"License ID {license_info.license_id} accepted {license_info.last_acceptance_date:%d/%m/%Y %T} UTC"
+            )
+
             return
 
         print(TextConstants.HELLO_MESSAGE)
@@ -302,12 +312,8 @@ class SignalCli(SignalApi):
         return filenames
 
     def parse_cli_config(self, cli_config: CliConfig):
-        if cli_config.config_file != TermFilesPath.CONFIG:
-            with open(cli_config.config_file) as json_config:
-                self.config = Config.model_validate_json(json_config.read())
-
-        self.config.host.host = str(cli_config.address) if cli_config.address else self.config.host.host
-        self.config.host.port = int(cli_config.port) if cli_config.port else self.config.host.port
+        self.connector.config.host.host = str(cli_config.address) if cli_config.address else self.config.host.host
+        self.connector.config.host.port = int(cli_config.port) if cli_config.port else self.config.host.port
         self.config.debug.level = cli_config.log_level if cli_config.log_level else self.config.debug.level
 
     def wait_response(self, request: Transaction):

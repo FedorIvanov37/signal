@@ -77,7 +77,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.LoadSpec2.stateChanged.connect(lambda: self.LoadSpec.setChecked(self.LoadSpec2.isChecked()))
         self.LoadSpec.stateChanged.connect(lambda: self.LoadSpec2.setChecked(self.LoadSpec.isChecked()))
         self.ValidationEnabled.stateChanged.connect(self.process_validation_change)
-        self.ManualInputMode.stateChanged.connect(lambda: self.ValidationEnabled.setChecked(not self.ManualInputMode.isChecked()))
         self.ApiInfoLabel.linkActivated.connect(self.open_user_guide)
         self.MusicOnOfButton.clicked.connect(self.switch_music)
         self.ContactLabel.linkActivated.connect(self.open_url)
@@ -85,7 +84,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.process_config(self.config)
         self.set_data_about()
         self.MainTabs.setCurrentIndex(self.MainTabs.count() - 1 if about else int())
-        self.ValidationEnabled.setChecked(not self.ManualInputMode.isChecked())
         self.UserGuideLink.linkActivated.connect(self.open_user_guide)
 
         self.ManualInputMode.setChecked(False)

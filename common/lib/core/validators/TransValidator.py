@@ -6,8 +6,18 @@ from common.lib.data_models.Types import FieldPath
 
 
 class TransValidator:
+    _config: Config
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config):
+        self._config = config
+
     def __init__(self, config: Config):
-        self.config = config
+        self._config = config
         self.validator = Validator(self.config)
 
     def validate_transaction(self, transaction: Transaction) -> None:

@@ -4,7 +4,7 @@ from common.lib.enums.LicenseAgreement import LicenseAgreement
 
 
 class TextConstants(StrEnum):
-    SYSTEM_NAME = "SIGNAL"
+    SYSTEM_NAME = "Signal"
 
     HELLO_MESSAGE = f"""
   ::::::::  :::::::::::  ::::::::   ::::    :::      :::      :::        

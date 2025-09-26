@@ -23,6 +23,15 @@ from common.lib.interfaces.MetaClasses import QObjectAbcMeta
 class ConnectionThread(ConnectionInterface, QObject, metaclass=QObjectAbcMeta):
     thread: QThread
     stop: bool = False
+    _config: Config
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config):
+        self._config = config
 
     @property
     def get_connected_host(self):

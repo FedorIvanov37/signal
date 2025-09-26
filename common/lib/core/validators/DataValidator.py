@@ -4,6 +4,16 @@ from common.lib.data_models.Validation import ValidationResult
 
 
 class DataValidator:
+    _config: Config
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config):
+        self._config = config
+
     def __init__(self, config: Config):
         self.config: Config = config
         self.validator = Validator(self.config)

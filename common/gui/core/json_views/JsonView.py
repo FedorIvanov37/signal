@@ -68,6 +68,17 @@ class JsonView(TreeView):
     trans_id_set: pyqtSignal = pyqtSignal()
     files_dropped: pyqtSignal = pyqtSignal(list)
     spec: EpaySpecification = EpaySpecification()
+    _config: Config
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config):
+        self._config = config
+        self.validator.config = config
+        self.parser.config = config
 
     @property
     def root(self):
@@ -84,10 +95,10 @@ class JsonView(TreeView):
     def __init__(self, config: Config, root_name: str = RootItemNames.TRANSACTION_ROOT_NAME, parent=None):
         super(JsonView, self).__init__(parent=parent)
         self._root: FieldItem = FieldItem([root_name])
-        self.config: Config = config
+        self._config: Config = config
         self.delegate = JsonView.Delegate(self, self.undo_stack)
-        self.validator = ItemsValidator(self.config)
-        self.parser = Parser(self.config)
+        self.validator = ItemsValidator(self._config)
+        self.parser = Parser(self._config)
         self._setup()
 
     def _setup(self):

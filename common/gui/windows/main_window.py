@@ -77,6 +77,16 @@ class MainWindow(Ui_MainWindow, QMainWindow):
     files_dropped: pyqtSignal = pyqtSignal(list)
     undo: pyqtSignal = pyqtSignal()
     redo: pyqtSignal = pyqtSignal()
+    _config: Config
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config):
+        self._config = config
+        self.tab_view.config = config
 
     @property
     def json_view(self):
@@ -92,7 +102,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
 
     def __init__(self, config: Config):
         super().__init__()
-        self.config = config
+        self._config = config
         self._tab_view: TabView = TabView(self.config)
         self._setup()
 

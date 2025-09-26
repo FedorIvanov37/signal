@@ -24,6 +24,18 @@ class TabView(QTabWidget):
     new_tab_opened: pyqtSignal = pyqtSignal()
     copy_bitmap: pyqtSignal = pyqtSignal()
     files_dropped: pyqtSignal = pyqtSignal(list)
+    _config: Config
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config):
+        for json_view in self.tab_widget.findChildren(JsonView):
+            json_view.config = config
+
+        self._config = config
 
     @property
     def json_view(self):
@@ -71,7 +83,7 @@ class TabView(QTabWidget):
     def __init__(self, config: Config):
         super(QTabWidget, self).__init__()
         self.setTabBar(TabBar())
-        self.config = config
+        self._config = config
         self._setup()
         self.connect_all()
 

@@ -7,6 +7,16 @@ from common.lib.data_models.EpaySpecificationModel import IsoField, Justificatio
 
 
 class ItemsValidator:
+    _config: Config
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config):
+        self._config = config
+
     spec: EpaySpecification = EpaySpecification()
 
     def __init__(self, config: Config):

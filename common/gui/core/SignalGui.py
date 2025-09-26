@@ -181,6 +181,12 @@ class SignalGui(SignalApi):
         for signal, slot in terminal_connections_map.items():
             signal.connect(slot)
 
+    def read_config(self, config_file: str | None = None):
+        Terminal.read_config(self, config_file)
+
+        for tool in self.window, self.connector:
+            tool.config = self.config
+
     def disable_item(self, disable: bool, item=None, go_next=True) -> None:
         if item is None and not (item := self.window.json_view.currentItem()):
             return

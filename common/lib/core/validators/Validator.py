@@ -17,13 +17,22 @@ from common.lib.core.Parser import Parser
 
 class Validator:
     _spec: EpaySpecification = EpaySpecification()
+    _config: Config
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config):
+        self._config = config
 
     @property
     def spec(self):
         return self._spec
 
     def __init__(self, config: Config):
-        self.config = config
+        self._config = config
 
     @staticmethod
     def validate_url(url: str, validation_result: ValidationResult):

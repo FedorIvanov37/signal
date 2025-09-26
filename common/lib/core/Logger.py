@@ -12,6 +12,15 @@ class Logger:
     rotation = f"{LogDefinition.LOG_MAX_SIZE_MEGABYTES} MB"
     format = LogDefinition.LOGFILE_DATE_FORMAT
     compression = LogDefinition.COMPRESSION
+    _config: Config
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config):
+        self._config = config
 
     def __init__(self, config: Config):
         self.config = config
