@@ -48,7 +48,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.config = config
         self.setup(about=about)
 
-
     @set_window_icon
     @has_close_button_only
     def setup(self, about: bool = False) -> None:
