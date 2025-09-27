@@ -1,16 +1,18 @@
 import PyInstaller.__main__
-from os import getcwd
+from pathlib import Path
 
+ROOT = Path(__file__).parent.resolve()
 
 PyInstaller.__main__.run(
     [
-        "_signal.py",
+        str(ROOT / "_signal.py"),
         "--noconfirm",
         "--clean",
         "--onefile",
         "--hide-console=hide-early",
-        "--icon=common/data/style/logo_triangle.ico",
-        f"--distpath={getcwd()}",
+        f"--icon={ROOT / 'common/data/style/logo_triangle.ico'}",
+        f"--distpath={ROOT}",
         "--log-level=INFO",
+        f"--manifest={ROOT / 'signal.exe.manifest'}",
     ]
 )
