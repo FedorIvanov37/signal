@@ -197,7 +197,7 @@ class SignalGui(SignalApi):
             item.set_disabled(disable)
 
         except ValueError as err:
-            logger.warning(err)
+            logger.error(err)
 
         else:
             logger.debug(f"Field {item.get_field_path(string=True)} is {'disabled' if disable else 'enabled'}")
@@ -208,6 +208,8 @@ class SignalGui(SignalApi):
 
         if go_next:
             self.window.json_view.focusNextChild()
+
+        self.window.json_view.setFocus()
 
     @staticmethod
     def show_document():  # Open the User guide in a default browser
@@ -295,7 +297,6 @@ class SignalGui(SignalApi):
             settings_window: SettingsWindow = SettingsWindow(self.config, about=about)
             settings_window.accepted.connect(lambda: self.process_config_change(old_config))
             settings_window.open_user_guide.connect(self.show_document)
-            # settings_window.open_api_url.connect(self.open_api_url)
             settings_window.exec()
             
         except Exception as settings_error:
@@ -303,6 +304,7 @@ class SignalGui(SignalApi):
 
     def process_config_change(self, old_config: Config) -> None:
         Terminal.process_config_change(self, old_config)
+        self.api.config = self.config
 
         if self.config.debug.level != old_config.debug.level:
             self.logger.remove()
@@ -312,7 +314,7 @@ class SignalGui(SignalApi):
 
         validation_conditions = [
             old_config.validation.validate_window != self.config.validation.validate_window,
-            old_config.validation.validation_mode != self.config.validation.validation_mode
+            old_config.validation.validation_mode != self.config.validation.validation_mode,
         ]
 
         if self.config.validation.validation_enabled and any(validation_conditions):

@@ -400,6 +400,16 @@ Release v0.19
     • Bugfix
 
 
++ Change API port in config
+? Music
++ Transaction validation API sort answer
++ Disable field when subfields are disabled
++ Change some warning to error
+
+• Encoding
+• TLS
+
+
 
 
 • Egg

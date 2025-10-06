@@ -342,7 +342,7 @@ class JsonView(TreeView):
 
         if spec := field_item.get_field_spec():
             if len(trans_id) > spec.max_length or len(trans_id) < spec.min_length:
-                logger.warning("Invalid trans ID")
+                logger.error(f"Invalid trans ID {trans_id}")
                 return
 
         field_item.field_data = trans_id

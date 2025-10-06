@@ -1,3 +1,4 @@
+from contextlib import suppress
 from common.lib.core.validators.Validator import Validator
 from common.lib.core.EpaySpecification import EpaySpecification
 from common.lib.data_models.Config import Config
@@ -16,6 +17,9 @@ class ItemsValidator:
     @config.setter
     def config(self, config):
         self._config = config
+
+        with suppress(AttributeError):
+            self.validator.config = config
 
     spec: EpaySpecification = EpaySpecification()
 

@@ -114,18 +114,29 @@ class ApiInterface(QObject):
 
     def prepare_api_transaction_resp(self, transaction: Transaction):
         for request_id, request in self.api_tasks.items():
+            if request.request_type not in (ApiRequestType.OUTGOING_TRANSACTION, ApiRequestType.REVERSE_TRANSACTION):
+                continue
+
+            if request.transaction is None:
+                continue
+
             conditions = (
                 request.transaction.trans_id == transaction.trans_id,
-                request.transaction.trans_id == transaction.match_id
+                request.transaction.trans_id == transaction.match_id,
             )
 
             if not any(conditions):
                 continue
 
-            transaction: Transaction = self.terminal.clean_transaction(transaction)
+            transaction_error = transaction.error
 
-            request.response_data = transaction
-            request.http_status = HTTPStatus.OK
+            if transaction.match_id == request.transaction.trans_id and transaction.matched:
+                request.response_data = self.terminal.clean_transaction(transaction)
+                request.http_status = HTTPStatus.OK
+
+            else:
+                request.error = transaction_error
+                request.http_status = HTTPStatus.BAD_GATEWAY
 
             self.delivery_api_response(request)
 
@@ -158,6 +169,7 @@ class ApiInterface(QObject):
         if not self.terminal.config.api.wait_remote_host_response:
             request.http_status = HTTPStatus.OK
             request.response_data = TransactionResp()
+            request.response_data.status = request.response_data.status % request.request_id
             self.delivery_api_response(request)
 
     def delivery_api_response(self, response: ApiRequest):

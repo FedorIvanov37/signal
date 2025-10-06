@@ -91,7 +91,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         QShortcut(QKeySequence(KeySequences.CTRL_PAGE_DOWN), self).activated.connect(
             lambda: self.MainTabs.setCurrentIndex(self.MainTabs.currentIndex() + 1)
         )
-        
+
         QShortcut(QKeySequence(KeySequences.CTRL_PAGE_UP), self).activated.connect(
             lambda: self.MainTabs.setCurrentIndex(self.MainTabs.currentIndex() - 1)
         )
@@ -226,7 +226,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
 
     def set_data_about(self) -> None:
         self.logoLabel.setPixmap(QPixmap(GuiFilesPath.SIGNED_LOGO))
-        self.MusicOnOfButton.setIcon(QIcon(QPixmap(GuiFilesPath.MAIN_LOGO)))
         self.MusicOnOfButton.setIcon(QIcon(QPixmap(GuiFilesPath.MUSIC_ON)))
 
         data_bind = {

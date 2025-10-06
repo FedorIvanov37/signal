@@ -1,4 +1,5 @@
 from typing import Union
+from uuid import uuid4
 from http import HTTPStatus
 from loguru import logger
 from threading import Thread
@@ -128,6 +129,7 @@ class Api(QObject):
             self.api_stopped.emit(ApiModes.STOP)
 
     async def backend_request(self, request: ApiRequest):  # Use this to create long-time job
+        request.request_id = uuid4()
         loop = get_running_loop()
         future: Future = loop.create_future()
         self.pending_jobs[request.request_id] = future
