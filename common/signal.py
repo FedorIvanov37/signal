@@ -1,24 +1,28 @@
-"""
-
-Signal starting script 
-
-This script runs Signal GUI or CLI, depending on start arguments
-
-The script starts GUI or CLI only. If you're using library see application example is the User Reference Guide
-
-The Signal started once the file is imported, no additional actions are required
-
-Example of the script run command: "from common import signal"
-
-"""
-
+#
+#  ::::::::  :::::::::::  ::::::::   ::::    :::      :::      :::        
+# :+:    :+:     :+:     :+:    :+:  :+:+:   :+:    :+: :+:    :+:        
+# +:+            +:+     +:+         :+:+:+  +:+   +:+   +:+   +:+        
+# +#++:++#++     +#+     :#:         +#+ +:+ +#+  +#++:++#++:  +#+        
+#        +#+     +#+     +#+   +#+#  +#+  +#+#+#  +#+     +#+  +#+        
+# #+#    #+#     #+#     #+#    #+#  #+#   #+#+#  #+#     #+#  #+#        
+#  ########  ###########  ########   ###    ####  ###     ###  ########## 
+#
+# Signal starting script 
+#
+# This script runs Signal GUI or CLI, depending on start arguments. The script starts GUI or CLI only
+# If you're using library see application example is the User Reference Guide
+#
+# The Signal started once the file is imported, no additional actions are required
+#
+# Example of the script run command: "from common import signal"
+#
 
 __author__ = "Fedor Ivanov"
 __version__ = "v0.19"
 
 
 # Correct way to run
-if __name__ != "__main__":  # Runs only by import command
+if __name__ != "__main__":  # Runs only by import coюmmand
 
     # Preparation to run the Signal 
     
