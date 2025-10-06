@@ -389,37 +389,20 @@ To fix
     + Change the name
 
 
-Release v0.19
-    • API mode + collection
-    • Buttons optimization
-    • Renovated Settings window
-    • Buttons disable / enable
-    • CLI mode marks
-    • Drag n drop
-    • Undo / redo
-    • Bugfix
-
-
 + Change API port in config
-? Music
 + Transaction validation API sort answer
 + Disable field when subfields are disabled
 + Change some warning to error
 
+? Music
 • Encoding
 • TLS
-
-
-
-
 • Egg
 • Cursor color
-
-
 • default config
-• postman collection
 • Tests
 
++ postman collection
 + document pictures
 + Put version
 + MW fields Validation warning color

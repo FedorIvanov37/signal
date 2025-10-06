@@ -49,6 +49,6 @@
         "wait_remote_host_response": true,
         "waiting_timeout_seconds": 10,
         "hide_secrets": true,
-        "parse_subfields": false
+        "parse_subfields": true
     }
 }
