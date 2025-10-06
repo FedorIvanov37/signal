@@ -44,7 +44,7 @@ if __name__ != "__main__":  # Runs only by import command
         CliDefinition.HELP_LONG,
     )
 
-    if any([True for arg in cli_mode_triggers if arg in argv]):  # Run in Command Line Interface (CLI) mode
+    if any(arg in argv for arg in cli_mode_triggers):  # Run in Command Line Interface (CLI) mode
         cli: SignalCli = SignalCli(config)
         cli.run_application()
         exit(int())
