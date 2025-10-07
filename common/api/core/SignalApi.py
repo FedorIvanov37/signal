@@ -62,10 +62,7 @@ class SignalApi(Terminal):
             self.trans_validator.validate_transaction(transaction)
 
         except (DataValidationError, DataValidationWarning) as validation_error:
-            validation_errors = str(validation_error).split("\n")
-            validation_errors.sort()
-
-            return TransValidationErrors(validation_errors=validation_errors)
+            return TransValidationErrors(validation_errors=str(validation_error).split("\n"))
 
         return TransValidationErrors()
 

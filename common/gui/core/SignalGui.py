@@ -1,6 +1,6 @@
-from os.path import basename, normpath
 from sys import exit
 from os import getcwd, kill, getpid
+from os.path import basename, normpath
 from typing import Callable
 from loguru import logger
 from pydantic import ValidationError
@@ -21,7 +21,6 @@ from common.gui.core.ConnectionThread import ConnectionThread
 from common.gui.enums import ButtonActions
 from common.gui.enums.Colors import Colors
 from common.gui.enums.GuiFilesPath import GuiDirs
-from common.gui.core.WirelessHandler import WirelessHandler
 from common.lib.enums import KeepAlive
 from common.lib.enums.TermFilesPath import TermFilesPath
 from common.lib.enums.DataFormats import DataFormats, PrintDataFormats, OutputFilesFormat, InputFilesFormat
@@ -66,7 +65,6 @@ class SignalGui(SignalApi):
     connector: ConnectionThread
     trans_timer: TransactionTimer = TransactionTimer(KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION)
     set_remote_spec: pyqtSignal = pyqtSignal()
-    _wireless_handler: WirelessHandler = WirelessHandler()
     _run_timer = QTimer()
     _generated_echo_test_transactions: list[Transaction] = []
 
@@ -95,7 +93,7 @@ class SignalGui(SignalApi):
         QDir.addSearchPath(GuiDirs.STYLE_DIR.name, GuiDirs.STYLE_DIR)
         self._run_timer.setSingleShot(True)
         self._run_timer.start(int())
-        self.logger.add_wireless_handler(self.window.log_browser, self._wireless_handler)
+        self.logger.add_wireless_handler(self.window.log_browser)
 
     def on_startup(self) -> None:  # Runs on startup to make all the preparation activity, then shows MainWindow
         self.show_license_dialog()
