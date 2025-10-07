@@ -38,7 +38,7 @@ if __name__ != "__main__":  # Runs only by import coюmmand
         from common.cli.enums.CliDefinition import CliDefinition
         from common.gui.core.SignalGui import SignalGui
 
-        custom_config: CustomConfigFile = CustomConfigFile(add_help=False)  # Config file can be rewritten in CLI move
+        custom_config: CustomConfigFile = CustomConfigFile(add_help=False)  # Config file can be rewritten in CLI mode
 
         config_file = custom_config.get_config_filename()  # Get the config file name
         
@@ -53,26 +53,29 @@ if __name__ != "__main__":  # Runs only by import coюmmand
                qt.multimedia.ffmpeg.*=false"""
         )
         
-    except Exception as run_preparation_error:
-        logger.error(run_preparation_error)
-        exit(100)
+        # Preparation is finished, starting the Signal
 
-    # Preparation is finished, let's start it
+        command_line_mode = any(arg in argv for arg in CliDefinition)  # Is Command Line Interface mode requested
 
-    try:
-        if any(arg in argv for arg in CliDefinition):  # In case when CLI mode requested
-            cli: SignalCli = SignalCli(config)  # Run in Command Line Interface (CLI) mode
+        if command_line_mode:  # When CLI mode was requested
+
+            # Run CLI mode
+
+            cli: SignalCli = SignalCli(config)
             cli.run_application()
             exit(int())  # GUI won't be ran after CLI
 
-    except Exception as cli_run_error:
-        logger.error(cli_run_error)
-        exit(100)
+            # CLI task is finished
 
-    try:  # Run Graphic User Interface (GUI) mode
-        terminal: SignalGui = SignalGui(config)
-        status: int = terminal.run()
-        exit(status)
+        if not command_line_mode:  # When CLI mode was not requested
+
+            # Run Graphic User Interface mode (GUI)
+
+            terminal: SignalGui = SignalGui(config)
+            status: int = terminal.run()
+            exit(status)
+
+            # GUI session is finished
 
     except Exception as gui_run_exception:
         logger.error(gui_run_exception)
