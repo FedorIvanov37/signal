@@ -33,10 +33,12 @@ Please, refer to the Signal documentation to read more about how to run the appl
 
     raise RuntimeError(error_message)
 
+# Part below will be done when file is imported
 
-# Preparation to run the Signal
+try:  
     
-try:
+    # Preparation to run the Signal
+    
     from loguru import logger
     from sys import exit, argv
     from os import makedirs
