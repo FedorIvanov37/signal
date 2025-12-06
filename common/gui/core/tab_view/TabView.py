@@ -1,9 +1,9 @@
 from loguru import logger
 from re import sub as regexp_substitute, match as regexp_match
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QTabWidget, QWidget, QVBoxLayout, QHBoxLayout
+from PyQt6.QtWidgets import QTabWidget, QWidget
 from PyQt6.QtGui import QFont, QIcon
-from common.gui.core.tab_view.Widgets import TabBar, ComboBox, LineEdit, PushButton
+from common.gui.core.tab_view.Widgets import TabBar, ComboBox, LineEdit, TabWidget
 from common.lib.data_models.Config import Config
 from common.gui.decorators.void_qt_signals import void_qt_signals
 from common.gui.core.json_views.JsonView import JsonView
@@ -39,7 +39,13 @@ class TabView(QTabWidget):
 
     @property
     def json_view(self):
-        if not (json_view := self.tab_widget.findChild(JsonView)):
+        try:
+            json_view = self.currentWidget().json_view
+
+        except AttributeError:
+            return JsonView(self.config)
+
+        if not json_view:
             return JsonView(self.config)
 
         return json_view
@@ -90,12 +96,7 @@ class TabView(QTabWidget):
     def _setup(self):
         self.setTabsClosable(False)
         self.setFont(QFont("Calibri", 12))
-
-        try:
-            self.add_tab(tab_name=TabViewParams.MAIN_TAB_NAME)
-        except IndexError:
-            return
-
+        self.add_tab(tab_name=TabViewParams.MAIN_TAB_NAME)
         self.mark_active_tab()
 
     def connect_all(self):
@@ -122,6 +123,9 @@ class TabView(QTabWidget):
     def setTabText(self, index: int | None = None, label: str | None = None):
         if index is None:
             index = self.currentIndex()
+
+        if index == self.plus_tab_index:
+            return
 
         if not label.strip():
             label = self.get_tab_name()
@@ -163,11 +167,7 @@ class TabView(QTabWidget):
             self.mark_active_tab()
             return
 
-        try:
-            self.add_tab()
-        except IndexError:
-            self.close_tab(self.plus_tab_index)
-            self.add_plus_tab()
+        self.add_tab()
 
         if self.count() > tabs_count:
             self.set_tab_non_closeable()
@@ -262,37 +262,26 @@ class TabView(QTabWidget):
         self.json_view.setFocus()
 
     @void_qt_signals
-    def add_tab(self, tab_name=None):
+    def add_tab(self, tab_name=None) -> bool | None:
+
         if self.count() > int(TabViewParams.TABS_LIMIT):
             logger.error(f"Cannot open a new tab, max open tabs limit {TabViewParams.TABS_LIMIT} tabs is reached")
             logger.error("Close some tab to open a new one")
-            raise IndexError
+
+            return False
 
         self.close_tab(self.plus_tab_index)
 
-        widget = self.generate_tab_widget()
-        self.addTab(widget, tab_name if tab_name else self.get_tab_name())
+        tab_widget = TabWidget(json_view=JsonView(self.config))
+
+        tab_widget.button.clicked.connect(self.copy_bitmap)
+
+        self.addTab(tab_widget, tab_name if tab_name else self.get_tab_name())
         self.add_plus_tab()
         self.set_tab_non_closeable()
         self.connect_json_view()
 
-    def generate_tab_widget(self):
-        widget = QWidget()
-        button = PushButton(parent=widget)
-
-        bitmap_layout = QHBoxLayout()
-        bitmap_layout.addWidget(LineEdit())
-        bitmap_layout.addWidget(button)
-
-        widget.setLayout(QVBoxLayout())
-
-        widget.layout().addWidget(ComboBox(parent=widget))
-        widget.layout().insertLayout(1, bitmap_layout)
-        widget.layout().addWidget(JsonView(self.config, parent=widget))
-
-        button.clicked.connect(self.copy_bitmap)
-
-        return widget
+        return True
 
     def add_plus_tab(self):  # Add the technical "plus" tab
         self.addTab(QWidget(), '')

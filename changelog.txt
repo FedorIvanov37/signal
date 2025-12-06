@@ -388,11 +388,23 @@ To fix
     + Gif copyright
     + Change the name
 
-
 + Change API port in config
 + Transaction validation API sort answer
 + Disable field when subfields are disabled
 + Change some warning to error
+
+
++ Undo / redo bug
++ Add field editing when added new field
++ Tab limit
+
+• Config change approach
+• TLS
+• Encoding
+
+
+
+
 
 ? Music
 • Encoding

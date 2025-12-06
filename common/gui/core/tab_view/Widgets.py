@@ -1,7 +1,8 @@
 from PyQt6.QtGui import QFont
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QTabBar, QComboBox, QWidget, QLineEdit, QPushButton
+from PyQt6.QtWidgets import QTabBar, QComboBox, QWidget, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout
 from common.lib.core.EpaySpecification import EpaySpecification
+from common.gui.core.json_views import JsonView
 
 
 CALIBRI_12: QFont = QFont("Calibri", 12)
@@ -68,6 +69,9 @@ class TabBar(QTabBar):
         self.start_rename(tab_index)
 
     def start_rename(self, tab_index):
+        if tab_index == self.parent().count() - 1:
+            return
+
         top_margin = 3
         left_margin = 6
         rect = self.tabRect(tab_index)
@@ -84,3 +88,26 @@ class TabBar(QTabBar):
     def finish_rename(self):
         self.text_edited.emit(self._edited_tab, self._edit.text())
         self._edit.deleteLater()
+
+
+class TabWidget(QWidget):
+    json_view: JsonView = None
+    button: PushButton | None = None
+
+    def __init__(self, json_view: JsonView):
+        super(TabWidget, self).__init__()
+        self.json_view = json_view
+        self.json_view.setParent(self)
+        self.setup()
+
+    def setup(self):
+        self.button = PushButton(parent=self)
+
+        bitmap_layout = QHBoxLayout()
+        bitmap_layout.addWidget(LineEdit(parent=self))
+        bitmap_layout.addWidget(self.button)
+
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(ComboBox(parent=self))
+        self.layout().insertLayout(1, bitmap_layout)
+        self.layout().addWidget(self.json_view)

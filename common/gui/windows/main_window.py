@@ -218,8 +218,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             self.ButtonDisable: self.disable_item,
             self.ButtonEnable: self.enable_item,
             self.ButtonEnableAll: self.enable_all_items,
-            self.ButtonUndo: self.json_view.undo,
-            self.ButtonRedo: self.json_view.redo,
+            self.ButtonUndo: self.undo,
+            self.ButtonRedo: self.redo,
             self.ButtonFiles: self.parse_file,
         }
 
@@ -252,8 +252,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             QKeySequence.StandardKey.Delete: self._tab_view.minus,
             QKeySequence.StandardKey.HelpContents: self.about,
             QKeySequence.StandardKey.Open: self.parse_file,
-            QKeySequence.StandardKey.Undo: self.json_view.undo,
-            QKeySequence.StandardKey.Redo: self.json_view.redo,
+            QKeySequence.StandardKey.Undo: self.undo,
+            QKeySequence.StandardKey.Redo: self.redo,
             QKeySequence.StandardKey.Find: self.activate_search,
             QKeySequence.StandardKey.Close: self._tab_view.close_current_tab,
             QKeySequence.StandardKey.Print: lambda: self.ButtonPrint.showMenu(),
@@ -494,6 +494,12 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             menu.addAction(interval, signal)
             menu.addSeparator()
 
+    def undo_changes(self):
+        self._tab_view.json_view.undo()
+
+    def redo_changes(self):
+        self._tab_view.json_view.redo()
+
     def process_api_mode_change(self, state: ApiModes):
 
         match state:
@@ -518,11 +524,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self._tab_view.setTabText(label=tab_name)
 
     def add_tab(self):
-        try:
-            self._tab_view.add_tab()
-        except IndexError:
-            return
-
+        self._tab_view.add_tab()
         self.reset.emit(False)
 
     def search(self, text):

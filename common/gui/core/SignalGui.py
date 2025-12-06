@@ -1,4 +1,4 @@
-from sys import exit
+from sys import exit as sys_exit
 from os import getcwd, kill, getpid
 from os.path import basename, normpath
 from typing import Callable
@@ -158,13 +158,15 @@ class SignalGui(SignalApi):
             window.validate_message: lambda force: self.validate_main_window(force=force),
             window.parse_complex_field: lambda: ComplexFieldsParser(self.config, self).exec(),
             window.api_mode_changed: self.process_change_api_mode,
-            window.exit: exit,
+            window.exit: sys_exit,
             window.show_document: self.show_document,
             window.show_license: lambda: self.show_license_dialog(force=True),
             window.disable_item: lambda: self.disable_item(disable=True),
             window.enable_item: lambda: self.disable_item(disable=False),
             window.enable_all_items: lambda: self.disable_item(False, self.window.json_view.root, go_next=False),
             window.files_dropped: self.process_files_drop,
+            window.undo: window.undo_changes,
+            window.redo: window.redo_changes,
             self.connector.stateChanged: self.set_connection_status,
             self.set_remote_spec: self.connector.get_remote_spec,
             self.connector.got_remote_spec: self.load_remote_spec,
@@ -774,6 +776,7 @@ class SignalGui(SignalApi):
 
             if new_tab:
                 self.window.tab_view.add_tab()
+                self.set_default_values(log=False)
                 self.window.set_tab_name(basename(filename))
 
             try:
