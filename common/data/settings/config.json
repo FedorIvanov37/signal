@@ -3,7 +3,7 @@
         "host": "127.0.0.1",
         "port": 16677,
         "keep_alive_mode": false,
-        "keep_alive_interval": 300,
+        "keep_alive_interval": 12,
         "header_length": 2,
         "header_length_exists": true
     },
@@ -12,7 +12,7 @@
         "connect_on_startup": false,
         "load_remote_spec": false,
         "show_license_dialog": false,
-        "run_api": true
+        "run_api": false
     },
     "debug": {
         "level": "INFO",

@@ -19,7 +19,7 @@
 
 
 __author__ = "Fedor Ivanov"
-__version__ = "v0.19"
+__version__ = "v0.19.1"
 
 
 # Incorrect way to run

@@ -17,8 +17,8 @@ BLOCK "StringFileInfo"
 		VALUE "CompanyName", ""
 		VALUE "LegalCopyright", "\xA9 Developed by Fedor Ivanov"
 		VALUE "ProductName", "SIGNAL"
-		VALUE "FileVersion", "v0.19"
-		VALUE "ProductVersion", "v0.19"
+		VALUE "FileVersion", "v0.19.1"
+		VALUE "ProductVersion", "v0.19.1"
 	}
 }
 

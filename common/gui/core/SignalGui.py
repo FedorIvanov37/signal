@@ -171,8 +171,8 @@ class SignalGui(SignalApi):
             self.set_remote_spec: self.connector.get_remote_spec,
             self.connector.got_remote_spec: self.load_remote_spec,
             self.trans_timer.send_transaction: window.send,
-            self.trans_timer.interval_was_set: window.process_transaction_loop_change,
-            self.keep_alive_timer.interval_was_set: window.process_transaction_loop_change,
+            self.trans_timer.interval_was_set: window.set_custom_repeat_interval,
+            self.keep_alive_timer.interval_was_set: window.set_custom_repeat_interval,
             self.api.api_started: window.process_api_mode_change,
             self.api.api_stopped: window.process_api_mode_change,
             self._run_timer.timeout: self.on_startup,
@@ -488,12 +488,6 @@ class SignalGui(SignalApi):
         return transactions
 
     def send(self, transaction: Transaction | None = None, is_api_call=False) -> None:
-        if self.connector.connection_in_progress():
-            transaction.success = False
-            transaction.error = "Cannot send the transaction while the host connection is in progress"
-            logger.error(transaction.error)
-            return
-
         if transaction is None:
             try:
                 transaction: Transaction = self.parse_main_window_tab()
@@ -503,6 +497,16 @@ class SignalGui(SignalApi):
 
             except Exception as building_error:
                 [logger.error(err) for err in str(building_error).splitlines()]
+                return
+
+        if self.connector.connection_in_progress():
+            try:
+                transaction.success = False
+                transaction.error = "Cannot send the transaction while the host connection is in progress"
+                logger.error(transaction.error)
+                return
+
+            except AttributeError:
                 return
 
         if self.config.debug.clear_log and not transaction.is_keep_alive and not is_api_call:

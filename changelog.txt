@@ -397,6 +397,7 @@ To fix
 + Undo / redo bug
 + Add field editing when added new field
 + Tab limit
++ Repeat with no network bug
 
 • Config change approach
 • TLS
