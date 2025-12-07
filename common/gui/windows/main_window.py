@@ -383,12 +383,12 @@ class MainWindow(Ui_MainWindow, QMainWindow):
                 menu.addSeparator()
 
         buttons_menu_structure = {
+
             self.ButtonReverse: {
                 ToolBarElements.LAST: lambda: self.reverse.emit(ButtonActions.ReversalMenuActions.LAST),
                 ToolBarElements.OTHER: lambda: self.reverse.emit(ButtonActions.ReversalMenuActions.OTHER),
-                ToolBarElements.SET_REVERSAL_FIELDS: lambda: self.reverse.emit(
-                    ButtonActions.ReversalMenuActions.SET_REVERSAL
-                ),
+                ToolBarElements.SET_REVERSAL_FIELDS:
+                    lambda: self.reverse.emit(ButtonActions.ReversalMenuActions.SET_REVERSAL),
             },
 
             self.ButtonMessage: {
@@ -406,30 +406,29 @@ class MainWindow(Ui_MainWindow, QMainWindow):
                 ToolBarElements.JSON: lambda: self.print.emit(OutputFilesFormat.JSON),
                 ToolBarElements.INI: lambda: self.print.emit(OutputFilesFormat.INI),
                 ToolBarElements.DUMP: lambda: self.print.emit(OutputFilesFormat.DUMP),
-                ButtonActions.PrintButtonDataFormats.SPEC: lambda: self.print.emit(
-                    ButtonActions.PrintButtonDataFormats.SPEC
-                ),
-                ButtonActions.PrintButtonDataFormats.TERM: lambda: self.print.emit(
-                    ButtonActions.PrintButtonDataFormats.TERM
-                ),
-                ButtonActions.PrintButtonDataFormats.CONFIG: lambda: self.print.emit(
-                    ButtonActions.PrintButtonDataFormats.CONFIG
-                ),
+
+                ButtonActions.PrintButtonDataFormats.SPEC:
+                    lambda: self.print.emit(ButtonActions.PrintButtonDataFormats.SPEC),
+
+                ButtonActions.PrintButtonDataFormats.TERM:
+                    lambda: self.print.emit(ButtonActions.PrintButtonDataFormats.TERM),
+
+                ButtonActions.PrintButtonDataFormats.CONFIG:
+                    lambda: self.print.emit(ButtonActions.PrintButtonDataFormats.CONFIG),
             },
 
             self.ButtonSave: {
-                ToolBarElements.CURRENT_TAB: lambda: self.save.emit(ButtonActions.SaveMenuActions.CURRENT_TAB, str()),
-                f"{ButtonActions.SaveMenuActions.ALL_TABS} as {OutputFilesFormat.JSON}": lambda: self.save.emit(
-                    ButtonActions.SaveMenuActions.ALL_TABS, OutputFilesFormat.JSON
-                ),
+                ToolBarElements.CURRENT_TAB:
+                    lambda: self.save.emit(ButtonActions.SaveMenuActions.CURRENT_TAB, str()),
 
-                f"{ButtonActions.SaveMenuActions.ALL_TABS} as {OutputFilesFormat.INI}": lambda: self.save.emit(
-                    ButtonActions.SaveMenuActions.ALL_TABS, OutputFilesFormat.INI
-                ),
+                f"{ButtonActions.SaveMenuActions.ALL_TABS} as {OutputFilesFormat.JSON}":
+                    lambda: self.save.emit(ButtonActions.SaveMenuActions.ALL_TABS, OutputFilesFormat.JSON),
 
-                f"{ButtonActions.SaveMenuActions.ALL_TABS} as {OutputFilesFormat.DUMP}": lambda: self.save.emit(
-                    ButtonActions.SaveMenuActions.ALL_TABS, OutputFilesFormat.DUMP
-                ),
+                f"{ButtonActions.SaveMenuActions.ALL_TABS} as {OutputFilesFormat.INI}":
+                    lambda: self.save.emit(ButtonActions.SaveMenuActions.ALL_TABS, OutputFilesFormat.INI),
+
+                f"{ButtonActions.SaveMenuActions.ALL_TABS} as {OutputFilesFormat.DUMP}":
+                    lambda: self.save.emit(ButtonActions.SaveMenuActions.ALL_TABS, OutputFilesFormat.DUMP),
             },
 
             self.ButtonRepeat: {

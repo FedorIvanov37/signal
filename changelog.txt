@@ -398,6 +398,10 @@ To fix
 + Add field editing when added new field
 + Tab limit
 + Repeat with no network bug
++ Error parsing in API
+
+• Docs
+• Resp logic - possibility to send 0110
 
 • Config change approach
 • TLS

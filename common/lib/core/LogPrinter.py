@@ -41,13 +41,16 @@ class LogPrinter(QObject):
         LogPrinter.print_multi_row(TextConstants.HELLO_MESSAGE)
         self.print_config(self.config, level=level)
 
-    def print_config(self, config: Config | None = None, path=TermFilesPath.CONFIG, level=default_level):
+    def print_config(self, config: Config | None = None, path=None, level=default_level):
         if config is None:
             config = self.config
 
         config_data = f"## Configuration parameters ##\n\n"
-        config_data = f"{config_data}Path: {path}\n\n"
-        config_data = f"{config_data}Data:\n{config.model_dump_json(indent=4)}\n\n"
+
+        if path is not None:
+            config_data = f"{config_data}Path: {path}\n\n"
+
+        config_data = f"{config_data}{config.model_dump_json(indent=4)}\n\n"
         config_data = f"{config_data}## End of configuration parameters ##"
 
         self.print_multi_row(config_data, level=level)
