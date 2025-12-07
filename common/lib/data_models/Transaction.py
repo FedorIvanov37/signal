@@ -23,8 +23,8 @@ class Transaction(BaseModel):
     max_amount: int = 100
     generate_fields: list[generated_field] = []
     json_fields: list[str] = list()
-    match_id: str = str()
-    utrnno: str = str()
+    match_id: str | None = None
+    utrnno: str | None = None
     matched: bool | None = None
     success: bool | None = None
     error: str | None = None

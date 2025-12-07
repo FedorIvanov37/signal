@@ -10,19 +10,6 @@ class Host(BaseModel):
     header_length: int = 0
     header_length_exists: bool = True
 
-    @field_validator("port", mode="before")
-    @classmethod
-    def validate_port(cls, val):
-        try:
-            val = int(val)
-        except ValueError:
-            raise ValueError("Port can contain numbers only")
-
-        if val not in range(0, 65536):
-            raise ValueError(f"Incorrect port number {val}. Port number must be in range 0-65535")
-
-        return val
-
 
 class Terminal(BaseModel):
     process_default_dump: bool = True
@@ -53,7 +40,7 @@ class Validation(BaseModel):
     validate_window: bool = True
     validate_incoming: bool = False
     validate_outgoing: bool = True
-    validation_mode: ValidationMode = ValidationMode.ERROR
+    validation_mode: ValidationMode = ValidationMode.WARNING
 
 
 class Fields(BaseModel):
@@ -106,3 +93,20 @@ class Config(BaseModel):
     fields: Fields | None = None
     specification: Specification = Specification()
     api: ApiModel = ApiModel()
+
+    @field_validator("host", "api", mode="after")
+    @classmethod
+    def validate_port(cls, val):
+        try:
+            val.port = int(val.port)
+
+        except ValueError:
+            raise ValueError("Port can contain numbers only")
+
+        except AttributeError:
+            raise ValueError("Lost port in config")
+
+        if val.port not in range(0, 65536):
+            raise ValueError(f"Incorrect port number {val.port}. Port number must be in range 0-65535")
+
+        return val

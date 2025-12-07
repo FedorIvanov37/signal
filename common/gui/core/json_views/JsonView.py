@@ -342,7 +342,7 @@ class JsonView(TreeView):
 
         if spec := field_item.get_field_spec():
             if len(trans_id) > spec.max_length or len(trans_id) < spec.min_length:
-                logger.warning("Invalid trans ID")
+                logger.error(f"Invalid trans ID {trans_id}")
                 return
 
         field_item.field_data = trans_id
@@ -547,6 +547,7 @@ class JsonView(TreeView):
         item = FieldItem([])
         index = parent.indexOfChild(current_item) + 1
         self.undo_stack.push(InsertItemCommand(self, item, parent, index, callback))
+        self.editItem(item, int())
 
     @void_qt_signals
     def minus(self, *args):
@@ -604,6 +605,8 @@ class JsonView(TreeView):
         sub_item = FieldItem([])
 
         self.undo_stack.push(InsertSubItemCommand(self, current_item, sub_item, callback))
+
+        self.editItem(sub_item, int())
 
     def expand_all(self, item: FieldItem):
         item.setExpanded(True)

@@ -1,25 +1,25 @@
-from loguru import logger
-from typing import Any
-from fastapi import HTTPException
 from contextlib import suppress
 from http import HTTPStatus
+from typing import Any
+from loguru import logger
+from fastapi import HTTPException
 from PyQt6.QtCore import pyqtSignal
-from common.api.data_models.TransValidationErrors import TransValidationErrors
 from common.gui.enums.GuiFilesPath import GuiFiles
+from common.api.data_models.TransValidationErrors import TransValidationErrors
+from common.api.data_models.Connection import Connection
+from common.api.core.ApiInterface import ApiInterface
+from common.api.enums.ApiModes import ApiModes
+from common.api.data_models.ApiRequests import ApiTransactionRequest, ApiRequest, ConfigAction
 from common.api.enums.ApiUrl import ApiUrl
+from common.api.enums.DataCoversionFormats import DataConversionFormats
 from common.lib.exceptions.exceptions import DataValidationError, DataValidationWarning
 from common.lib.enums.TextConstants import TextConstants, ReleaseDefinition
 from common.lib.core.Terminal import Terminal
 from common.lib.data_models.Config import Config
-from common.api.data_models.Connection import Connection
-from common.api.core.ApiInterface import ApiInterface
-from common.api.enums.ApiModes import ApiModes
-from common.api.data_models.ApiRequests import ApiTransactionRequest, ApiRequest
 from common.lib.core.SpecFilesRotator import SpecFilesRotator
 from common.lib.data_models.Transaction import Transaction
 from common.lib.enums.TermFilesPath import TermFilesPath
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
-from common.api.enums.DataCoversionFormats import DataConversionFormats
 from common.lib.core.FieldsGenerator import FieldsGenerator
 
 
@@ -57,8 +57,10 @@ class SignalApi(Terminal):
             signal.connect(slot)
 
     def validate_transaction(self, transaction: Transaction):
+
         try:
             self.trans_validator.validate_transaction(transaction)
+
         except (DataValidationError, DataValidationWarning) as validation_error:
             return TransValidationErrors(validation_errors=str(validation_error).split("\n"))
 
@@ -108,7 +110,13 @@ class SignalApi(Terminal):
             case _:
                 raise HTTPException(HTTPStatus.UNPROCESSABLE_ENTITY, detail=f"Unknown data format {to_format}")
 
-    def process_api_update_config(self, request: ApiRequest):
+    def process_api_update_config(self, request: ConfigAction):
+        logger.info("")
+        logger.info("Processing incoming request to update the config")
+        logger.info("")
+
+        self.log_printer.print_config(request.config)
+
         try:
             old_config = self.config.model_copy(deep=True)
 
@@ -177,6 +185,17 @@ class SignalApi(Terminal):
         self.sent_response(request, HTTPStatus.OK, message=self.get_connection())
 
     def process_api_request(self, request: ApiTransactionRequest):
+        try:
+            self.trans_validator.validate_transaction(request.transaction)
+
+        except DataValidationWarning as validation_warning:
+            logger.warning(validation_warning)
+
+        except DataValidationError as validation_error:
+            logger.error(validation_error)
+            self.sent_response(request, HTTPStatus.UNPROCESSABLE_ENTITY, error=f"Validation error: {validation_error}")
+            return
+
         self.requests[request.request_id] = request
         self.send(request.transaction)
 

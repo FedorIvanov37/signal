@@ -1,6 +1,6 @@
-from os.path import basename, normpath
-from sys import exit
+from sys import exit as sys_exit
 from os import getcwd, kill, getpid
+from os.path import basename, normpath
 from typing import Callable
 from loguru import logger
 from pydantic import ValidationError
@@ -21,7 +21,6 @@ from common.gui.core.ConnectionThread import ConnectionThread
 from common.gui.enums import ButtonActions
 from common.gui.enums.Colors import Colors
 from common.gui.enums.GuiFilesPath import GuiDirs
-from common.gui.core.WirelessHandler import WirelessHandler
 from common.lib.enums import KeepAlive
 from common.lib.enums.TermFilesPath import TermFilesPath
 from common.lib.enums.DataFormats import DataFormats, PrintDataFormats, OutputFilesFormat, InputFilesFormat
@@ -66,7 +65,6 @@ class SignalGui(SignalApi):
     connector: ConnectionThread
     trans_timer: TransactionTimer = TransactionTimer(KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION)
     set_remote_spec: pyqtSignal = pyqtSignal()
-    _wireless_handler: WirelessHandler = WirelessHandler()
     _run_timer = QTimer()
     _generated_echo_test_transactions: list[Transaction] = []
 
@@ -95,7 +93,7 @@ class SignalGui(SignalApi):
         QDir.addSearchPath(GuiDirs.STYLE_DIR.name, GuiDirs.STYLE_DIR)
         self._run_timer.setSingleShot(True)
         self._run_timer.start(int())
-        self.logger.add_wireless_handler(self.window.log_browser, self._wireless_handler)
+        self.logger.add_wireless_handler(self.window.log_browser)
 
     def on_startup(self) -> None:  # Runs on startup to make all the preparation activity, then shows MainWindow
         self.show_license_dialog()
@@ -160,19 +158,21 @@ class SignalGui(SignalApi):
             window.validate_message: lambda force: self.validate_main_window(force=force),
             window.parse_complex_field: lambda: ComplexFieldsParser(self.config, self).exec(),
             window.api_mode_changed: self.process_change_api_mode,
-            window.exit: exit,
+            window.exit: sys_exit,
             window.show_document: self.show_document,
             window.show_license: lambda: self.show_license_dialog(force=True),
             window.disable_item: lambda: self.disable_item(disable=True),
             window.enable_item: lambda: self.disable_item(disable=False),
             window.enable_all_items: lambda: self.disable_item(False, self.window.json_view.root, go_next=False),
             window.files_dropped: self.process_files_drop,
+            window.undo: window.undo_changes,
+            window.redo: window.redo_changes,
             self.connector.stateChanged: self.set_connection_status,
             self.set_remote_spec: self.connector.get_remote_spec,
             self.connector.got_remote_spec: self.load_remote_spec,
             self.trans_timer.send_transaction: window.send,
-            self.trans_timer.interval_was_set: window.process_transaction_loop_change,
-            self.keep_alive_timer.interval_was_set: window.process_transaction_loop_change,
+            self.trans_timer.interval_was_set: window.set_custom_repeat_interval,
+            self.keep_alive_timer.interval_was_set: window.set_custom_repeat_interval,
             self.api.api_started: window.process_api_mode_change,
             self.api.api_stopped: window.process_api_mode_change,
             self._run_timer.timeout: self.on_startup,
@@ -197,7 +197,7 @@ class SignalGui(SignalApi):
             item.set_disabled(disable)
 
         except ValueError as err:
-            logger.warning(err)
+            logger.error(err)
 
         else:
             logger.debug(f"Field {item.get_field_path(string=True)} is {'disabled' if disable else 'enabled'}")
@@ -208,6 +208,8 @@ class SignalGui(SignalApi):
 
         if go_next:
             self.window.json_view.focusNextChild()
+
+        self.window.json_view.setFocus()
 
     @staticmethod
     def show_document():  # Open the User guide in a default browser
@@ -295,7 +297,6 @@ class SignalGui(SignalApi):
             settings_window: SettingsWindow = SettingsWindow(self.config, about=about)
             settings_window.accepted.connect(lambda: self.process_config_change(old_config))
             settings_window.open_user_guide.connect(self.show_document)
-            # settings_window.open_api_url.connect(self.open_api_url)
             settings_window.exec()
             
         except Exception as settings_error:
@@ -303,6 +304,7 @@ class SignalGui(SignalApi):
 
     def process_config_change(self, old_config: Config) -> None:
         Terminal.process_config_change(self, old_config)
+        self.api.config = self.config
 
         if self.config.debug.level != old_config.debug.level:
             self.logger.remove()
@@ -312,7 +314,7 @@ class SignalGui(SignalApi):
 
         validation_conditions = [
             old_config.validation.validate_window != self.config.validation.validate_window,
-            old_config.validation.validation_mode != self.config.validation.validation_mode
+            old_config.validation.validation_mode != self.config.validation.validation_mode,
         ]
 
         if self.config.validation.validation_enabled and any(validation_conditions):
@@ -486,12 +488,6 @@ class SignalGui(SignalApi):
         return transactions
 
     def send(self, transaction: Transaction | None = None, is_api_call=False) -> None:
-        if self.connector.connection_in_progress():
-            transaction.success = False
-            transaction.error = "Cannot send the transaction while the host connection is in progress"
-            logger.error(transaction.error)
-            return
-
         if transaction is None:
             try:
                 transaction: Transaction = self.parse_main_window_tab()
@@ -501,6 +497,16 @@ class SignalGui(SignalApi):
 
             except Exception as building_error:
                 [logger.error(err) for err in str(building_error).splitlines()]
+                return
+
+        if self.connector.connection_in_progress():
+            try:
+                transaction.success = False
+                transaction.error = "Cannot send the transaction while the host connection is in progress"
+                logger.error(transaction.error)
+                return
+
+            except AttributeError:
                 return
 
         if self.config.debug.clear_log and not transaction.is_keep_alive and not is_api_call:
@@ -774,6 +780,7 @@ class SignalGui(SignalApi):
 
             if new_tab:
                 self.window.tab_view.add_tab()
+                self.set_default_values(log=False)
                 self.window.set_tab_name(basename(filename))
 
             try:

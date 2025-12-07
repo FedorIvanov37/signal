@@ -3,6 +3,7 @@ from common.lib.data_models.Config import Config
 from common.lib.data_models.Transaction import Transaction
 from common.lib.data_models.Validation import ValidationResult
 from common.lib.data_models.Types import FieldPath
+from contextlib import suppress
 
 
 class TransValidator:
@@ -15,6 +16,9 @@ class TransValidator:
     @config.setter
     def config(self, config):
         self._config = config
+
+        with suppress(AttributeError):
+            self.validator.config = config
 
     def __init__(self, config: Config):
         self._config = config

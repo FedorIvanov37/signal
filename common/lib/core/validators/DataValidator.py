@@ -1,6 +1,7 @@
 from common.lib.core.validators.Validator import Validator
 from common.lib.data_models.Config import Config
 from common.lib.data_models.Validation import ValidationResult
+from contextlib import suppress
 
 
 class DataValidator:
@@ -14,9 +15,12 @@ class DataValidator:
     def config(self, config):
         self._config = config
 
+        with suppress(AttributeError):
+            self.validator.config = config
+
     def __init__(self, config: Config):
         self.config: Config = config
-        self.validator = Validator(self.config)
+        self.validator = Validator(config)
 
     def validate_mti(self, mti):
         validation_result: ValidationResult = self.validator.validate_mti(mti, ValidationResult())

@@ -3,7 +3,7 @@ from ctypes import windll
 from itertools import batched
 from PyQt6.QtNetwork import QTcpSocket
 from PyQt6.QtCore import pyqtSignal, Qt
-from PyQt6.QtGui import QCloseEvent, QKeySequence, QShortcut, QPixmap, QIcon
+from PyQt6.QtGui import QCloseEvent, QKeySequence, QShortcut, QPixmap, QIcon, QActionGroup, QAction
 from PyQt6.QtWidgets import QMainWindow, QMenu, QPushButton
 from common.lib.enums.MessageLength import MessageLength
 from common.lib.enums.DataFormats import OutputFilesFormat
@@ -77,6 +77,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
     files_dropped: pyqtSignal = pyqtSignal(list)
     undo: pyqtSignal = pyqtSignal()
     redo: pyqtSignal = pyqtSignal()
+    repeat_actions: dict = dict()
     _config: Config
 
     @property
@@ -110,6 +111,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
     def _setup(self) -> None:
         self.setupUi(self)
         self._add_control_buttons()
+        self.set_repeat_actions()
         self._connect_all()
         self.setWindowTitle(TextConstants.SYSTEM_NAME.capitalize())
         windll.shell32.SetCurrentProcessExplicitAppUserModelID("MainWindow")
@@ -119,8 +121,6 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self.set_buttons_menu()
         self.TabViewLayout.addWidget(self._tab_view)
         self.process_api_mode_change(ApiModes.NOT_RUN)
-        for trans_type in KeepAlive.TransTypes.TRANS_TYPE_KEEP_ALIVE, KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION:
-            self.process_transaction_loop_change(KeepAlive.IntervalNames.KEEP_ALIVE_DEFAULT, trans_type)
 
     def _add_control_buttons(self) -> None:
 
@@ -218,8 +218,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             self.ButtonDisable: self.disable_item,
             self.ButtonEnable: self.enable_item,
             self.ButtonEnableAll: self.enable_all_items,
-            self.ButtonUndo: self.json_view.undo,
-            self.ButtonRedo: self.json_view.redo,
+            self.ButtonUndo: self.undo,
+            self.ButtonRedo: self.redo,
             self.ButtonFiles: self.parse_file,
         }
 
@@ -252,8 +252,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             QKeySequence.StandardKey.Delete: self._tab_view.minus,
             QKeySequence.StandardKey.HelpContents: self.about,
             QKeySequence.StandardKey.Open: self.parse_file,
-            QKeySequence.StandardKey.Undo: self.json_view.undo,
-            QKeySequence.StandardKey.Redo: self.json_view.redo,
+            QKeySequence.StandardKey.Undo: self.undo,
+            QKeySequence.StandardKey.Redo: self.redo,
             QKeySequence.StandardKey.Find: self.activate_search,
             QKeySequence.StandardKey.Close: self._tab_view.close_current_tab,
             QKeySequence.StandardKey.Print: lambda: self.ButtonPrint.showMenu(),
@@ -294,6 +294,73 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             for signal, slot in connection_map.items():
                 signal.connect(slot)
 
+    def set_custom_repeat_interval(self, interval_name, trans_type):
+        match trans_type:
+            case KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION:
+                button = self.ButtonRepeat
+
+            case KeepAlive.TransTypes.TRANS_TYPE_KEEP_ALIVE:
+                button = self.ButtonKeepAlive
+
+            case _:
+                return
+
+        icon = GuiFilesPath.GREEN_CIRCLE
+
+        if interval_name in (KeepAlive.IntervalNames.KEEP_ALIVE_STOP, KeepAlive.IntervalNames.KEEP_ALIVE_ONCE):
+            icon = GuiFilesPath.GREY_CIRCLE
+
+        button.setIcon(QIcon(icon))
+
+    def set_repeat_actions(self):
+        for button in self.ButtonRepeat, self.ButtonKeepAlive:
+
+            menu = QMenu(button)
+            group = QActionGroup(menu)
+            group.setExclusive(True)
+
+            self.repeat_actions[button] = dict()
+
+            group.triggered.connect(lambda _action, _button=button: self.process_repeat_action(_action, _button))
+
+            for interval in KeepAlive.IntervalNames:
+                if interval == KeepAlive.IntervalNames.KEEP_ALIVE_DEFAULT:
+                    continue
+
+                action = menu.addAction(interval)
+                action.setCheckable(True)
+                action.setData(interval)
+
+                group.addAction(action)
+                self.repeat_actions[button][interval] = action
+
+                if interval == KeepAlive.IntervalNames.KEEP_ALIVE_STOP:
+                    action.setChecked(True)
+
+            button.setMenu(menu)
+
+    def process_repeat_action(self, action: QAction, button: QPushButton):
+        interval = action.data()
+
+        if not (actions := self.repeat_actions.get(button)):
+            return
+
+        if not (stop_action := actions.get(KeepAlive.IntervalNames.KEEP_ALIVE_STOP)):
+            return
+
+        button.setIcon(QIcon(GuiFilesPath.GREEN_CIRCLE))
+
+        if interval in (KeepAlive.IntervalNames.KEEP_ALIVE_STOP, KeepAlive.IntervalNames.KEEP_ALIVE_ONCE):
+            stop_action.setChecked(True)
+            button.setIcon(QIcon(GuiFilesPath.GREY_CIRCLE))
+
+        match button:
+            case self.ButtonRepeat:
+                self.repeat.emit(interval)
+
+            case self.ButtonKeepAlive:
+                self.keep_alive.emit(interval)
+
     def set_buttons_menu(self) -> None:
 
         def process_menu_structure(structure: dict, menu=None):
@@ -316,12 +383,12 @@ class MainWindow(Ui_MainWindow, QMainWindow):
                 menu.addSeparator()
 
         buttons_menu_structure = {
+
             self.ButtonReverse: {
                 ToolBarElements.LAST: lambda: self.reverse.emit(ButtonActions.ReversalMenuActions.LAST),
                 ToolBarElements.OTHER: lambda: self.reverse.emit(ButtonActions.ReversalMenuActions.OTHER),
-                ToolBarElements.SET_REVERSAL_FIELDS: lambda: self.reverse.emit(
-                    ButtonActions.ReversalMenuActions.SET_REVERSAL
-                ),
+                ToolBarElements.SET_REVERSAL_FIELDS:
+                    lambda: self.reverse.emit(ButtonActions.ReversalMenuActions.SET_REVERSAL),
             },
 
             self.ButtonMessage: {
@@ -339,30 +406,29 @@ class MainWindow(Ui_MainWindow, QMainWindow):
                 ToolBarElements.JSON: lambda: self.print.emit(OutputFilesFormat.JSON),
                 ToolBarElements.INI: lambda: self.print.emit(OutputFilesFormat.INI),
                 ToolBarElements.DUMP: lambda: self.print.emit(OutputFilesFormat.DUMP),
-                ButtonActions.PrintButtonDataFormats.SPEC: lambda: self.print.emit(
-                    ButtonActions.PrintButtonDataFormats.SPEC
-                ),
-                ButtonActions.PrintButtonDataFormats.TERM: lambda: self.print.emit(
-                    ButtonActions.PrintButtonDataFormats.TERM
-                ),
-                ButtonActions.PrintButtonDataFormats.CONFIG: lambda: self.print.emit(
-                    ButtonActions.PrintButtonDataFormats.CONFIG
-                ),
+
+                ButtonActions.PrintButtonDataFormats.SPEC:
+                    lambda: self.print.emit(ButtonActions.PrintButtonDataFormats.SPEC),
+
+                ButtonActions.PrintButtonDataFormats.TERM:
+                    lambda: self.print.emit(ButtonActions.PrintButtonDataFormats.TERM),
+
+                ButtonActions.PrintButtonDataFormats.CONFIG:
+                    lambda: self.print.emit(ButtonActions.PrintButtonDataFormats.CONFIG),
             },
 
             self.ButtonSave: {
-                ToolBarElements.CURRENT_TAB: lambda: self.save.emit(ButtonActions.SaveMenuActions.CURRENT_TAB, str()),
-                f"{ButtonActions.SaveMenuActions.ALL_TABS} as {OutputFilesFormat.JSON}": lambda: self.save.emit(
-                    ButtonActions.SaveMenuActions.ALL_TABS, OutputFilesFormat.JSON
-                ),
+                ToolBarElements.CURRENT_TAB:
+                    lambda: self.save.emit(ButtonActions.SaveMenuActions.CURRENT_TAB, str()),
 
-                f"{ButtonActions.SaveMenuActions.ALL_TABS} as {OutputFilesFormat.INI}": lambda: self.save.emit(
-                    ButtonActions.SaveMenuActions.ALL_TABS, OutputFilesFormat.INI
-                ),
+                f"{ButtonActions.SaveMenuActions.ALL_TABS} as {OutputFilesFormat.JSON}":
+                    lambda: self.save.emit(ButtonActions.SaveMenuActions.ALL_TABS, OutputFilesFormat.JSON),
 
-                f"{ButtonActions.SaveMenuActions.ALL_TABS} as {OutputFilesFormat.DUMP}": lambda: self.save.emit(
-                    ButtonActions.SaveMenuActions.ALL_TABS, OutputFilesFormat.DUMP
-                ),
+                f"{ButtonActions.SaveMenuActions.ALL_TABS} as {OutputFilesFormat.INI}":
+                    lambda: self.save.emit(ButtonActions.SaveMenuActions.ALL_TABS, OutputFilesFormat.INI),
+
+                f"{ButtonActions.SaveMenuActions.ALL_TABS} as {OutputFilesFormat.DUMP}":
+                    lambda: self.save.emit(ButtonActions.SaveMenuActions.ALL_TABS, OutputFilesFormat.DUMP),
             },
 
             self.ButtonRepeat: {
@@ -395,104 +461,11 @@ class MainWindow(Ui_MainWindow, QMainWindow):
 
         process_menu_structure(structure=buttons_menu_structure)
 
-        for trans_type in KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION, KeepAlive.TransTypes.TRANS_TYPE_KEEP_ALIVE:
-            self.process_transaction_loop_change(KeepAlive.IntervalNames.KEEP_ALIVE_DEFAULT, trans_type)
+    def undo_changes(self):
+        self._tab_view.json_view.undo()
 
-    def process_transaction_loop_change(self, interval_name: str, trans_type: KeepAlive.TransTypes):
-        if not interval_name:
-            return
-
-        menu_map = {
-            KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION: self.ButtonRepeat,
-            KeepAlive.TransTypes.TRANS_TYPE_KEEP_ALIVE: self.ButtonKeepAlive,
-        }
-
-        signals_map = {
-            KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION: {
-                KeepAlive.IntervalNames.KEEP_ALIVE_1S: lambda: self.repeat.emit(
-                    KeepAlive.IntervalNames.KEEP_ALIVE_1S
-                ),
-                KeepAlive.IntervalNames.KEEP_ALIVE_5S: lambda: self.repeat.emit(
-                    KeepAlive.IntervalNames.KEEP_ALIVE_5S
-                ),
-                KeepAlive.IntervalNames.KEEP_ALIVE_10S: lambda: self.repeat.emit(
-                    KeepAlive.IntervalNames.KEEP_ALIVE_10S
-                ),
-                KeepAlive.IntervalNames.KEEP_ALIVE_30S: lambda: self.repeat.emit(
-                    KeepAlive.IntervalNames.KEEP_ALIVE_30S
-                ),
-                KeepAlive.IntervalNames.KEEP_ALIVE_60S: lambda: self.repeat.emit(
-                    KeepAlive.IntervalNames.KEEP_ALIVE_60S
-                ),
-                KeepAlive.IntervalNames.KEEP_ALIVE_300S: lambda: self.repeat.emit(
-                    KeepAlive.IntervalNames.KEEP_ALIVE_300S
-                ),
-                KeepAlive.IntervalNames.KEEP_ALIVE_STOP: lambda: self.repeat.emit(
-                    KeepAlive.IntervalNames.KEEP_ALIVE_STOP
-                ),
-
-            },
-
-            KeepAlive.TransTypes.TRANS_TYPE_KEEP_ALIVE: {
-                KeepAlive.IntervalNames.KEEP_ALIVE_1S: lambda: self.keep_alive.emit(
-                    KeepAlive.IntervalNames.KEEP_ALIVE_1S
-                ),
-                KeepAlive.IntervalNames.KEEP_ALIVE_5S: lambda: self.keep_alive.emit(
-                    KeepAlive.IntervalNames.KEEP_ALIVE_5S
-                ),
-                KeepAlive.IntervalNames.KEEP_ALIVE_10S: lambda: self.keep_alive.emit(
-                    KeepAlive.IntervalNames.KEEP_ALIVE_10S
-                ),
-                KeepAlive.IntervalNames.KEEP_ALIVE_30S: lambda: self.keep_alive.emit(
-                    KeepAlive.IntervalNames.KEEP_ALIVE_30S
-                ),
-                KeepAlive.IntervalNames.KEEP_ALIVE_60S: lambda: self.keep_alive.emit(
-                    KeepAlive.IntervalNames.KEEP_ALIVE_60S
-                ),
-                KeepAlive.IntervalNames.KEEP_ALIVE_300S: lambda: self.keep_alive.emit(
-                    KeepAlive.IntervalNames.KEEP_ALIVE_300S
-                ),
-                KeepAlive.IntervalNames.KEEP_ALIVE_ONCE: lambda: self.keep_alive.emit(
-                    KeepAlive.IntervalNames.KEEP_ALIVE_ONCE
-                ),
-                KeepAlive.IntervalNames.KEEP_ALIVE_STOP: lambda: self.keep_alive.emit(
-                    KeepAlive.IntervalNames.KEEP_ALIVE_STOP
-                ),
-            }
-        }
-
-        if not (button := menu_map.get(trans_type)):
-            return
-
-        if not (menu := button.menu()):
-            button.setMenu(QMenu())
-            menu: QMenu = button.menu()
-
-        if not (signals := signals_map.get(trans_type)):
-            return
-
-        match interval_name:
-
-            case KeepAlive.IntervalNames.KEEP_ALIVE_DEFAULT | KeepAlive.IntervalNames.KEEP_ALIVE_ONCE | \
-                 KeepAlive.IntervalNames.KEEP_ALIVE_STOP:
-                button.setIcon(QIcon(GuiFilesPath.GREY_CIRCLE))
-
-            case _:
-                button.setIcon(QIcon(GuiFilesPath.GREEN_CIRCLE))
-
-        menu.clear()
-
-        for interval, signal in signals.items():
-
-            if interval_name in (KeepAlive.IntervalNames.KEEP_ALIVE_DEFAULT, KeepAlive.IntervalNames.KEEP_ALIVE_ONCE):
-                if interval is KeepAlive.IntervalNames.KEEP_ALIVE_STOP:
-                    interval = f"{ButtonActions.Marks.CURRENT_ACTION_MARK} {interval}"
-
-            if interval == interval_name:
-                interval = f"{ButtonActions.Marks.CURRENT_ACTION_MARK} {interval}"
-
-            menu.addAction(interval, signal)
-            menu.addSeparator()
+    def redo_changes(self):
+        self._tab_view.json_view.redo()
 
     def process_api_mode_change(self, state: ApiModes):
 
@@ -518,11 +491,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self._tab_view.setTabText(label=tab_name)
 
     def add_tab(self):
-        try:
-            self._tab_view.add_tab()
-        except IndexError:
-            return
-
+        self._tab_view.add_tab()
         self.reset.emit(False)
 
     def search(self, text):

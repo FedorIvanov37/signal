@@ -388,7 +388,7 @@ To see usage hint call
 usage: _signal.py [-h] -c [-f FILE] [-d DIR] [-a ADDRESS] [-p PORT] [-r] [--log-file LOG_FILE] [-l LOG_LEVEL] [-i INTERVAL] [--parallel] [-t TIMEOUT] [--about] [-e] [--default] [-v] [--print-config] [--config-file CONFIG_FILE]
                   [--api-mode]
 
-SIGNAL v0.19
+SIGNAL v0.19.1
 
 options:
   -h, --help            show this help message and exit
@@ -456,11 +456,11 @@ PS C:\signal> signal.exe --console --about
 02:57:15 [INFO]  #+#    #+#     #+#     #+#    #+#  #+#   #+#+#  #+#     #+#  #+#        
 02:57:15 [INFO]   ########  ###########  ########   ###    ####  ###     ###  ########## 
 02:57:15 [INFO] 
-02:57:15 [INFO]   Simplified ISO generation algorithm v0.19
+02:57:15 [INFO]   Simplified ISO generation algorithm v0.19.1
 02:57:15 [INFO] 
 02:57:15 [INFO]   Use only on test environment
 02:57:15 [INFO] 
-02:57:15 [INFO]   Version v0.19
+02:57:15 [INFO]   Version v0.19.1
 02:57:15 [INFO] 
 02:57:15 [INFO]   Released in May 2024
 02:57:15 [INFO] 
@@ -578,7 +578,7 @@ are already familiar with those packages, just go forth
 
 Unlike GUI the Signal library requires you to install dependencies, defined in the "requirements.txt" file from the 
 Signal's root directory. See the actual dependencies in the file, here are listed requirements, which are actually 
-for Signal v0.19
+for Signal v0.19.1
 
 The following dependencies are required to install to run the library
 
@@ -986,7 +986,7 @@ The text version of Signal's logo
  #+#    #+#     #+#     #+#    #+#  #+#   #+#+#  #+#     #+#  #+#        
   ########  ###########  ########   ###    ####  ###     ###  ########## 
 
-  Simplified ISO generation algorithm v0.19 | Released in October 2025
+  Simplified ISO generation algorithm v0.19.1 | Released in October 2025
 ```
 
 ## Concept
@@ -1743,4 +1743,4 @@ bc1qs2jaqpnse9qgzz9y9wyns50km0f5x4wxe8cggs
 
 Designed and developed by **Fedor Ivanov**   
 
-In case of any question feel free to [contract author](mailto:fedornivanov@gmail.com?subject=SIGNAL%27s%20user%20request&body=Dear%20Fedor%2C%0A%0A%0A%3E%20Put%20your%20request%20here%20%3C%20%0A%0A%0A%0AMy%20SIGNAL%20version%20is%20v0.19%20%7C%20Released%20in%20October%202025%0A) directly
+In case of any question feel free to [contract author](mailto:fedornivanov@gmail.com?subject=SIGNAL%27s%20user%20request&body=Dear%20Fedor%2C%0A%0A%0A%3E%20Put%20your%20request%20here%20%3C%20%0A%0A%0A%0AMy%20SIGNAL%20version%20is%20v0.19.1%20%7C%20Released%20in%20October%202025%0A) directly

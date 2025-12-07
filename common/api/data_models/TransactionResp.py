@@ -2,4 +2,4 @@ from pydantic import BaseModel
 
 
 class TransactionResp(BaseModel):
-    status: str = "Transaction successfully sent to host"
+    status: str = "Transaction request successfully accepted. Request ID: %s"

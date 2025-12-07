@@ -1,4 +1,5 @@
 from loguru import logger
+from contextlib import suppress
 from collections import deque
 from datetime import datetime, timedelta
 from PyQt6.QtCore import QObject, pyqtSignal
@@ -114,12 +115,9 @@ class TransactionQueue(QObject):
         if not (de047 := response.data_fields.get(self.spec.FIELD_SET.FIELD_047_PROPRIETARY_FIELD)):
             return response
 
-        try:
+        with suppress(Exception):  # TODO
             de047 = Parser.split_complex_field(self.spec.FIELD_SET.FIELD_047_PROPRIETARY_FIELD, de047)
-            response.utrnno = de047.get("064", str())  # TODO
-
-        except Exception as e:
-            ...
+            response.utrnno = de047.get("064", None)
 
         return response
 

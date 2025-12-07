@@ -1,5 +1,5 @@
 #
-# Signal v0.19 requirements
+# Signal v0.19.1 requirements
 #
 #
 # Python 3.12.2+ required

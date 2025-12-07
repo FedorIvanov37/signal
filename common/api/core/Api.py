@@ -1,28 +1,29 @@
-from typing import Union
-from http import HTTPStatus
 from loguru import logger
+from typing import Union
+from os import getcwd
+from os.path import normpath
+from uuid import uuid4
+from http import HTTPStatus
 from threading import Thread
+from warnings import filterwarnings
 from fastapi import FastAPI, APIRouter, Response
 from fastapi.staticfiles import StaticFiles
-from common.api.data_models.TransValidationErrors import TransValidationErrors
 from uvicorn import Config as UvicornConfig, Server as UvicornServer
 from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse, HTMLResponse
 from PyQt6.QtCore import QObject, pyqtSignal
-from common.api.data_models.ExceptionContent import ExceptionContent
 from common.lib.data_models.Config import Config
-from common.api.enums.ApiUrl import ApiUrl
-from common.gui.enums.ApiMode import ApiModes
 from common.lib.data_models.Transaction import Transaction
+from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
+from common.gui.enums.ApiMode import ApiModes
+from common.api.data_models.TransValidationErrors import TransValidationErrors
+from common.api.data_models.ExceptionContent import ExceptionContent
+from common.api.enums.ApiUrl import ApiUrl
 from common.api.data_models.Connection import Connection
 from common.api.data_models.TransactionResp import TransactionResp
 from common.api.enums.ApiRequestType import ApiRequestType
-from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
 from common.api.exceptions.TerminalApiError import TerminalApiError
 from common.api.enums.DataCoversionFormats import DataConversionFormats
-from warnings import filterwarnings
 from common.gui.enums.GuiFilesPath import GuiFilesPath
-from os.path import normpath
-from os import getcwd
 
 from common.api.data_models.ApiRequests import (
     ApiRequest,
@@ -47,6 +48,15 @@ from asyncio import (
 """
 
 Signal Application Program Interface (API) 
+
+This is an API for processing transaction requests, configuration, and a toolkit for working with transactions 
+
+The Signal API is bundled with a Postman collection. Call the API using the GET method using the 
+mapping {{api}}/api/documentation for more information
+
+The API must be started through the graphical user interface or the command line interface, not directly
+
+Command line run command: signal.exe --console --api-mode
 
 """
 
@@ -113,7 +123,9 @@ class Api(QObject):
         self._loop = loop
         self._queue = Queue()
 
-        config = UvicornConfig(self.app, host="0.0.0.0", port=self.backend.config.api.port, log_config=None, access_log=True)
+        config = UvicornConfig(
+            self.app, host="0.0.0.0", port=self.backend.config.api.port, log_config=None, access_log=True
+        )
 
         self._server: UvicornServer = UvicornServer(config)
 
@@ -128,6 +140,7 @@ class Api(QObject):
             self.api_stopped.emit(ApiModes.STOP)
 
     async def backend_request(self, request: ApiRequest):  # Use this to create long-time job
+        request.request_id = uuid4()
         loop = get_running_loop()
         future: Future = loop.create_future()
         self.pending_jobs[request.request_id] = future

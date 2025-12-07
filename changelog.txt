@@ -388,28 +388,38 @@ To fix
     + Gif copyright
     + Change the name
 
-
-Release v0.19
-    • API mode + collection
-    • Buttons optimization
-    • Renovated Settings window
-    • Buttons disable / enable
-    • CLI mode marks
-    • Drag n drop
-    • Undo / redo
-    • Bugfix
++ Change API port in config
++ Transaction validation API sort answer
++ Disable field when subfields are disabled
++ Change some warning to error
 
 
++ Undo / redo bug
++ Add field editing when added new field
++ Tab limit
++ Repeat with no network bug
++ Error parsing in API
+
+• Docs
+• Resp logic - possibility to send 0110
+
+• Config change approach
+• TLS
+• Encoding
 
 
+
+
+
+? Music
+• Encoding
+• TLS
 • Egg
 • Cursor color
-
-
 • default config
-• postman collection
 • Tests
 
++ postman collection
 + document pictures
 + Put version
 + MW fields Validation warning color

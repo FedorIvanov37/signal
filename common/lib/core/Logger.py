@@ -63,9 +63,8 @@ class Logger:
             diagnose=False,
         )
 
-    def add_wireless_handler(self, log_browser, wireless_handler: WirelessHandler | None = None) -> int:
-        if wireless_handler is None:
-            wireless_handler = WirelessHandler()
+    def add_wireless_handler(self, log_browser) -> int:
+        wireless_handler = WirelessHandler()
 
         wireless_handler.new_record_appeared.connect(log_browser.append)
 

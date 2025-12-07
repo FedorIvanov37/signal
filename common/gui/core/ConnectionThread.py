@@ -3,6 +3,7 @@ from common.lib.core.Connector import Connector
 from common.lib.data_models.Config import Config
 from common.lib.interfaces.ConnectorInterface import ConnectionInterface
 from common.lib.interfaces.MetaClasses import QObjectAbcMeta
+from contextlib import suppress
 
 
 """
@@ -27,11 +28,17 @@ class ConnectionThread(ConnectionInterface, QObject, metaclass=QObjectAbcMeta):
 
     @property
     def config(self):
-        return self._config
+        try:
+            return self.connector.config
+        except AttributeError:
+            return self._config
 
     @config.setter
     def config(self, config):
         self._config = config
+
+        with suppress(AttributeError):
+            self.connector.config = config
 
     @property
     def get_connected_host(self):

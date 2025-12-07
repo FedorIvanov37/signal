@@ -1,3 +1,4 @@
+from contextlib import suppress
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QTreeWidgetItem, QCheckBox, QWidget
 from common.lib.data_models.EpaySpecificationModel import IsoField
@@ -78,17 +79,16 @@ class FieldItem(Item):
         self.spec = spec if spec else self.spec
         self.setTextAlignment(FieldsSpec.ColumnsOrder.LENGTH, Qt.AlignmentFlag.AlignRight)
 
-    def set_disabled(self, disabled: bool):
-        if parent := self.parent():
-            if not disabled and parent.is_disabled:
-                raise ValueError("Cannot enable child row while its parent is disabled")
-
-        if not self.is_disabled and not disabled:
-            for item in self.get_children():
-                item.set_disabled(disabled)
-
+    def set_disabled(self, disabled: bool, affect_child=True):
+        if self.is_disabled is disabled and not self.get_children():
             return
-        
+
+        for item in self.get_children():
+            if not affect_child:
+                break
+
+            item.set_disabled(disabled)
+
         self._is_disabled = disabled
 
         if checkbox := self.get_checkbox():
@@ -99,12 +99,23 @@ class FieldItem(Item):
 
         if not self.is_disabled:
             self.set_item_color(Colors.BLACK)
-            self.treeWidget().process_change_item(self, ColumnsOrder.VALUE)
+
+            with suppress(AttributeError):
+                self.treeWidget().process_change_item(self, ColumnsOrder.VALUE)
 
         self.set_length()
 
-        for item in self.get_children():
-            item.set_disabled(disabled)
+        if not (parent := self.parent()):
+            return
+
+        if not disabled and parent.is_disabled:
+            parent.set_disabled(disabled, affect_child=False)
+
+        for child_item in parent.get_children():
+            if child_item.is_disabled is not disabled:
+                return
+
+        parent.set_disabled(disabled, affect_child=False)
 
     def addChild(self, item, fill_len=None):
         item.spec = self.epay_spec.get_field_spec(item.get_field_path())
