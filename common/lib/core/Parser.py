@@ -382,7 +382,7 @@ class Parser:
                 if not var_length:
                     raise ValueError("Lost variable length")
 
-            except(AttributeError, ValueError):
+            except (AttributeError, ValueError):
                 logger.error(f"Lost specification for field {field}")
                 logger.error("The field and corresponding sub fields were absent")
                 return {}

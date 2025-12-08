@@ -241,7 +241,7 @@
        <enum>Qt::ClickFocus</enum>
       </property>
       <property name="lineWrapMode">
-       <enum>QTextEdit::WidgetWidth</enum>
+       <enum>QTextEdit::NoWrap</enum>
       </property>
       <property name="readOnly">
        <bool>true</bool>
