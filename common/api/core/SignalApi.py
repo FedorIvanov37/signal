@@ -189,7 +189,7 @@ class SignalApi(Terminal):
             self.trans_validator.validate_transaction(request.transaction)
 
         except DataValidationWarning as validation_warning:
-            logger.warning(validation_warning)
+            ...  # logger.warning(validation_warning)
 
         except DataValidationError as validation_error:
             logger.error(validation_error)

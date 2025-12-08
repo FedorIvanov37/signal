@@ -17,9 +17,10 @@
     "debug": {
         "level": "INFO",
         "clear_log": true,
-        "parse_subfields": false,
+        "parse_subfields": true,
         "backup_storage_depth": 10,
-        "reduce_keep_alive": false
+        "reduce_keep_alive": true,
+        "print_description": true
     },
     "validation": {
         "validation_enabled": true,
