@@ -287,7 +287,7 @@ class Parser:
 
                 if config.host.header_length_exists and config.host.header_length not in (2, 4):
                     logger.warning(f"Unusual message header length {config.host.header_length}, "
-                            f"ordinary it is 2 or 4. Check the settings")
+                                   f"ordinary it is 2 or 4. Check the settings")
 
                 raise ValueError("Invalid incoming message length")
 
@@ -520,7 +520,7 @@ class Parser:
 
         try:
             generate_fields = loads(ini.get(ini_def.CONFIG, ini_def.GENERATE_FIELDS))
-        except(NoSectionError, NoOptionError):
+        except (NoSectionError, NoOptionError):
             generate_fields: list[str] = []
 
         mti = self.unpack_ini_field(ini.get(ini_def.MTI, ini_def.MTI))
