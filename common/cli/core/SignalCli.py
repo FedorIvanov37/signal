@@ -115,7 +115,9 @@ class SignalCli(SignalApi):
         # 2. Check the api-mode request and runs the API
 
         if self._cli_config.api_mode:
-            self.log_printer.print_multi_row(TextConstants.HELLO_MESSAGE)
+            print(f"{TextConstants.HELLO_MESSAGE}\n")
+
+            # self.log_printer.print_multi_row(TextConstants.HELLO_MESSAGE)
 
             if files := self.get_files_to_process():
                 logger.warning(f"Signal started in API mode, files processing ignored: {', '.join(files)}")

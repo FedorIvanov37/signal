@@ -1,11 +1,11 @@
 from loguru import logger
-from common.lib.data_models.Transaction import Transaction
+from common.lib.data_models.Types import FieldPath
+from common.lib.data_models.Transaction import Transaction, TypeFields
 from common.lib.core.EpaySpecification import EpaySpecification
 from common.lib.core.Parser import Parser
 from common.lib.data_models.Config import Config
 from common.lib.enums.TextConstants import TextConstants
 from common.lib.enums.ReleaseDefinition import ReleaseDefinition
-from common.lib.enums.TermFilesPath import TermFilesPath
 from PyQt6.QtCore import QObject
 
 
@@ -85,7 +85,7 @@ class LogPrinter(QObject):
         if self.config.fields.hide_secrets:
             transaction: Transaction = Parser.hide_secret_fields(transaction)
 
-        level("")
+        level(str())
 
         bitmap = ", ".join(transaction.data_fields.keys())
         trans_id = transaction.trans_id
@@ -101,6 +101,8 @@ class LogPrinter(QObject):
         level(f"[MSG_TYPE][{transaction.message_type}]")
         level(f"[BITMAP  ][{bitmap}]")
 
+        desc_length = self.get_max_desc_length(transaction)
+
         for field, field_data in transaction.data_fields.items():
             message: str = str()
             length: str = str(len(field_data))
@@ -108,10 +110,119 @@ class LogPrinter(QObject):
             for element in field, length, field_data:
                 size: int = int() if element is field_data else 3
                 message: str = message + f"[{element.zfill(size)}]"
-            
+
+            if self.config.debug.print_description:
+                if description := self.get_field_description([field]):
+                    message = f"[%-{desc_length}s]%s" % (description, message)
+
             level(message)
 
-        level("")
+            if not self.spec.is_field_complex([field]):
+                continue
+
+            if not self.config.debug.parse_subfields:
+                continue
+
+            if isinstance(field_data, str):
+                try:
+                    self.print_complex_field(field, Parser.split_complex_field(field, field_data), desc_len=desc_length)
+                except ValueError as parsing_error:
+                    logger.error(f"Cannot parse field {field} data: {parsing_error}")
+
+        level(str())
+
+    def print_complex_field(
+            self,
+            field_number,
+            field_data: TypeFields,
+            field_path: list | None = None,
+            desc_len: int = 0
+    ):
+
+        if not self.config.debug.parse_subfields:
+            return
+
+        if field_path is None:
+            field_path = [field_number]
+
+        for subfield, subfield_data in field_data.items():
+            if not isinstance(subfield_data, str):
+                field_path.append(subfield)
+                self.print_complex_field(field_number, subfield_data, field_path, desc_len)
+                field_path.pop()
+                continue
+
+            root_field = field_path[int()]
+            root_field = root_field.zfill(3)
+            fields = field_path[1:]
+            fields.insert(int(), root_field)
+            message = '.'.join(fields)
+            message = f"[{message}.{subfield}]"
+            message = f"{message}[{str(len(subfield_data)).zfill(3)}]"
+            message = f"{message}[{subfield_data}]"
+
+            if self.config.debug.print_description:
+                field_desc = self.get_field_description(field_path + [subfield])
+                message = f"[%-{desc_len}s]%s" % (field_desc, message)
+
+            logger.info(message)
+
+    def get_max_desc_length(self, transaction: Transaction) -> int:
+        desc_length = int()
+        data_fields: TypeFields = dict()
+
+        for field, field_data in transaction.data_fields.items():
+            if not self.spec.is_field_complex([field]):
+                data_fields[field] = field_data
+                continue
+
+            if not self.config.debug.parse_subfields:
+                data_fields[field] = field_data
+                continue
+
+            if isinstance(field_data, str):
+                try:
+                    field_data = Parser.split_complex_field(field, field_data)
+                except ValueError:
+                    continue
+
+            data_fields[field] = field_data
+
+        for path in self.get_all_paths(data_fields):
+            if not (field_spec := self.spec.get_field_spec(path)):
+                continue
+
+            if not (field_desc := field_spec.description):
+                continue
+
+            if len(field_desc) > desc_length:
+                desc_length = len(field_desc)
+
+        return desc_length
+
+    def get_all_paths(self, fields: TypeFields, prefix=None):
+        if prefix is None:
+            prefix = list()
+
+        paths = list()
+
+        for key, value in fields.items():
+            current_path = prefix + [key]
+            paths.append(current_path)
+
+            if isinstance(value, dict):
+                paths.extend(self.get_all_paths(value, current_path))
+
+        return paths
+
+    def get_field_description(self, field_path: FieldPath):
+        if not (field_spec := self.spec.get_field_spec(field_path)):
+            return str()
+
+        if not (field_description := field_spec.description):
+            return str()
+
+        return field_description
 
     @staticmethod
     def print_version(level=default_level):

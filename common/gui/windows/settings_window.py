@@ -122,6 +122,8 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
             self.WaitForRemoteHost: config.api.wait_remote_host_response,
             self.HideSecretsApi: config.api.hide_secrets,
             self.ParseComplexFields: config.api.parse_subfields,
+            self.PrintSubfields: config.debug.parse_subfields,
+            self.PrintDescription: config.debug.print_description,
         }
 
         scales_value_map = {
@@ -307,6 +309,8 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         config.api.waiting_timeout_seconds = self.ApiTimeout.value()
         config.terminal.run_api = self.ApiRun.isChecked()
         config.api.parse_subfields = self.ParseComplexFields.isChecked()
+        config.debug.parse_subfields = self.PrintSubfields.isChecked()
+        config.debug.print_description = self.PrintDescription.isChecked()
 
         if not config.fields.max_amount_limited:
             config.fields.max_amount = 9_999_999_999

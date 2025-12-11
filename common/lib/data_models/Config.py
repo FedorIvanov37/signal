@@ -25,6 +25,7 @@ class Debug(BaseModel):
     parse_subfields: bool = False
     backup_storage_depth: int = 30
     reduce_keep_alive: bool = True
+    print_description: bool = False
 
     @field_validator("level", mode="before")
     @classmethod

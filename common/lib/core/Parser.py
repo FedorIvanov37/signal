@@ -1,10 +1,10 @@
+from loguru import logger
 from json import loads
+from io import StringIO
 from pathlib import Path
 from pydantic import FilePath
 from binascii import hexlify, unhexlify, b2a_hex
-from loguru import logger
 from configparser import ConfigParser, NoSectionError, NoOptionError
-from io import StringIO
 from common.lib.toolkit.generate_trans_id import generate_trans_id
 from common.lib.toolkit.toolkit import mask_secret, mask_pan
 from common.lib.core.EpaySpecification import EpaySpecification
@@ -287,7 +287,7 @@ class Parser:
 
                 if config.host.header_length_exists and config.host.header_length not in (2, 4):
                     logger.warning(f"Unusual message header length {config.host.header_length}, "
-                            f"ordinary it is 2 or 4. Check the settings")
+                                   f"ordinary it is 2 or 4. Check the settings")
 
                 raise ValueError("Invalid incoming message length")
 
@@ -382,7 +382,7 @@ class Parser:
                 if not var_length:
                     raise ValueError("Lost variable length")
 
-            except(AttributeError, ValueError):
+            except (AttributeError, ValueError):
                 logger.error(f"Lost specification for field {field}")
                 logger.error("The field and corresponding sub fields were absent")
                 return {}
@@ -520,7 +520,7 @@ class Parser:
 
         try:
             generate_fields = loads(ini.get(ini_def.CONFIG, ini_def.GENERATE_FIELDS))
-        except(NoSectionError, NoOptionError):
+        except (NoSectionError, NoOptionError):
             generate_fields: list[str] = []
 
         mti = self.unpack_ini_field(ini.get(ini_def.MTI, ini_def.MTI))
