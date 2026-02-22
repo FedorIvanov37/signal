@@ -793,7 +793,7 @@ by the author.
 
 ## Settings description
 
-![image](common/doc/static/spec_window.png)
+![image](static/spec_window.png)
 
 The table below describes the settings window columns from left to right
 

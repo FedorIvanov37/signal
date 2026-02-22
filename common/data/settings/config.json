@@ -9,10 +9,10 @@
     },
     "terminal": {
         "process_default_dump": true,
-        "connect_on_startup": true,
+        "connect_on_startup": false,
         "load_remote_spec": false,
         "show_license_dialog": false,
-        "run_api": false
+        "run_api": true
     },
     "debug": {
         "level": "INFO",

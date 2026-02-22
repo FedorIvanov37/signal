@@ -111,7 +111,7 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
         if not self.state() == QTcpSocket.SocketState.UnconnectedState:
             self.waitForDisconnected(msecs=10000)
 
-    def reconnect_sv(self):
+    def reconnect_sv(self, host: str | None = None, port: str | None = None):
         for retry in range(3):
 
             if self.state() == self.SocketState.UnconnectedState:
@@ -124,7 +124,7 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
             return
 
         try:
-            self.connect_sv()
+            self.connect_sv(host, port)
 
         except Exception as connection_error:
             logger.error(f"SV connection error: {connection_error}")

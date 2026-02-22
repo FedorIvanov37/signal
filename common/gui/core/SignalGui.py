@@ -167,6 +167,7 @@ class SignalGui(SignalApi):
             window.files_dropped: self.process_files_drop,
             window.undo: window.undo_changes,
             window.redo: window.redo_changes,
+            self.open_connection: self.reconnect,
             self.connector.stateChanged: self.set_connection_status,
             self.set_remote_spec: self.connector.get_remote_spec,
             self.connector.got_remote_spec: self.load_remote_spec,
@@ -180,6 +181,8 @@ class SignalGui(SignalApi):
 
         for signal, slot in terminal_connections_map.items():
             signal.connect(slot)
+
+        self.window.reconnect.connect(lambda: logger.info("[Re]connecting..."))
 
     def read_config(self, config_file: str | None = None):
         Terminal.read_config(self, config_file)
@@ -369,8 +372,8 @@ class SignalGui(SignalApi):
         self.connector.stop_thread()
         kill(getpid(), 3)
 
-    def reconnect(self) -> None:
-        Terminal.reconnect(self)
+    def reconnect(self, host: str | None = None, port: str | None = None) -> None:
+        Terminal.reconnect(self, host=self.config.host.host, port=str(self.config.host.port))
 
     def set_connection_status(self) -> None:
         self.window.set_connection_status(self.connector.state())

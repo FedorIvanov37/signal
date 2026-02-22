@@ -76,7 +76,7 @@ class Api(QObject):
         self._loop: AbstractEventLoop | None = None
         self._queue: Queue | None = None
         self.app = self._build_app()
-        self.pending_jobs: dict[str, Future] = {}
+        self.pending_jobs: dict[uuid4, Future] = {}
         filterwarnings("ignore", message=".*Pydantic serializer warnings*", module="pydantic.*")
 
     def is_api_started(self):
