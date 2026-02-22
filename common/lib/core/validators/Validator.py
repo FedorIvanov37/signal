@@ -1,6 +1,6 @@
 from typing import Callable
 from datetime import datetime
-from string import digits, ascii_letters, punctuation, whitespace 
+from string import digits, ascii_letters, punctuation, whitespace
 from pydantic import AnyHttpUrl, ValidationError
 from copy import deepcopy
 from common.lib.exceptions.exceptions import DataValidationError, DataValidationWarning
@@ -41,7 +41,7 @@ class Validator:
         try:
             AnyHttpUrl(url)
         except ValidationError as validation_error:
-            errors.add(str(validation_error))
+            errors.add(validation_error.errors()[int()].get("msg"))
 
         return validation_result
 
@@ -80,7 +80,8 @@ class Validator:
 
         return status
 
-    def validate_field_number(self, field_number: int | str, validation_result: ValidationResult, is_top_level_field=True): # Field number validations, such as the number should contain digits only, etc
+    def validate_field_number(self, field_number: int | str, validation_result: ValidationResult,
+                              is_top_level_field=True):  # Field number validations, such as the number should contain digits only, etc
         errors = validation_result.errors[ValidationTypes.FIELD_NUMBER_VALIDATION]
 
         if not field_number:  # Field number should be not empty
@@ -161,11 +162,11 @@ class Validator:
 
             return errors
 
-        def main_validations(): # ANS-validation. Checks the occurrence of non-allowed charset
+        def main_validations():  # ANS-validation. Checks the occurrence of non-allowed charset
             errors: set[str] = set()
             alphabetic: str = ascii_letters
             numeric: str = digits
-            specials: str = punctuation + whitespace 
+            specials: str = punctuation + whitespace
             valid_values: str = alphabetic + numeric + specials
 
             for letter in field_value:
@@ -257,7 +258,7 @@ class Validator:
 
             return errors
 
-        def country_validations(): # Validation ISO-4217 country codes
+        def country_validations():  # Validation ISO-4217 country codes
             errors: set[str] = set()
             allowed_country_codes: list[str] = list()
 
@@ -274,7 +275,8 @@ class Validator:
                 if not value:
                     continue
 
-                if field not in (ExtendedValidations.COUNTRY_A3, ExtendedValidations.COUNTRY_N3, ExtendedValidations.COUNTRY_A2):
+                if field not in (
+                ExtendedValidations.COUNTRY_A3, ExtendedValidations.COUNTRY_N3, ExtendedValidations.COUNTRY_A2):
                     continue
 
                 if field_value in allowed_country_codes:
@@ -302,7 +304,8 @@ class Validator:
                     continue
 
                 if field_value not in allowed_currency_codes:
-                    errors.add(f'Field {path_desc} must contain valid ISO currency code. The value "{field_value}" is not allowed')
+                    errors.add(
+                        f'Field {path_desc} must contain valid ISO currency code. The value "{field_value}" is not allowed')
 
             return errors
 
@@ -340,10 +343,12 @@ class Validator:
                             try:
                                 date: datetime = datetime.strptime(field_value, date_format)
                             except ValueError:
-                                errors.add(f'Field {path_desc} - must contain date in the following format: "{date_format}"')
+                                errors.add(
+                                    f'Field {path_desc} - must contain date in the following format: "{date_format}"')
 
                         if date is not None:
-                            current_date = datetime.strptime(datetime.strftime(datetime.now(), date_format), date_format)
+                            current_date = datetime.strptime(datetime.strftime(datetime.now(), date_format),
+                                                             date_format)
 
                             if date < current_date and not field_spec.validators.field_type_validators.past:
                                 errors.add(f"Field {path_desc} - past time not allowed")
@@ -419,7 +424,8 @@ class Validator:
 
                     raise DataValidationWarning(errors_string)
 
-    def validate_fields(self, fields: TypeFields, validation_result: ValidationResult, field_path: FieldPath | None = None):
+    def validate_fields(self, fields: TypeFields, validation_result: ValidationResult,
+                        field_path: FieldPath | None = None):
         if field_path is None:
             field_path: FieldPath = []
 
@@ -432,7 +438,8 @@ class Validator:
                 if not isinstance(value, dict):
                     field_value_dict = Parser.split_complex_field(field_path[int()], value)
 
-                validation_result = self.validate_fields(fields=field_value_dict, validation_result=validation_result, field_path=field_path)
+                validation_result = self.validate_fields(fields=field_value_dict, validation_result=validation_result,
+                                                         field_path=field_path)
                 field_path.pop()
                 continue
 

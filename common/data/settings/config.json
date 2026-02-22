@@ -9,7 +9,7 @@
     },
     "terminal": {
         "process_default_dump": true,
-        "connect_on_startup": false,
+        "connect_on_startup": true,
         "load_remote_spec": false,
         "show_license_dialog": false,
         "run_api": true
@@ -40,9 +40,11 @@
     "specification": {
         "rewrite_local_spec": false,
         "remote_spec_url": "",
-        "backup_storage_depth": 30,
-        "backup_storage": false,
-        "manual_input_mode": false
+        "backup_storage_depth": 100,
+        "backup_storage": true,
+        "manual_input_mode": false,
+        "backup_on_startup": true,
+        "backup_on_shutdown": true
     },
     "api": {
         "address": "0.0.0.0",

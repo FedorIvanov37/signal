@@ -3,6 +3,7 @@ from typing import Callable
 from PyQt6.QtWidgets import QApplication, QStyleFactory
 from PyQt6.QtCore import pyqtSignal, QObject
 from PyQt6.QtNetwork import QTcpSocket
+from common.lib.core.SpecFilesRotator import SpecFilesRotator
 from common.lib.interfaces.ConnectorInterface import ConnectionInterface
 from common.lib.core.Parser import Parser
 from common.lib.core.Logger import Logger
@@ -122,6 +123,12 @@ class Terminal(QObject):
     def send(self, transaction: Transaction) -> None:
         self.trans_queue.put_transaction(transaction)
 
+    @staticmethod
+    def backup_spec():
+        rotator: SpecFilesRotator = SpecFilesRotator()
+        backup_filename = rotator.backup_spec()
+        logger.info(f"Specification backup is done. Filename: {backup_filename}")
+
     def process_config_change(self, old_config: Config) -> None:
         self.read_config()
 
@@ -136,7 +143,7 @@ class Terminal(QObject):
             tool.config = self.config
 
         if "" in (self.config.host.host, self.config.host.port):
-            logger.warning("Lost SV address or SV port! Check the parameters")
+            logger.warning("Lost SV address or SV port. Check the configuration")
 
         try:
             if not self.config.host.port:

@@ -122,6 +122,9 @@ class SignalGui(SignalApi):
         if self.config.terminal.run_api:
             self.process_change_api_mode(state=ApiModes.START)
 
+        if self.config.specification.backup_on_startup:
+            self.backup_spec()
+
         self.window.json_view.enable_json_mode_checkboxes(enable=not self.config.specification.manual_input_mode)
 
         self.window.show()
@@ -340,7 +343,7 @@ class SignalGui(SignalApi):
 
         spec_loading_conditions: list[bool] = [
             self.config.specification.remote_spec_url,
-            old_config.specification.remote_spec_url != self.config.specification.remote_spec_url,
+            self.config.terminal.load_remote_spec,
         ]
 
         if all(spec_loading_conditions):
@@ -348,7 +351,8 @@ class SignalGui(SignalApi):
                 self.data_validator.validate_url(self.config.specification.remote_spec_url)
 
             except (ValidationError, DataValidationError, DataValidationWarning) as url_validation_error:
-                logger.error(f"Remote spec URL validation error: {url_validation_error}")
+                logger.error(f'Incorrect remote spec URL "{self.config.specification.remote_spec_url}"')
+                logger.error(url_validation_error)
 
             else:
                 self.set_remote_spec.emit()
@@ -369,7 +373,11 @@ class SignalGui(SignalApi):
         logger.info("Settings applied")
 
     def stop_signal(self) -> None:
+        if self.config.specification.backup_on_shutdown:
+            self.backup_spec()
+
         self.connector.stop_thread()
+
         kill(getpid(), 3)
 
     def reconnect(self, host: str | None = None, port: str | None = None) -> None:

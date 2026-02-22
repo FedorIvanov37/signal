@@ -139,7 +139,9 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
             validator.validate_url(self.config.specification.remote_spec_url)
 
         except (DataValidationWarning, ValidationError, DataValidationError) as url_validation_error:
-            logger.error(f"Cannot load remote specification due to incorrect URL: {url_validation_error}")
+            logger.error(f'Cannot load remote spec due to incorrect URL: "{self.config.specification.remote_spec_url}"')
+            logger.error(url_validation_error)
+
             return
 
         logger.info(f"Getting remote spec using url {self.config.specification.remote_spec_url}")

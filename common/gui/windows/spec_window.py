@@ -173,7 +173,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
     def backup():
         rotator: SpecFilesRotator = SpecFilesRotator()
         backup_filename = rotator.backup_spec()
-        logger.info(f"Backup is done. Filename: {backup_filename}")
+        logger.info(f"Specification backup is done. Filename: {backup_filename}")
 
     def set_hello_message(self):
         self.LogArea.setText(f"{TextConstants.HELLO_MESSAGE}\n")

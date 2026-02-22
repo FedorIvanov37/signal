@@ -67,6 +67,8 @@ class Specification(BaseModel):
     backup_storage_depth: int = 100
     backup_storage: bool = True
     manual_input_mode: bool = False
+    backup_on_startup: bool = False
+    backup_on_shutdown: bool = False
 
 
 class ApiModel(BaseModel):

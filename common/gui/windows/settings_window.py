@@ -11,7 +11,7 @@ from common.gui.enums.GuiFilesPath import GuiFilesPath
 from common.lib.enums.ReleaseDefinition import ReleaseDefinition
 from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PyQt6.QtCore import Qt, QUrl, QRegularExpression, pyqtSignal
-from PyQt6.QtWidgets import QDialog, QDialogButtonBox
+from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QApplication
 from PyQt6.QtGui import (
     QKeySequence,
     QShortcut,
@@ -73,14 +73,15 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.KeepAliveMode.stateChanged.connect(lambda state: self.KeepAliveInterval.setEnabled(bool(state)))
         self.HeaderLengthMode.stateChanged.connect(lambda state: self.HeaderLength.setEnabled(bool(state)))
         self.MaxAmountBox.stateChanged.connect(lambda state: self.MaxAmount.setEnabled(bool(state)))
-        self.LoadSpec2.stateChanged.connect(lambda: self.LoadSpec.setChecked(self.LoadSpec2.isChecked()))
-        self.LoadSpec.stateChanged.connect(lambda: self.LoadSpec2.setChecked(self.LoadSpec.isChecked()))
+        self.LoadSpecGeneral.stateChanged.connect(self.process_load_spec_change)
+        self.LoadSpec.stateChanged.connect(self.process_load_spec_change)
         self.ApiRun.stateChanged.connect(lambda: self.ApiRunGeneral.setCheckState(self.ApiRun.checkState()))
         self.ApiRunGeneral.stateChanged.connect(lambda: self.ApiRun.setCheckState(self.ApiRunGeneral.checkState()))
         self.ValidationEnabled.stateChanged.connect(self.process_validation_change)
         self.ApiInfoLabel.linkActivated.connect(self.open_user_guide)
         self.MusicOnOfButton.clicked.connect(self.switch_music)
         self.ContactLabel.linkActivated.connect(self.open_url)
+        self.CopySpecUrl.clicked.connect(self.copy_remote_spec_url)
         self.process_validation_change()
         self.process_config(self.config)
         self.set_data_about()
@@ -112,8 +113,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
             self.HeaderLengthMode: config.host.header_length_exists,
             self.HideSecrets: config.fields.hide_secrets,
             self.RewriteLocalSpec: config.specification.rewrite_local_spec,
-            self.LoadSpec: config.terminal.load_remote_spec,
-            self.LoadSpec2: config.terminal.load_remote_spec,
+            self.LoadSpecGeneral: config.terminal.load_remote_spec,
             self.ShowLicense: config.terminal.show_license_dialog,
             self.ValidateIncoming: config.validation.validate_incoming,
             self.ValidateOutgoing: config.validation.validate_outgoing,
@@ -126,6 +126,8 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
             self.ParseComplexFields: config.api.parse_subfields,
             self.PrintSubfields: config.debug.parse_subfields,
             self.PrintDescription: config.debug.print_description,
+            self.BackupLocalSpecStartup: config.specification.backup_on_startup,
+            self.BackupLocalSpecShutdown: config.specification.backup_on_shutdown,
         }
 
         scales_value_map = {
@@ -144,6 +146,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         for scale, value in scales_value_map.items():
             scale.setValue(int(value))
 
+        self.RewriteLocalSpec.setEnabled(self.LoadSpec.isChecked())
         self.DebugLevel.setCurrentText(config.debug.level)
         self.HeaderLength.setEnabled(config.host.header_length_exists)
         self.KeepAliveInterval.setEnabled(self.KeepAliveMode.isChecked())
@@ -152,7 +155,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.RemoteSpecUrl.setText(config.specification.remote_spec_url)
         self.RemoteSpecUrl.setCursorPosition(int())
         self.ValidationReaction.setCurrentIndex(self.ValidationReaction.findText(config.validation.validation_mode))
-        # self.set_api_url()
 
         if not config.fields.max_amount_limited:
             return
@@ -209,6 +211,22 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
             logger.info(f"Config file parsed: {config_file}")
 
         event.acceptProposedAction()
+
+    def copy_remote_spec_url(self):
+        QApplication.clipboard().setText(self.RemoteSpecUrl.text())
+
+    def process_load_spec_change(self):
+        match self.sender():
+            case self.LoadSpec:
+                self.LoadSpecGeneral.setChecked(self.LoadSpec.isChecked())
+
+            case self.LoadSpecGeneral:
+                self.LoadSpec.setChecked(self.LoadSpecGeneral.isChecked())
+
+        self.RewriteLocalSpec.setEnabled(self.LoadSpec.isChecked())
+
+        if not self.RewriteLocalSpec.isEnabled():
+            self.RewriteLocalSpec.setChecked(False)
 
     def process_default_button(self, button):
         for button_box in self.GeneralButtonBox, self.FieldsButtonBox, self.ApiButtonBox, self.SpecificationButtonBox:
@@ -295,7 +313,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         config.fields.send_internal_id = self.SendInternalId.isChecked()
         config.fields.json_mode = self.JsonMode.isChecked()
         config.fields.hide_secrets = self.HideSecrets.isChecked()
-        config.specification.rewrite_local_spec = self.RewriteLocalSpec.isChecked()
         config.specification.backup_storage_depth = self.StorageDepth.value()
         config.validation.validate_window = self.ValidateWindow.isChecked()
         config.validation.validate_incoming = self.ValidateIncoming.isChecked()
@@ -313,6 +330,14 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         config.api.parse_subfields = self.ParseComplexFields.isChecked()
         config.debug.parse_subfields = self.PrintSubfields.isChecked()
         config.debug.print_description = self.PrintDescription.isChecked()
+        config.specification.backup_on_shutdown = self.BackupLocalSpecShutdown.isChecked()
+        config.specification.backup_on_startup = self.BackupLocalSpecStartup.isChecked()
+        config.specification.rewrite_local_spec = all(
+            [
+                self.RewriteLocalSpec.isChecked(),
+                self.RewriteLocalSpec.isEnabled(),
+            ]
+        )
 
         if not config.fields.max_amount_limited:
             config.fields.max_amount = 9_999_999_999
