@@ -109,9 +109,6 @@ class SignalGui(SignalApi):
             interval: int = self.config.host.keep_alive_interval
             self.keep_alive_timer.set_trans_loop_interval(KeepAlive.IntervalNames.KEEP_ALIVE_DEFAULT % interval)
 
-        if self.config.terminal.load_remote_spec:
-            self.set_remote_spec.emit()
-
         if self.config.specification.backup_storage:
             rotator: SpecFilesRotator = SpecFilesRotator()
             rotator.clear_spec_backup(self.config)
@@ -124,6 +121,9 @@ class SignalGui(SignalApi):
 
         if self.config.specification.backup_on_startup:
             self.backup_spec()
+
+        if self.config.terminal.load_remote_spec:
+            self.set_remote_spec.emit()
 
         self.window.json_view.enable_json_mode_checkboxes(enable=not self.config.specification.manual_input_mode)
 
