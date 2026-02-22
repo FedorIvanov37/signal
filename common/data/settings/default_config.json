@@ -43,8 +43,8 @@
         "backup_storage_depth": 100,
         "manual_input_mode": false,
         "backup_storage": true,
-        "backup_on_startup": true,
-        "backup_on_shutdown": true
+        "backup_on_startup": false,
+        "backup_on_shutdown": false
     },
     "api": {
         "address": "0.0.0.0",
