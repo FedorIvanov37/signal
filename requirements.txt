@@ -4,7 +4,7 @@
 #
 # Python 3.12.2+ required
 #
-# Use command to install all: "pip install -r requirements.txt"
+# Use command to install all the requirements: "pip install -r requirements.txt"
 #
 
 PyQt6

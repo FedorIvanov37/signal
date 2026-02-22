@@ -83,9 +83,11 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
         if port is None:
             port = self.config.host.port
 
-        if "" in (host, port):
-            logger.error("Lost SV host address or port number. Check the configuration.")
-            return
+        for item in host, port:
+            if item in (str(), None):
+                logger.error("Lost SV host address or port number. Check the configuration.")
+                logger.error("Connection is not established")
+                return
 
         port = int(port)
 
@@ -136,10 +138,7 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
         try:
             validator.validate_url(self.config.specification.remote_spec_url)
 
-        except DataValidationWarning as url_validation_warning:
-            logger.warning(url_validation_warning)
-
-        except (ValidationError, DataValidationError) as url_validation_error:
+        except (DataValidationWarning, ValidationError, DataValidationError) as url_validation_error:
             logger.error(f"Cannot load remote specification due to incorrect URL: {url_validation_error}")
             return
 

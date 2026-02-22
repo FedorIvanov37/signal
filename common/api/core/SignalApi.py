@@ -259,20 +259,21 @@ class SignalApi(Terminal):
     @staticmethod
     def get_signal_info():
         elements = (
-            TextConstants.HELLO_MESSAGE,
-            f"<a href=\"{ApiUrl.DOCUMENT}\">User Reference Guide</a>",
-            "Use only on test environment",
+            f"<pre>{TextConstants.HELLO_MESSAGE}</pre>",
+            "️Use only on test environment",
             f"Version {ReleaseDefinition.VERSION}",
             f"Released in {ReleaseDefinition.RELEASE}",
+            f"See user reference guide <a href=\"{ApiUrl.DOCUMENT}\">here</a>",
             f"Developed by {ReleaseDefinition.AUTHOR}",
-            f"Contact {ReleaseDefinition.CONTACT}"
+            f"Contact author {ReleaseDefinition.CONTACT}"
         )
 
         message = "\n\n  ".join(elements)
 
         message = f"""<head>
                         <title>Signal {ReleaseDefinition.VERSION} | About </title>
-                        <link rel="icon" type="image/png" href="/static/{GuiFiles.MAIN_LOGO}">
+                        <link rel="icon" type="image/png" href="static/{GuiFiles.MAIN_LOGO}"> 
+                        <link rel="stylesheet" href="static/octicons/octicons.css" />
                       </head>
                         <body style="font-size:20px; background-color: #012e4f; color: #ffffff; padding: 10px; 
                         border-radius: 6px;">

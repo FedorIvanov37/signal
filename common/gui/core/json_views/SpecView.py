@@ -312,6 +312,7 @@ class SpecView(TreeView):
 
         self.clean()
         self.root.setText(SpecFieldDef.ColumnsOrder.DESCRIPTION, spec.name)
+        self.spec.fields = spec.fields
         self.parse_spec_fields(spec.fields)
         self.collapseAll()
         self.expandItem(self.root)

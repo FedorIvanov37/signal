@@ -9,10 +9,10 @@
     },
     "terminal": {
         "process_default_dump": true,
-        "connect_on_startup": false,
+        "connect_on_startup": true,
         "load_remote_spec": false,
         "show_license_dialog": false,
-        "run_api": true
+        "run_api": false
     },
     "debug": {
         "level": "INFO",
@@ -50,6 +50,6 @@
         "wait_remote_host_response": true,
         "waiting_timeout_seconds": 10,
         "hide_secrets": true,
-        "parse_subfields": false
+        "parse_subfields": true
     }
 }

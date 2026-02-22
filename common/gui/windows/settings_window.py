@@ -75,6 +75,8 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.MaxAmountBox.stateChanged.connect(lambda state: self.MaxAmount.setEnabled(bool(state)))
         self.LoadSpec2.stateChanged.connect(lambda: self.LoadSpec.setChecked(self.LoadSpec2.isChecked()))
         self.LoadSpec.stateChanged.connect(lambda: self.LoadSpec2.setChecked(self.LoadSpec.isChecked()))
+        self.ApiRun.stateChanged.connect(lambda: self.ApiRunGeneral.setCheckState(self.ApiRun.checkState()))
+        self.ApiRunGeneral.stateChanged.connect(lambda: self.ApiRun.setCheckState(self.ApiRunGeneral.checkState()))
         self.ValidationEnabled.stateChanged.connect(self.process_validation_change)
         self.ApiInfoLabel.linkActivated.connect(self.open_user_guide)
         self.MusicOnOfButton.clicked.connect(self.switch_music)

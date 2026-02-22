@@ -6,7 +6,6 @@ from os import listdir, path, system, getcwd, getpid, kill
 from os.path import normpath, basename, isfile
 from loguru import logger
 from datetime import datetime, timezone
-from pydantic import ValidationError
 from signal import signal, SIG_DFL, SIGINT
 from PyQt6.QtCore import QCoreApplication, QTimer, pyqtSignal
 from common.lib.data_models.Transaction import Transaction
@@ -41,14 +40,11 @@ class SignalCli(SignalApi):
 
         cli_args_parser: CliArgsParser = CliArgsParser(self.config, description=TextConstants.CLI_DESCRIPTION)
 
-        try:
-            self._cli_config = cli_args_parser.parse_arguments()
-        except (ValidationError, ValueError) as arg_parsing_error:
-            logger.error(arg_parsing_error)
-            exit(100)
+        self._cli_config = cli_args_parser.parse_arguments()
 
         try:
             self.parse_cli_config(self._cli_config)
+
         except ValueError as config_parsing_error:
             logger.error(f"Error run in Console Mode: {config_parsing_error}")
             exit(100)

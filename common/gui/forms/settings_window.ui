@@ -437,7 +437,7 @@
          <property name="title">
           <string>On startup</string>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayout_5">
+         <layout class="QVBoxLayout" name="verticalLayout">
           <item>
            <widget class="QCheckBox" name="ConnectOnStartup">
             <property name="text">
@@ -449,6 +449,13 @@
            <widget class="QCheckBox" name="ProcessDefaultDump">
             <property name="text">
              <string>Process default file</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="ApiRunGeneral">
+            <property name="text">
+             <string>Run API mode</string>
             </property>
            </widget>
           </item>
