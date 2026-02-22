@@ -138,9 +138,17 @@ class SpecView(TreeView):
         if item.is_secret_pan(column):
             item.set_checkbox(column)
 
+        if all((
+            column > SpecFieldDef.ColumnsOrder.TAG_LENGTH,
+            item.checkState(column) is not Qt.CheckState.PartiallyChecked,
+            self.window.read_only,
+        )):
+            item.setCheckState(column, Qt.CheckState.Unchecked if item.is_checked(column) else Qt.CheckState.Checked)
+
         match column:
             case SpecFieldDef.ColumnsOrder.CAN_BE_GENERATED:
                 item.set_checkbox(column, item.field_number in self.spec.get_fields_to_generate())
+                return
 
             case SpecFieldDef.ColumnsOrder.SECRET:
                 self.cascade_checkboxes(item)

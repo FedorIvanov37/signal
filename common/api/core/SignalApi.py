@@ -33,7 +33,15 @@ class SignalApi(Terminal):
     terminal_response: pyqtSignal = pyqtSignal(ApiRequest)
     error_type = str | None | Exception
     open_connection: pyqtSignal = pyqtSignal(str, str)
-    connection_error: str | None = None
+    _connection_error: str | None = None
+
+    @property
+    def connection_error(self):
+        return self._connection_error
+
+    @connection_error.setter
+    def connection_error(self, connection_error):
+        self._connection_error = connection_error
 
     def __init__(self, config: Config, connector=None):
         super().__init__(config=config, connector=connector)
@@ -185,7 +193,7 @@ class SignalApi(Terminal):
 
         connection_started = datetime.now()
         self.connection_error = None
-        self.connector.errorOccurred.connect(lambda name: self.set_connection_error(name))
+        self.connector.errorOccurred.connect(lambda name: setattr(self, "connection_error", name))
 
         while not self.connector.is_connected():
             self.pyqt_application.processEvents()
@@ -201,7 +209,7 @@ class SignalApi(Terminal):
             sleep(0.01)
 
         if not self.connector.is_connected():
-            self.send_response(request, HTTPStatus.BAD_GATEWAY, error=self.connector.error().name)
+            self.send_response(request, HTTPStatus.BAD_GATEWAY, error=self.connector.errorString())
             return
 
         self.send_response(request, HTTPStatus.OK, message=self.get_connection())

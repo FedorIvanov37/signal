@@ -39,6 +39,8 @@ as it described below
 
 Run script code example
 
+# Start of code
+
 from common.lib.toolkit.sv_emulator import SvEmulator, IsoConfig  # Import the emulator
 
 iso_config = IsoConfig()  # Create emulator config
@@ -48,6 +50,9 @@ iso_config.PORT = 7771  # Change the parameters when needed
 sv_emulator = SvEmulator(iso_config)  # Create the SV emulator object
 
 sv_emulator.run()  #  Run the SV emulator
+
+# End of code
+
 """
 
 
@@ -128,7 +133,7 @@ class SvEmulator:
                 print(connection_error)
 
                 try:
-                    connection = self.get_connector()
+                    connection = self.get_connector(self.iso_config)
 
                 except KeyboardInterrupt:
                     exit()
