@@ -5,7 +5,7 @@ ROOT = Path(__file__).parent.resolve()
 
 PyInstaller.__main__.run(
     [
-        str(ROOT / "_signal.py"),
+        str(ROOT / "signal.py"),
         "--noconfirm",
         "--clean",
         "--onefile",
