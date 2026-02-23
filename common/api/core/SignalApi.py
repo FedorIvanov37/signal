@@ -37,15 +37,6 @@ class SignalApi(QObject):
     terminal_response: pyqtSignal = pyqtSignal(ApiRequest)
     error_type = str | None | Exception
     open_connection: pyqtSignal = pyqtSignal(str, str)
-    _connection_error: str | None = None
-
-    @property
-    def connection_error(self):
-        return self._connection_error
-
-    @connection_error.setter
-    def connection_error(self, connection_error):
-        self._connection_error = connection_error
 
     def __init__(self, config: Config, terminal: Terminal):
         super().__init__()
@@ -240,9 +231,6 @@ class SignalApi(QObject):
             return
 
         self.send_response(request, HTTPStatus.OK, message=self.get_connection())
-
-    def set_connection_error(self, connection_error):
-        self.connection_error = connection_error
 
     def process_api_request(self, request: ApiTransactionRequest):
         try:
