@@ -2,8 +2,8 @@ from sys import exit
 from glob import glob
 from time import sleep
 from uuid import uuid1
-from os import listdir, path, system, getcwd, getpid, kill
-from os.path import normpath, basename, isfile
+from os import listdir, path, system, getpid, kill
+from os.path import normpath, basename, isfile, abspath
 from loguru import logger
 from datetime import datetime, timezone
 from signal import signal, SIGINT, SIGTERM
@@ -244,8 +244,7 @@ class SignalCli(SignalApi):
                 logger.error("License agreement rejected, exiting")
                 raise LicenseRejected
 
-        agreement_path = f"{getcwd()}/{TermFilesPath.LICENSE_AGREEMENT}"
-        agreement_path = path.normpath(agreement_path)
+        agreement_path = abspath(TermFilesPath.LICENSE_AGREEMENT)
 
         if not isfile(agreement_path):
             raise ValueError("Lost license agreement text file")
