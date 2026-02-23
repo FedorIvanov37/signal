@@ -249,7 +249,7 @@ class SignalCli(SignalApi):
         if not isfile(agreement_path):
             raise ValueError("Lost license agreement text file")
 
-        system(f"more {agreement_path}")
+        system(f'more "{agreement_path}"')
         print("")
         print("")
         print("  To proceed you have to accept the license agreement")
