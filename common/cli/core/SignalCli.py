@@ -98,7 +98,7 @@ class SignalCli(SignalApi):
             self._cli_config.print_config: lambda: self.log_printer.print_config(
                 self.config, path=self._cli_config.config_file)
         }
-
+        logger.info(LogMarks.BEGIN % self._job_id)
         for need_run, function in print_data_map.items():
             if not need_run:
                 continue
@@ -110,10 +110,9 @@ class SignalCli(SignalApi):
 
         # 2. Check the api-mode request and runs the API
 
-        if self._cli_config.api_mode:
-            print(f"{TextConstants.HELLO_MESSAGE}\n")
+        print(f"{TextConstants.HELLO_MESSAGE}\n")
 
-            # self.log_printer.print_multi_row(TextConstants.HELLO_MESSAGE)
+        if self._cli_config.api_mode:
 
             if files := self.get_files_to_process():
                 logger.warning(f"Signal started in API mode, files processing ignored: {', '.join(files)}")
@@ -123,8 +122,6 @@ class SignalCli(SignalApi):
             return
 
         # 3. Tries to parse the requested files and send the transactions if needed
-
-        logger.info(LogMarks.BEGIN % self._job_id)
 
         if not (filenames := self.get_files_to_process()):
             if not any([self._cli_config.about, self._cli_config.version]):
