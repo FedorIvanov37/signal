@@ -1,4 +1,4 @@
-<p align="center"><img src="static/triforce_signed.png" alt="Signal" width="500" height="500"></p>
+<p align="center"><img src="common/doc/static/triforce_signed.png" alt="Signal" width="500" height="500"></p>
 
 <h1 align="center">Signal user reference guide</h1>
 <p align="center">This guide describes the Signal basic concept, usage, settings, and library re-usage <br><br>
@@ -146,20 +146,20 @@ The document is currently under construction</p>
 ## Signal general overview
 
 The Signal simplifies the sending of banking card e-commerce transactions to banking card processing systems using a 
-useful visual and program interface. It uses ISO-8583 E-pay protocol for transactions sending, instead of PSP. It can be
-used during the Payment Systems certification test, for checking and setting up the system on the test environment, 
-during the application development process, and so on.
+useful visual and program interface. It uses the ISO-8583 E-pay protocol for transaction sending rather than the PSP. 
+It can be used during the Payment Systems certification test, for checking and setting up the system on the test 
+environment, during the application development process, and so on.
 
-The Signal has three interfaces, which lead to the single core - Graphic User Interface, WEB Application Program 
-Interface, and Command line interface. Generally speaking, they do the same things but use different points of 
-interaction with their own specific features
+The Signal has three interfaces that lead to the single core: Graphic User Interface, HTTP Application Programming 
+Interface (API), and Command-line interface (CLI). Generally speaking, they do the same things but use different points 
+of interaction with their own specific features
 
-Also, the Signal builds like a kit of weakly connected modules like a Parser, Connector, Queue, etc. It allows to 
-reuse or extend the Signal's functionality making emulators, loaders, parsers, converters, application interfaces, 
+Also, the Signal builds like a kit of weakly connected modules, like a Parser, Connector, Queue, etc. It allows to 
+reuse or extend the Signal's functionality, making emulators, loaders, parsers, converters, application interfaces, 
 and many other things based on [Signal modules](#library-re-usage) 
 
-In case of any questions about SIGNAL [contact the author](#author). Your feedback and suggestions are general drivers 
-of the Signal evolution
+In case of any questions about the Signal [contact the author](#author). Your feedback and suggestions are general 
+drivers of the Signal evolution
 
 ## Important notes
 
@@ -171,24 +171,28 @@ of the Signal evolution
 
 ## Release info
 
-What's new is the Signal v0.19
+What's new is the Signal v0.19.1
 
 * New features
-  * Web API in GUI and CLI mode
-  * The Postman collection
-  * Toolbar on main window
-  * Standalone user reference guide, available in browser
+  * Subfields parsing on log
+  * Fields description in log
+  * Specification auto-backup setup
+  * SpecWindow new buttons
+  
 
 * Updates
-  * The main window buttons set is revised. All the tools moved to the toolbar
-  * Renovation of the settings window 
-  * The "settings" and the "about" windows are merged
+  * SpecWindow buttons set is revised
+  * Small refactoring of the settings window 
   * Updated user reference guide 
   
   
 * Fixed
-  * Force fields validation does not work in some cases 
-  * Code optimization
+  * API queue capacity
+  * CLI signals processing
+  * CLI mark begin / finish appearance 
+  * MainWindow is getting stuck when connection opens in API
+  * Specification storage debt calculation and cleanup
+  * Small bugs
   
 
 # Graphic User Interface
@@ -198,13 +202,13 @@ What's new is the Signal v0.19
 ⚠️Only Windows x64 build exists. Use the source code to run SIGNAL on another platform. Tests were done on 
 Windows 10-11 only
 
-SIGNAL GUI is a friendly interface, based on the SIGNAL library. Since v0.15 SIGNAL GUI is released as a 
-binary `.exe` file. No dependencies need to run the SIGNAL, it is ready to use from the box. No installation or 
-settings are needed to run SIGNAL GUI on a Windows machine. Run the `signal.exe` executable file to start the SIGNAL
+Signal GUI is a friendly interface, based on the Signal library. Since v0.15, the Signal GUI has been released as a .exe 
+binary. No dependencies are required to run the Signal; it is ready to use out of the box. No installation or 
+configuration is required to run SIGNAL GUI on a Windows machine. Run the signal.exe executable file to start the Signal
 
-Check the parameters, opened by the "Configuration" button to make your settings  
+Check the parameters opened by the "Tools -> Settings" button to make your settings
 
-![image](static/main_window.png)
+![image](common/doc/static/main_window.png)
 
 
 The MainWidow is a generic user interaction point. The main purpose is transaction data representation, data 
@@ -265,6 +269,8 @@ The list of key sequences and corresponding actions
 | Ctrl + Enter                      | Send transaction               | -                                |
 | Ctrl + Shift + Enter              | Reverse last transaction       | -                                |
 | Ctrl + Alt + Enter                | Send Echo-Test                 | -                                |
+| Ctrl + Z                          | Undo change                    | -                                |
+| Ctrl + Y                          | Redo change                    | -                                |
 | Ctrl + N                          | Add new field                  | Add new field                    |
 | Ctrl + Shift + N                  | Add new subfield               | Add new subfield                 |
 | Ctrl + Shift + V                  | Validate current message       | -                                |
@@ -793,7 +799,7 @@ by the author.
 
 ## Settings description
 
-![image](static/spec_window.png)
+![image](common/doc/static/spec_window.png)
 
 The table below describes the settings window columns from left to right
 
@@ -853,7 +859,7 @@ The following [code](#remote-spec-endpoint-code-example) illustrates the endpoin
 
 **Test of remote specification endpoint**
 
-![image](static/remote_spec.png)
+![image](common/doc/static/remote_spec.png)
 
 
 ## Remote spec endpoint code example
