@@ -199,12 +199,14 @@ class Terminal(QObject):
 
         if not request.is_keep_alive:
             logger.info(f"Outgoing transaction ID [{request.trans_id}] sent")
+            logger.info("")
 
     def transaction_received(self, response: Transaction) -> None:
         resp_trans_id = response.match_id if response.matched else response.trans_id
 
         if not response.is_keep_alive:
             logger.info(f"Incoming transaction ID [{resp_trans_id}] received")
+            logger.info("")
 
         validation_conditions = (
             self.config.validation.validation_enabled,

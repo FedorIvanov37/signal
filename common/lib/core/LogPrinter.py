@@ -63,8 +63,8 @@ class LogPrinter(QObject):
 
     def print_about(self):
         elements = [
-            TextConstants.HELLO_MESSAGE,
-            "Use only on test environment",
+            # TextConstants.HELLO_MESSAGE,
+            "  Use only on test environment",
             f"Version {ReleaseDefinition.VERSION}",
             f"Released in {ReleaseDefinition.RELEASE}",
             f"Developed by {ReleaseDefinition.AUTHOR}",
@@ -73,7 +73,9 @@ class LogPrinter(QObject):
 
         message = "\n\n  ".join(elements)
 
-        self.print_multi_row(message)
+        print(message)
+
+        # self.print_multi_row(message)
 
     def print_transaction(self, transaction: Transaction, level=default_level):
         if transaction.is_keep_alive:

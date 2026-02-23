@@ -6,7 +6,7 @@ from os import listdir, path, system, getcwd, getpid, kill
 from os.path import normpath, basename, isfile
 from loguru import logger
 from datetime import datetime, timezone
-from signal import signal, SIG_DFL, SIGINT
+from signal import signal, SIGINT, SIGTERM
 from PyQt6.QtCore import QCoreApplication, QTimer, pyqtSignal
 from common.lib.data_models.Transaction import Transaction
 from common.lib.data_models.Config import Config
@@ -36,7 +36,8 @@ class SignalCli(SignalApi):
         self.setup()
 
     def setup(self):
-        signal(SIGINT, SIG_DFL)
+        for os_signal in SIGINT, SIGTERM:
+            signal(os_signal, self.finish)
 
         cli_args_parser: CliArgsParser = CliArgsParser(self.config, description=TextConstants.CLI_DESCRIPTION)
 
@@ -90,6 +91,10 @@ class SignalCli(SignalApi):
             logger.error("Mutually exclusive flags --repeat and --api-mode are set")
             kill(getpid(), 9)
 
+        logger.info(LogMarks.BEGIN % self._job_id)
+
+        print(f"{TextConstants.HELLO_MESSAGE}\n")
+
         # 1. Print data if requested
 
         print_data_map = {
@@ -98,7 +103,7 @@ class SignalCli(SignalApi):
             self._cli_config.print_config: lambda: self.log_printer.print_config(
                 self.config, path=self._cli_config.config_file)
         }
-        logger.info(LogMarks.BEGIN % self._job_id)
+
         for need_run, function in print_data_map.items():
             if not need_run:
                 continue
@@ -109,8 +114,6 @@ class SignalCli(SignalApi):
                 logger.error(print_error)
 
         # 2. Check the api-mode request and runs the API
-
-        print(f"{TextConstants.HELLO_MESSAGE}\n")
 
         if self._cli_config.api_mode:
 
