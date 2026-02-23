@@ -123,10 +123,8 @@ class Terminal(QObject):
     def send(self, transaction: Transaction) -> None:
         self.trans_queue.put_transaction(transaction)
 
-    @staticmethod
-    def backup_spec():
-        rotator: SpecFilesRotator = SpecFilesRotator()
-        backup_filename = rotator.backup_spec()
+    def backup_spec(self):
+        backup_filename: str = SpecFilesRotator(self.config).backup_spec()
         logger.info(f"Specification backup is done. Filename: {backup_filename}")
 
     def process_config_change(self, old_config: Config) -> None:

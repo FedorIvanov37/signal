@@ -1,6 +1,7 @@
 from sys import exit as sys_exit
-from os import getcwd, kill, getpid
-from os.path import basename, normpath
+from os import getcwd, kill, getpid, startfile
+from os.path import basename, normpath, abspath
+from json import loads, dumps
 from typing import Callable
 from loguru import logger
 from pydantic import ValidationError
@@ -22,7 +23,7 @@ from common.gui.enums import ButtonActions
 from common.gui.enums.Colors import Colors
 from common.gui.enums.GuiFilesPath import GuiDirs
 from common.lib.enums import KeepAlive
-from common.lib.enums.TermFilesPath import TermFilesPath
+from common.lib.enums.TermFilesPath import TermFilesPath, TermDirs
 from common.lib.enums.DataFormats import DataFormats, PrintDataFormats, OutputFilesFormat, InputFilesFormat
 from common.lib.enums.MessageLength import MessageLength
 from common.lib.enums.TextConstants import TextConstants
@@ -110,8 +111,7 @@ class SignalGui(SignalApi):
             self.keep_alive_timer.set_trans_loop_interval(KeepAlive.IntervalNames.KEEP_ALIVE_DEFAULT % interval)
 
         if self.config.specification.backup_storage:
-            rotator: SpecFilesRotator = SpecFilesRotator()
-            rotator.clear_spec_backup(self.config)
+            SpecFilesRotator(self.config).clear_spec_backup()
 
         if self.config.terminal.connect_on_startup:
             self.reconnect()
@@ -235,12 +235,18 @@ class SignalGui(SignalApi):
         except LicenceAlreadyAccepted:
             return
 
+    @staticmethod
+    def open_spec_backup_dir():
+        startfile(abspath(TermDirs.SPEC_BACKUP_DIR))
+
     @set_json_view_focus
     def run_specification_window(self) -> None:
         old_spec = self.spec.spec.json()
 
         self.logger.remove()
         spec_window = SpecWindow(self.connector, self.config)
+        spec_window.open_spec_backup_dir.connect(SignalGui.open_spec_backup_dir)
+        spec_window.copy_specification.connect(lambda: self.copy_specification(spec_window))
         spec_window.exec()
         self.logger.add_wireless_handler(self.window.log_browser)
 
@@ -270,6 +276,7 @@ class SignalGui(SignalApi):
             return
 
         try:
+            self.backup_spec()
             self.spec.reload_spec(spec=epay_spec, commit=self.config.specification.rewrite_local_spec)
         except Exception as spec_reload_error:
             logger.error(spec_reload_error)
@@ -721,7 +728,11 @@ class SignalGui(SignalApi):
 
     def copy_bitmap(self) -> None:
         self.set_clipboard_text(self.window.get_bitmap_data())
-        logger.info("The bitmap copied")
+        logger.info("The bitmap was copied")
+
+    def copy_specification(self, spec_window: SpecWindow):
+        self.set_clipboard_text(dumps(loads(spec_window.spec.spec.json()), indent=2))
+        logger.info("The Specification JSON was copied to clipboard")
 
     @staticmethod
     def set_clipboard_text(data: str = str()) -> None:

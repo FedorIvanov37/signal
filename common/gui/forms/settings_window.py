@@ -532,7 +532,7 @@ class Ui_SettingsWindow(object):
         self.gridLayout_8.addWidget(self.MainTabs, 0, 0, 1, 1)
 
         self.retranslateUi(SettingsWindow)
-        self.MainTabs.setCurrentIndex(0)
+        self.MainTabs.setCurrentIndex(2)
         QtCore.QMetaObject.connectSlotsByName(SettingsWindow)
 
     def retranslateUi(self, SettingsWindow):
@@ -585,7 +585,7 @@ class Ui_SettingsWindow(object):
         self.MainTabs.setTabText(self.MainTabs.indexOf(self.Fields), _translate("SettingsWindow", "Fields"))
         self.SpecBox.setTitle(_translate("SettingsWindow", "Specification"))
         self.label_5.setText(_translate("SettingsWindow", "Backup retention debth"))
-        self.RewriteLocalSpec.setText(_translate("SettingsWindow", "Overwrite local spec by remote one"))
+        self.RewriteLocalSpec.setText(_translate("SettingsWindow", "Overwrite local specification by remote"))
         self.CopySpecUrl.setText(_translate("SettingsWindow", "Copy"))
         self.RemoteSpecUrl.setPlaceholderText(_translate("SettingsWindow", "Remote specification URL"))
         self.LoadSpec.setText(_translate("SettingsWindow", "Load remote specification on startup"))

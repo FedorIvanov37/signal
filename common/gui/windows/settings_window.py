@@ -73,8 +73,8 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.KeepAliveMode.stateChanged.connect(lambda state: self.KeepAliveInterval.setEnabled(bool(state)))
         self.HeaderLengthMode.stateChanged.connect(lambda state: self.HeaderLength.setEnabled(bool(state)))
         self.MaxAmountBox.stateChanged.connect(lambda state: self.MaxAmount.setEnabled(bool(state)))
-        self.LoadSpecGeneral.stateChanged.connect(self.process_load_spec_change)
-        self.LoadSpec.stateChanged.connect(self.process_load_spec_change)
+        self.LoadSpecGeneral.stateChanged.connect(lambda: self.LoadSpec.setChecked(self.LoadSpecGeneral.isChecked()))
+        self.LoadSpec.stateChanged.connect(lambda: self.LoadSpecGeneral.setChecked(self.LoadSpec.isChecked()))
         self.ApiRun.stateChanged.connect(lambda: self.ApiRunGeneral.setCheckState(self.ApiRun.checkState()))
         self.ApiRunGeneral.stateChanged.connect(lambda: self.ApiRun.setCheckState(self.ApiRunGeneral.checkState()))
         self.ValidationEnabled.stateChanged.connect(self.process_validation_change)
@@ -146,7 +146,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         for scale, value in scales_value_map.items():
             scale.setValue(int(value))
 
-        self.RewriteLocalSpec.setEnabled(self.LoadSpec.isChecked())
         self.DebugLevel.setCurrentText(config.debug.level)
         self.HeaderLength.setEnabled(config.host.header_length_exists)
         self.KeepAliveInterval.setEnabled(self.KeepAliveMode.isChecked())
@@ -214,19 +213,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
 
     def copy_remote_spec_url(self):
         QApplication.clipboard().setText(self.RemoteSpecUrl.text())
-
-    def process_load_spec_change(self):
-        match self.sender():
-            case self.LoadSpec:
-                self.LoadSpecGeneral.setChecked(self.LoadSpec.isChecked())
-
-            case self.LoadSpecGeneral:
-                self.LoadSpec.setChecked(self.LoadSpecGeneral.isChecked())
-
-        self.RewriteLocalSpec.setEnabled(self.LoadSpec.isChecked())
-
-        if not self.RewriteLocalSpec.isEnabled():
-            self.RewriteLocalSpec.setChecked(False)
 
     def process_default_button(self, button):
         for button_box in self.GeneralButtonBox, self.FieldsButtonBox, self.ApiButtonBox, self.SpecificationButtonBox:

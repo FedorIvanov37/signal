@@ -18,7 +18,7 @@ from common.gui.core.json_views.SpecView import SpecView
 from common.gui.enums.KeySequences import KeySequences
 from common.gui.decorators.window_settings import set_window_icon, has_close_button_only
 from common.gui.enums import ButtonActions, SpecFieldDef, Buttons
-from common.lib.enums.TermFilesPath import TermFilesPath
+from common.lib.enums.TermFilesPath import TermFilesPath, TermDirs
 from common.lib.enums.TextConstants import TextConstants
 from common.gui.tools.create_gui_elements import create_button
 
@@ -31,6 +31,8 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
     spec_rejected: pyqtSignal = pyqtSignal()
     reset_spec: pyqtSignal = pyqtSignal(str)
     load_remote_spec: pyqtSignal = pyqtSignal(bool)
+    open_spec_backup_dir: pyqtSignal = pyqtSignal()
+    copy_specification: pyqtSignal = pyqtSignal()
 
     @property
     def spec(self):
@@ -124,7 +126,9 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         }
 
         buttons_connection_map = {
-            self.ParseFile: lambda _: self.parse_file(),
+            self.ParseFile: lambda: self.parse_file(log=True),
+            self.ButtonCopySpec: self.copy_specification,
+            self.ButtonOpenBackupDir: self.open_spec_backup_dir,
             self.ButtonClearLog: self.clear_log,
             self.ButtonCopyLog: self.copy_log,
             self.PlusButton: self.SpecView.plus,
@@ -169,10 +173,8 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             font.setPointSize(font.pointSize() + 1)
             button.setFont(font)
 
-    @staticmethod
-    def backup():
-        rotator: SpecFilesRotator = SpecFilesRotator()
-        backup_filename = rotator.backup_spec()
+    def backup(self):
+        backup_filename: str = SpecFilesRotator(self.config).backup_spec()
         logger.info(f"Specification backup is done. Filename: {backup_filename}")
 
     def set_hello_message(self):
@@ -217,8 +219,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         spec: EpaySpecification = EpaySpecification()
 
         if self.config.specification.backup_storage:
-            rotator: SpecFilesRotator = SpecFilesRotator()
-            backup_filename: str = rotator.backup_spec()
+            backup_filename: str = SpecFilesRotator(self.config).backup_spec()
             logger.debug(f"Backup local specification file name: {backup_filename}")
 
         try:
@@ -322,11 +323,11 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
 
     def parse_file(self, filename: str | None = None, log: bool = False) -> None:
         if filename is None:
-            try:
-                filename = QFileDialog.getOpenFileName()[0]
-            except Exception as get_file_error:
-                logger.error(f"Filename get error: {get_file_error}")
-                return
+            file_dialog = QFileDialog()
+            file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+            file_dialog.setDirectory(TermDirs.SPEC_BACKUP_DIR)
+
+            filename, _ = file_dialog.getOpenFileName(filter="JSON (*.json);;Any(*.*)")
 
         if not filename:
             logger.info("No input filename recognized")

@@ -164,7 +164,7 @@ class SignalApi(Terminal):
         self.send(request.transaction)
 
     def process_api_update_spec(self, request: ApiRequest):
-        SpecFilesRotator().backup_spec()
+        SpecFilesRotator(self.config).backup_spec()
         self.spec.reload_spec(request.spec, commit=True)
         self.send_response(request, HTTPStatus.OK, message=self.spec.spec)
 
