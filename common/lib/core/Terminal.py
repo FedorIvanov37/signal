@@ -111,7 +111,13 @@ class Terminal(QObject):
             logger.warning("Unable to reconnect while connection in progress")
             return
 
-        self.need_reconnect.emit(host, port)
+        if host is None:
+            host = self.config.host.host
+
+        if port is None:
+            port = self.config.host.port
+
+        self.need_reconnect.emit(host, str(port))
 
     def save_config(self, config: Config | None = None):
         if config is None:

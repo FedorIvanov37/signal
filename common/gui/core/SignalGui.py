@@ -62,7 +62,7 @@ Starts MainWindow when starting its work, being a kind of low-level adapter betw
 """
 
 
-class SignalGui(SignalApi):
+class SignalGui(Terminal):
     connector: ConnectionThread
     trans_timer: TransactionTimer = TransactionTimer(KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION)
     set_remote_spec: pyqtSignal = pyqtSignal()
@@ -85,6 +85,7 @@ class SignalGui(SignalApi):
     def __init__(self, config: Config):
         self.connector: ConnectionThread = ConnectionThread(config)
         super(SignalGui, self).__init__(config=config, connector=self.connector)
+        self.api = SignalApi(self.config, terminal=self)
         self.window: MainWindow = MainWindow(self.config)
         self.thread_pool: QThreadPool = QThreadPool()
         self.connect_widgets()
@@ -117,7 +118,7 @@ class SignalGui(SignalApi):
             self.reconnect()
 
         if self.config.terminal.run_api:
-            self.process_change_api_mode(state=ApiModes.START)
+            self.api.process_change_api_mode(state=ApiModes.START)
 
         if self.config.specification.backup_on_startup:
             self.backup_spec()
@@ -160,7 +161,7 @@ class SignalGui(SignalApi):
             window.repeat: self.trans_timer.set_trans_loop_interval,
             window.validate_message: lambda force: self.validate_main_window(force=force),
             window.parse_complex_field: lambda: ComplexFieldsParser(self.config, self).exec(),
-            window.api_mode_changed: self.process_change_api_mode,
+            window.api_mode_changed: self.api.process_change_api_mode,
             window.exit: sys_exit,
             window.show_document: self.show_document,
             window.show_license: lambda: self.show_license_dialog(force=True),
@@ -170,15 +171,17 @@ class SignalGui(SignalApi):
             window.files_dropped: self.process_files_drop,
             window.undo: window.undo_changes,
             window.redo: window.redo_changes,
-            self.open_connection: self.reconnect,
+            self.api.open_connection: lambda: self.reconnect(self.config.host.host, str(self.config.host.port)),
             self.connector.stateChanged: self.set_connection_status,
             self.set_remote_spec: self.connector.get_remote_spec,
             self.connector.got_remote_spec: self.load_remote_spec,
             self.trans_timer.send_transaction: window.send,
             self.trans_timer.interval_was_set: window.set_custom_repeat_interval,
             self.keep_alive_timer.interval_was_set: window.set_custom_repeat_interval,
-            self.api.api_started: window.process_api_mode_change,
-            self.api.api_stopped: window.process_api_mode_change,
+            self.api.api_started: lambda: window.process_api_mode_change(ApiModes.START),
+            self.api.api_stopped: lambda: window.process_api_mode_change(ApiModes.STOP),
+            self.api.send_transaction: lambda transaction: self.send(transaction, is_api_call=True),
+            self.trans_queue.incoming_transaction: self.api.incoming_transaction,
             self._run_timer.timeout: self.on_startup,
         }
 
@@ -317,7 +320,6 @@ class SignalGui(SignalApi):
 
     def process_config_change(self, old_config: Config) -> None:
         Terminal.process_config_change(self, old_config)
-        self.api.config = self.config
 
         if self.config.debug.level != old_config.debug.level:
             self.logger.remove()
@@ -387,8 +389,8 @@ class SignalGui(SignalApi):
 
         kill(getpid(), 3)
 
-    def reconnect(self, host: str | None = None, port: str | None = None) -> None:
-        Terminal.reconnect(self, host=self.config.host.host, port=str(self.config.host.port))
+    # def reconnect(self, host: str | None = None, port: str | None = None) -> None:
+    #     Terminal.reconnect(self, host=self.config.host.host, port=str(self.config.host.port))
 
     def set_connection_status(self) -> None:
         self.window.set_connection_status(self.connector.state())

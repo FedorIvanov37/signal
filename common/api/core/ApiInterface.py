@@ -42,39 +42,39 @@ class ApiInterface(QObject):
 
     @property
     def get_connection(self):
-        return self.terminal.get_connection
+        return self.api_core.get_connection
 
     @property
     def get_spec(self):
-        return self.terminal.get_spec
+        return self.api_core.get_spec
 
     @property
     def get_transactions(self):
-        return self.terminal.get_transactions
+        return self.api_core.get_transactions
 
     @property
     def get_transaction(self):
-        return self.terminal.get_transaction
+        return self.api_core.get_transaction
 
     @property
     def get_config(self):
-        return self.terminal.get_config
+        return self.api_core.get_config
 
     @property
     def convert_to(self):
-        return self.terminal.convert_to
+        return self.api_core.convert_to
 
     @property
     def clean_transaction(self):
-        return self.terminal.clean_transaction
+        return self.api_core.clean_transaction
 
     @property
     def get_signal_info(self):
-        return self.terminal.get_signal_info
+        return self.api_core.get_signal_info
 
     @property
     def validate_transaction(self):
-        return self.terminal.validate_transaction
+        return self.api_core.validate_transaction
 
     api_tasks = {}
     api_started: pyqtSignal = pyqtSignal(ApiModes)
@@ -87,18 +87,18 @@ class ApiInterface(QObject):
     api_reverse_transaction: pyqtSignal = pyqtSignal(ApiRequest)
     api_update_config: pyqtSignal = pyqtSignal(ApiRequest)
 
-    def __init__(self, terminal, config: Config):
+    def __init__(self, api_core, config: Config):
         super().__init__()
 
         self.config = config
-        self.terminal = terminal
+        self.api_core = api_core
         self.api = Api(self)
-        self.terminal.start_api.connect(self.start_api)
-        self.terminal.stop_api.connect(self.stop_api)
-        self.terminal.restart_api.connect(self.restart_api)
-        self.terminal.trans_queue.incoming_transaction.connect(self.prepare_api_transaction_resp)
-        self.terminal.trans_queue.socket_error.connect(self.prepare_api_transaction_resp)
-        self.terminal.terminal_response.connect(self.api.process_backend_response)
+        self.api_core.start_api.connect(self.start_api)
+        self.api_core.stop_api.connect(self.stop_api)
+        self.api_core.restart_api.connect(self.restart_api)
+        self.api_core.terminal.trans_queue.incoming_transaction.connect(self.prepare_api_transaction_resp)
+        self.api_core.terminal.trans_queue.socket_error.connect(self.prepare_api_transaction_resp)
+        self.api_core.terminal_response.connect(self.api.process_backend_response)
         self.api.api_started.connect(self.api_started)
         self.api.api_stopped.connect(self.api_stopped)
         self.api.api_request.connect(self.process_api_call)
@@ -131,7 +131,7 @@ class ApiInterface(QObject):
             transaction_error = transaction.error
 
             if transaction.match_id == request.transaction.trans_id and transaction.matched:
-                request.response_data = self.terminal.clean_transaction(transaction)
+                request.response_data = self.api_core.clean_transaction(transaction)
                 request.http_status = HTTPStatus.OK
 
             else:
@@ -166,7 +166,7 @@ class ApiInterface(QObject):
         if request.request_type not in (ApiRequestType.OUTGOING_TRANSACTION, ApiRequestType.REVERSE_TRANSACTION):
             return
 
-        if not self.terminal.config.api.wait_remote_host_response:
+        if not self.api_core.config.api.wait_remote_host_response:
             request.http_status = HTTPStatus.OK
             request.response_data = TransactionResp()
             request.response_data.status = request.response_data.status % request.request_id

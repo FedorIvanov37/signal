@@ -20,9 +20,10 @@ from common.lib.exceptions.exceptions import LicenseRejected
 from common.lib.exceptions.exceptions import DataValidationWarning
 from common.api.core.SignalApi import SignalApi
 from common.cli.enums.LogMarks import LogMarks
+from common.api.enums.ApiModes import ApiModes
 
 
-class SignalCli(SignalApi):
+class SignalCli(Terminal):
     _cli_config: CliConfig = None
     _finished: pyqtSignal = pyqtSignal()
     _job_id: str = str(uuid1())
@@ -30,6 +31,7 @@ class SignalCli(SignalApi):
     def __init__(self, config: Config):
         super(SignalCli, self).__init__(config)
         self.config: Config = config
+        self.api = SignalApi(self.config, terminal=self)
         self.application = QCoreApplication([])
         self.run_timer = QTimer()
         self.connect_all()
@@ -38,6 +40,9 @@ class SignalCli(SignalApi):
     def setup(self):
         for os_signal in SIGINT, SIGTERM:
             signal(os_signal, self.finish)
+
+        self.api.open_connection.connect(self.reconnect)
+        self.api.send_transaction.connect(self.send)
 
         cli_args_parser: CliArgsParser = CliArgsParser(self.config, description=TextConstants.CLI_DESCRIPTION)
 
@@ -120,7 +125,7 @@ class SignalCli(SignalApi):
             if files := self.get_files_to_process():
                 logger.warning(f"Signal started in API mode, files processing ignored: {', '.join(files)}")
 
-            self.api.start_api()
+            self.api.process_change_api_mode(ApiModes.START)  # Run API
 
             return
 
