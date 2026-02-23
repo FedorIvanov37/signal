@@ -1,4 +1,4 @@
-<p align="center"><img src="common/data/style/triforce_signed.png" alt="Signal" width="500" height="500"></p>
+<p align="center"><img src="static/triforce_signed.png" alt="Signal" width="500" height="500"></p>
 
 <h1 align="center">Signal user reference guide</h1>
 <p align="center">This guide describes the Signal basic concept, usage, settings, and library re-usage <br><br>
@@ -793,7 +793,7 @@ by the author.
 
 ## Settings description
 
-![image](common/doc/static/spec_window.png)
+![image](static/spec_window.png)
 
 The table below describes the settings window columns from left to right
 

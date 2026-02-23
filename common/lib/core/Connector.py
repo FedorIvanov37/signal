@@ -83,9 +83,11 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
         if port is None:
             port = self.config.host.port
 
-        if "" in (host, port):
-            logger.error("Lost SV host address or port number. Check the configuration.")
-            return
+        for item in host, port:
+            if item in (str(), None):
+                logger.error("Lost SV host address or port number. Check the configuration.")
+                logger.error("Connection is not established")
+                return
 
         port = int(port)
 
@@ -109,7 +111,7 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
         if not self.state() == QTcpSocket.SocketState.UnconnectedState:
             self.waitForDisconnected(msecs=10000)
 
-    def reconnect_sv(self):
+    def reconnect_sv(self, host: str | None = None, port: str | None = None):
         for retry in range(3):
 
             if self.state() == self.SocketState.UnconnectedState:
@@ -122,7 +124,7 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
             return
 
         try:
-            self.connect_sv()
+            self.connect_sv(host, port)
 
         except Exception as connection_error:
             logger.error(f"SV connection error: {connection_error}")
@@ -136,11 +138,10 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
         try:
             validator.validate_url(self.config.specification.remote_spec_url)
 
-        except DataValidationWarning as url_validation_warning:
-            logger.warning(url_validation_warning)
+        except (DataValidationWarning, ValidationError, DataValidationError) as url_validation_error:
+            logger.error(f'Cannot load remote spec due to incorrect URL: "{self.config.specification.remote_spec_url}"')
+            logger.error(url_validation_error)
 
-        except (ValidationError, DataValidationError) as url_validation_error:
-            logger.error(f"Cannot load remote specification due to incorrect URL: {url_validation_error}")
             return
 
         logger.info(f"Getting remote spec using url {self.config.specification.remote_spec_url}")

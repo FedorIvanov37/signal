@@ -1,6 +1,5 @@
 from loguru import logger
 from copy import deepcopy
-from typing import Optional
 from pydantic import ValidationError
 from PyQt6.QtGui import QCloseEvent, QKeyEvent, QKeySequence, QShortcut
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -19,7 +18,7 @@ from common.gui.core.json_views.SpecView import SpecView
 from common.gui.enums.KeySequences import KeySequences
 from common.gui.decorators.window_settings import set_window_icon, has_close_button_only
 from common.gui.enums import ButtonActions, SpecFieldDef, Buttons
-from common.lib.enums.TermFilesPath import TermFilesPath
+from common.lib.enums.TermFilesPath import TermFilesPath, TermDirs
 from common.lib.enums.TextConstants import TextConstants
 from common.gui.tools.create_gui_elements import create_button
 
@@ -32,6 +31,8 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
     spec_rejected: pyqtSignal = pyqtSignal()
     reset_spec: pyqtSignal = pyqtSignal(str)
     load_remote_spec: pyqtSignal = pyqtSignal(bool)
+    open_spec_backup_dir: pyqtSignal = pyqtSignal()
+    copy_specification: pyqtSignal = pyqtSignal()
 
     @property
     def spec(self):
@@ -74,12 +75,18 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
 
         button_menu_structure = {
             self.ButtonApply: {
-                ButtonActions.ApplySpecMenuActions.ONE_SESSION: lambda: self.apply(ButtonActions.ApplySpecMenuActions.ONE_SESSION),
-                ButtonActions.ApplySpecMenuActions.PERMANENTLY: lambda: self.apply(ButtonActions.ApplySpecMenuActions.PERMANENTLY),
+                ButtonActions.ApplySpecMenuActions.ONE_SESSION:
+                    lambda: self.apply(ButtonActions.ApplySpecMenuActions.ONE_SESSION),
+
+                ButtonActions.ApplySpecMenuActions.PERMANENTLY:
+                    lambda: self.apply(ButtonActions.ApplySpecMenuActions.PERMANENTLY),
             },
             self.ButtonReset: {
-                ButtonActions.SetSpecMenuActions.LOCAL_SPEC: lambda: self.reset_spec.emit(ButtonActions.SetSpecMenuActions.LOCAL_SPEC),
-                ButtonActions.SetSpecMenuActions.REMOTE_SPEC: lambda: self.reset_spec.emit(ButtonActions.SetSpecMenuActions.REMOTE_SPEC),
+                ButtonActions.SetSpecMenuActions.LOCAL_SPEC:
+                    lambda: self.reset_spec.emit(ButtonActions.SetSpecMenuActions.LOCAL_SPEC),
+
+                ButtonActions.SetSpecMenuActions.REMOTE_SPEC:
+                    lambda: self.reset_spec.emit(ButtonActions.SetSpecMenuActions.REMOTE_SPEC),
             },
         }
 
@@ -110,7 +117,6 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             self.SpecView.search_finished: self.hide_reserved_for_future,
             self.CheckBoxReadOnly.stateChanged: lambda state: self.set_read_only(bool(state)),
             self.CheckBoxHideReverved.stateChanged: self.hide_reserved_for_future,
-            self.ParseFile.pressed: self.parse_file,
             self.spec_accepted: lambda name: logger.info(f"Specification applied - {name}"),
             self.SearchLine.textChanged: self.SpecView.search,
             self.SearchLine.editingFinished: self.SpecView.setFocus,
@@ -120,6 +126,9 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         }
 
         buttons_connection_map = {
+            self.ParseFile: lambda: self.parse_file(log=True),
+            self.ButtonCopySpec: self.copy_specification,
+            self.ButtonOpenBackupDir: self.open_spec_backup_dir,
             self.ButtonClearLog: self.clear_log,
             self.ButtonCopyLog: self.copy_log,
             self.PlusButton: self.SpecView.plus,
@@ -164,11 +173,9 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             font.setPointSize(font.pointSize() + 1)
             button.setFont(font)
 
-    @staticmethod
-    def backup():
-        rotator: SpecFilesRotator = SpecFilesRotator()
-        backup_filename = rotator.backup_spec()
-        logger.info(f"Backup is done. Filename: {backup_filename}")
+    def backup(self):
+        backup_filename: str = SpecFilesRotator(self.config).backup_spec()
+        logger.info(f"Specification backup is done. Filename: {backup_filename}")
 
     def set_hello_message(self):
         self.LogArea.setText(f"{TextConstants.HELLO_MESSAGE}\n")
@@ -212,8 +219,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         spec: EpaySpecification = EpaySpecification()
 
         if self.config.specification.backup_storage:
-            rotator: SpecFilesRotator = SpecFilesRotator()
-            backup_filename: str = rotator.backup_spec()
+            backup_filename: str = SpecFilesRotator(self.config).backup_spec()
             logger.debug(f"Backup local specification file name: {backup_filename}")
 
         try:
@@ -315,13 +321,13 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
     def closeEvent(self, a0: QCloseEvent) -> None:
         self.process_close(a0)
 
-    def parse_file(self, filename: Optional[str] = None, log: bool = False) -> None:
+    def parse_file(self, filename: str | None = None, log: bool = False) -> None:
         if filename is None:
-            try:
-                filename = QFileDialog.getOpenFileName()[0]
-            except Exception as get_file_error:
-                logger.error(f"Filename get error: {get_file_error}")
-                return
+            file_dialog = QFileDialog()
+            file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+            file_dialog.setDirectory(TermDirs.SPEC_BACKUP_DIR)
+
+            filename, _ = file_dialog.getOpenFileName(filter="JSON (*.json);;Any(*.*)")
 
         if not filename:
             logger.info("No input filename recognized")

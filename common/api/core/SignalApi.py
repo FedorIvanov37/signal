@@ -1,5 +1,7 @@
 from contextlib import suppress
 from http import HTTPStatus
+from time import sleep
+from datetime import datetime
 from typing import Any
 from loguru import logger
 from fastapi import HTTPException
@@ -30,10 +32,19 @@ class SignalApi(Terminal):
     finish_api: pyqtSignal = pyqtSignal()
     terminal_response: pyqtSignal = pyqtSignal(ApiRequest)
     error_type = str | None | Exception
+    open_connection: pyqtSignal = pyqtSignal(str, str)
+    _connection_error: str | None = None
+
+    @property
+    def connection_error(self):
+        return self._connection_error
+
+    @connection_error.setter
+    def connection_error(self, connection_error):
+        self._connection_error = connection_error
 
     def __init__(self, config: Config, connector=None):
         super().__init__(config=config, connector=connector)
-
         self.config = config
         self.api = ApiInterface(self, self.config)
         self.logger.add_api_handler()
@@ -129,43 +140,43 @@ class SignalApi(Terminal):
             config = self.config
 
         except Exception as config_update_error:
-            self.sent_response(request, HTTPStatus.UNPROCESSABLE_ENTITY, error=config_update_error)
+            self.send_response(request, HTTPStatus.UNPROCESSABLE_ENTITY, error=config_update_error)
             return
 
         self.api.config = self.config
 
-        self.sent_response(request, HTTPStatus.OK, message=config)
+        self.send_response(request, HTTPStatus.OK, message=config)
 
     def process_api_reverse_transaction(self, request: ApiRequest):
         original_transaction: Transaction
 
         if not (original_transaction := self.trans_queue.get_transaction(trans_id=request.original_trans_id)):
-            self.sent_response(request, HTTPStatus.NOT_FOUND, error="No original transaction found")
+            self.send_response(request, HTTPStatus.NOT_FOUND, error="No original transaction found")
             return
 
         try:
             request.transaction = self.build_reversal(original_transaction)
 
         except LookupError as reversal_building_error:
-            self.sent_response(request, HTTPStatus.UNPROCESSABLE_ENTITY, error=reversal_building_error)
+            self.send_response(request, HTTPStatus.UNPROCESSABLE_ENTITY, error=reversal_building_error)
             return
 
         self.send(request.transaction)
 
     def process_api_update_spec(self, request: ApiRequest):
-        SpecFilesRotator().backup_spec()
+        SpecFilesRotator(self.config).backup_spec()
         self.spec.reload_spec(request.spec, commit=True)
-        self.sent_response(request, HTTPStatus.OK, message=self.spec.spec)
+        self.send_response(request, HTTPStatus.OK, message=self.spec.spec)
 
     def process_api_connect(self, request: ApiRequest):
         if self.connector.connection_in_progress():
-            self.sent_response(request, HTTPStatus.NOT_ACCEPTABLE, error="connection is in progress")
+            self.send_response(request, HTTPStatus.NOT_ACCEPTABLE, error="Connection is in progress")
             return
 
         if self.connector.is_connected():
             connection: Connection = self.get_connection()
 
-            self.sent_response(
+            self.send_response(
                 request, HTTPStatus.NOT_ACCEPTABLE,
                 error=f"The host is already connected to {connection.host}:{connection.port}. Close connection first"
             )
@@ -178,28 +189,50 @@ class SignalApi(Terminal):
         if not request.connection.port:
             request.connection.port = self.config.host.port
 
-        if error := self.connector.connect_sv(host=request.connection.host, port=request.connection.port):
-            self.sent_response(request, HTTPStatus.BAD_GATEWAY, error=error)
+        self.open_connection.emit(request.connection.host, str(request.connection.port))
+
+        connection_started = datetime.now()
+        self.connection_error = None
+        self.connector.errorOccurred.connect(lambda name: setattr(self, "connection_error", name))
+
+        while not self.connector.is_connected():
+            self.pyqt_application.processEvents()
+
+            if (datetime.now() - connection_started).seconds > 30:
+                self.send_response(request, HTTPStatus.GATEWAY_TIMEOUT, error="Connection timeout")
+                return
+
+            if self.connection_error:
+                self.connection_error = None
+                break
+
+            sleep(0.01)
+
+        if not self.connector.is_connected():
+            self.send_response(request, HTTPStatus.BAD_GATEWAY, error=self.connector.errorString())
             return
 
-        self.sent_response(request, HTTPStatus.OK, message=self.get_connection())
+        self.send_response(request, HTTPStatus.OK, message=self.get_connection())
+
+    def set_connection_error(self, connection_error):
+        self.connection_error = connection_error
 
     def process_api_request(self, request: ApiTransactionRequest):
         try:
             self.trans_validator.validate_transaction(request.transaction)
 
         except DataValidationWarning as validation_warning:
-            ...  # logger.warning(validation_warning)
+            logger.warning(validation_warning)
 
         except DataValidationError as validation_error:
             logger.error(validation_error)
-            self.sent_response(request, HTTPStatus.UNPROCESSABLE_ENTITY, error=f"Validation error: {validation_error}")
+            self.send_response(request, HTTPStatus.UNPROCESSABLE_ENTITY, error=f"Validation error: {validation_error}")
             return
 
         self.requests[request.request_id] = request
         self.send(request.transaction)
 
-    def sent_response(self, request: ApiRequest, status: HTTPStatus, message: Any = None, error: error_type = None):
+    def send_response(self, request: ApiRequest, status: HTTPStatus, message: Any = None, error: error_type = None):
         request.http_status = status
         request.response_data = message
 
@@ -209,39 +242,35 @@ class SignalApi(Terminal):
         self.terminal_response.emit(request)
 
     def process_api_reconnect(self, request: ApiRequest):
+        logger.info("[Re]connecting...")
+
         if self.connector.connection_in_progress():
-            self.sent_response(request, HTTPStatus.NOT_ACCEPTABLE, error="connection is in progress")
+            self.send_response(request, HTTPStatus.NOT_ACCEPTABLE, error="Connection is in progress")
             return
 
-        if not self.connector.is_connected():
-            if error := self.connector.connect_sv(host=request.connection.host, port=request.connection.port):
-                self.sent_response(request, HTTPStatus.BAD_GATEWAY, error=error)
+        for _ in range(0, 3):
+            if self.connector.is_connected():
+                self.process_api_disconnect(request, send_resp=False)
+
+            if not self.connector.is_connected():
+                self.process_api_connect(request)
                 return
 
-            self.sent_response(request, HTTPStatus.OK, message=self.get_connection())
-            return
+        self.send_response(request, HTTPStatus.BAD_GATEWAY, message=f"Cannot reconnect: {self.connector.error()}")
 
-        if self.connector.is_connected():
-            self.connector.disconnect_sv()
-
-        if not self.connector.is_connected():
-            if error := self.connector.connect_sv(host=request.connection.host, port=request.connection.port):
-                self.sent_response(request, HTTPStatus.BAD_GATEWAY, error=error)
-
-        self.sent_response(request, HTTPStatus.OK, message=self.get_connection())
-
-    def process_api_disconnect(self, request: ApiRequest):
+    def process_api_disconnect(self, request: ApiRequest, send_resp: bool = True):
         if self.connector.connection_in_progress():
-            self.sent_response(request, HTTPStatus.NOT_ACCEPTABLE, error="connection is in progress")
+            self.send_response(request, HTTPStatus.NOT_ACCEPTABLE, error="Connection is in progress")
             return
 
         if not self.connector.is_connected():
-            self.sent_response(request, HTTPStatus.NOT_ACCEPTABLE, error="The host is already disconnected")
+            self.send_response(request, HTTPStatus.NOT_ACCEPTABLE, error="The host is already disconnected")
             return
 
         self.connector.disconnect_sv()
 
-        self.sent_response(request, HTTPStatus.OK, message=self.get_connection())
+        if send_resp:
+            self.send_response(request, HTTPStatus.OK, message=self.get_connection())
 
     def process_change_api_mode(self, state: ApiModes) -> None:
         signals_map = {
@@ -259,20 +288,21 @@ class SignalApi(Terminal):
     @staticmethod
     def get_signal_info():
         elements = (
-            TextConstants.HELLO_MESSAGE,
-            f"<a href=\"{ApiUrl.DOCUMENT}\">User Reference Guide</a>",
-            "Use only on test environment",
+            f"<pre>{TextConstants.HELLO_MESSAGE}</pre>",
+            "️Use only on test environment",
             f"Version {ReleaseDefinition.VERSION}",
             f"Released in {ReleaseDefinition.RELEASE}",
+            f"See user reference guide <a href=\"{ApiUrl.DOCUMENT}\">here</a>",
             f"Developed by {ReleaseDefinition.AUTHOR}",
-            f"Contact {ReleaseDefinition.CONTACT}"
+            f"Contact author {ReleaseDefinition.CONTACT}"
         )
 
         message = "\n\n  ".join(elements)
 
         message = f"""<head>
                         <title>Signal {ReleaseDefinition.VERSION} | About </title>
-                        <link rel="icon" type="image/png" href="/static/{GuiFiles.MAIN_LOGO}">
+                        <link rel="icon" type="image/png" href="static/{GuiFiles.MAIN_LOGO}"> 
+                        <link rel="stylesheet" href="static/octicons/octicons.css" />
                       </head>
                         <body style="font-size:20px; background-color: #012e4f; color: #ffffff; padding: 10px; 
                         border-radius: 6px;">

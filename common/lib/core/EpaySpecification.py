@@ -53,6 +53,10 @@ class EpaySpecification(EpaySpecificationData):
     def fields(self):
         return self.spec.fields
 
+    @fields.setter
+    def fields(self, fields):
+        self.spec.fields = fields
+
     @staticmethod
     def create_dictionary() -> Dictionaries:
         try:

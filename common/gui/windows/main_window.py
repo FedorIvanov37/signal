@@ -405,16 +405,16 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             self.ButtonPrint: {
                 ToolBarElements.JSON: lambda: self.print.emit(OutputFilesFormat.JSON),
                 ToolBarElements.INI: lambda: self.print.emit(OutputFilesFormat.INI),
-                ToolBarElements.DUMP: lambda: self.print.emit(OutputFilesFormat.DUMP),
+                ToolBarElements.DUMP.title(): lambda: self.print.emit(OutputFilesFormat.DUMP),
 
-                ButtonActions.PrintButtonDataFormats.SPEC:
+                ButtonActions.PrintButtonDataFormats.SPEC.title():
                     lambda: self.print.emit(ButtonActions.PrintButtonDataFormats.SPEC),
 
-                ButtonActions.PrintButtonDataFormats.TERM:
-                    lambda: self.print.emit(ButtonActions.PrintButtonDataFormats.TERM),
-
-                ButtonActions.PrintButtonDataFormats.CONFIG:
+                ButtonActions.PrintButtonDataFormats.CONFIG.title():
                     lambda: self.print.emit(ButtonActions.PrintButtonDataFormats.CONFIG),
+
+                ButtonActions.PrintButtonDataFormats.TERM.title():
+                    lambda: self.print.emit(ButtonActions.PrintButtonDataFormats.TERM),
             },
 
             self.ButtonSave: {
@@ -447,8 +447,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
 
             self.ButtonTools: {
                 ToolBarElements.SETTINGS: self.settings,
-                ToolBarElements.CONSTRUCT_FIELD: self.parse_complex_field,
                 ToolBarElements.SPECIFICATION: self.specification,
+                ToolBarElements.CONSTRUCT_FIELD: self.parse_complex_field,
             },
 
             self.ButtonHelp: {

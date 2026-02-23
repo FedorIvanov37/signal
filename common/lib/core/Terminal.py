@@ -3,6 +3,7 @@ from typing import Callable
 from PyQt6.QtWidgets import QApplication, QStyleFactory
 from PyQt6.QtCore import pyqtSignal, QObject
 from PyQt6.QtNetwork import QTcpSocket
+from common.lib.core.SpecFilesRotator import SpecFilesRotator
 from common.lib.interfaces.ConnectorInterface import ConnectionInterface
 from common.lib.core.Parser import Parser
 from common.lib.core.Logger import Logger
@@ -35,7 +36,7 @@ class Terminal(QObject):
         config: Config = Config.model_validate_json(json_file.read())
 
     trans_validator: TransValidator
-    need_reconnect: pyqtSignal = pyqtSignal()
+    need_reconnect: pyqtSignal = pyqtSignal(str, str)
 
     def __init__(self, config: Config, connector: ConnectionInterface | None = None, application=QApplication([])):
         super(Terminal, self).__init__()
@@ -92,7 +93,9 @@ class Terminal(QObject):
 
     @staticmethod
     def got_timeout(transaction, timeout_secs) -> None:
-        logger.error(f"Transaction [{transaction.trans_id}] timeout after {int(timeout_secs)} seconds of waiting answer")
+        logger.error(
+            f"Transaction [{transaction.trans_id}] timeout after {int(timeout_secs)} seconds of waiting answer"
+        )
 
     def socket_error(self) -> None:
         if self.connector.error() == QTcpSocket.SocketError.UnknownSocketError:  # TODO
@@ -103,14 +106,12 @@ class Terminal(QObject):
     def disconnect(self) -> None:
         self.connector.disconnect_sv()
 
-    def reconnect(self) -> None:
+    def reconnect(self, host: str | None = None, port: str | None = None) -> None:
         if self.connector.connection_in_progress():
             logger.warning("Unable to reconnect while connection in progress")
             return
 
-        logger.info("[Re]connecting...")
-
-        self.need_reconnect.emit()
+        self.need_reconnect.emit(host, port)
 
     def save_config(self, config: Config | None = None):
         if config is None:
@@ -121,6 +122,10 @@ class Terminal(QObject):
 
     def send(self, transaction: Transaction) -> None:
         self.trans_queue.put_transaction(transaction)
+
+    def backup_spec(self):
+        backup_filename: str = SpecFilesRotator(self.config).backup_spec()
+        logger.info(f"Specification backup is done. Filename: {backup_filename}")
 
     def process_config_change(self, old_config: Config) -> None:
         self.read_config()
@@ -136,7 +141,7 @@ class Terminal(QObject):
             tool.config = self.config
 
         if "" in (self.config.host.host, self.config.host.port):
-            logger.warning("Lost SV address or SV port! Check the parameters")
+            logger.warning("Lost SV address or SV port. Check the configuration")
 
         try:
             if not self.config.host.port:
@@ -146,7 +151,9 @@ class Terminal(QObject):
                 raise ValueError
 
         except ValueError:
-            logger.warning(f"Incorrect SV port value: {self.config.host.port}. Must be a number in the range of 0 to 65535")
+            logger.warning(
+                f"Incorrect SV port value: {self.config.host.port}. Must be a number in the range of 0 to 65535"
+            )
 
         try:
             with open(TermFilesPath.LICENSE_INFO, "r") as license_json:
@@ -229,7 +236,9 @@ class Terminal(QObject):
 
             if response.is_keep_alive:
                 resp = response.data_fields.get(self.spec.FIELD_SET.FIELD_039_AUTHORIZATION_RESPONSE_CODE, 'Unknown')
-                message: str = (f'Keep Alive transaction [{response.match_id}] sucessfully done. Response code: "{resp}"')
+                message: str = (
+                    f'Keep Alive transaction [{response.match_id}] successfully done. Response code: "{resp}"'
+                )
 
             if not response.is_keep_alive:
                 message: str = f"Transaction ID [{response.match_id}] matched"

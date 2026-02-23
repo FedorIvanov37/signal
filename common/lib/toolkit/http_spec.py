@@ -6,7 +6,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 SERVER_ADDRESS = '127.0.0.1'  # Specify the correct address
 PORT = 4242
 PATH = '/specification'
-FILE = 'common/data/settings/specification1.json'
+FILE = 'common/data/settings/specification.json'
 
 
 class HttpSpec(BaseHTTPRequestHandler):

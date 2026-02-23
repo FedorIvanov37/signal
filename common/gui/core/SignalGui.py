@@ -1,6 +1,7 @@
 from sys import exit as sys_exit
-from os import getcwd, kill, getpid
-from os.path import basename, normpath
+from os import getcwd, kill, getpid, startfile
+from os.path import basename, normpath, abspath
+from json import loads, dumps
 from typing import Callable
 from loguru import logger
 from pydantic import ValidationError
@@ -22,7 +23,7 @@ from common.gui.enums import ButtonActions
 from common.gui.enums.Colors import Colors
 from common.gui.enums.GuiFilesPath import GuiDirs
 from common.lib.enums import KeepAlive
-from common.lib.enums.TermFilesPath import TermFilesPath
+from common.lib.enums.TermFilesPath import TermFilesPath, TermDirs
 from common.lib.enums.DataFormats import DataFormats, PrintDataFormats, OutputFilesFormat, InputFilesFormat
 from common.lib.enums.MessageLength import MessageLength
 from common.lib.enums.TextConstants import TextConstants
@@ -109,18 +110,20 @@ class SignalGui(SignalApi):
             interval: int = self.config.host.keep_alive_interval
             self.keep_alive_timer.set_trans_loop_interval(KeepAlive.IntervalNames.KEEP_ALIVE_DEFAULT % interval)
 
-        if self.config.terminal.load_remote_spec:
-            self.set_remote_spec.emit()
-
         if self.config.specification.backup_storage:
-            rotator: SpecFilesRotator = SpecFilesRotator()
-            rotator.clear_spec_backup(self.config)
+            SpecFilesRotator(self.config).clear_spec_backup()
 
         if self.config.terminal.connect_on_startup:
             self.reconnect()
 
         if self.config.terminal.run_api:
             self.process_change_api_mode(state=ApiModes.START)
+
+        if self.config.specification.backup_on_startup:
+            self.backup_spec()
+
+        if self.config.terminal.load_remote_spec:
+            self.set_remote_spec.emit()
 
         self.window.json_view.enable_json_mode_checkboxes(enable=not self.config.specification.manual_input_mode)
 
@@ -167,6 +170,7 @@ class SignalGui(SignalApi):
             window.files_dropped: self.process_files_drop,
             window.undo: window.undo_changes,
             window.redo: window.redo_changes,
+            self.open_connection: self.reconnect,
             self.connector.stateChanged: self.set_connection_status,
             self.set_remote_spec: self.connector.get_remote_spec,
             self.connector.got_remote_spec: self.load_remote_spec,
@@ -180,6 +184,8 @@ class SignalGui(SignalApi):
 
         for signal, slot in terminal_connections_map.items():
             signal.connect(slot)
+
+        self.window.reconnect.connect(lambda: logger.info("[Re]connecting..."))
 
     def read_config(self, config_file: str | None = None):
         Terminal.read_config(self, config_file)
@@ -229,12 +235,18 @@ class SignalGui(SignalApi):
         except LicenceAlreadyAccepted:
             return
 
+    @staticmethod
+    def open_spec_backup_dir():
+        startfile(abspath(TermDirs.SPEC_BACKUP_DIR))
+
     @set_json_view_focus
     def run_specification_window(self) -> None:
         old_spec = self.spec.spec.json()
 
         self.logger.remove()
         spec_window = SpecWindow(self.connector, self.config)
+        spec_window.open_spec_backup_dir.connect(SignalGui.open_spec_backup_dir)
+        spec_window.copy_specification.connect(lambda: self.copy_specification(spec_window))
         spec_window.exec()
         self.logger.add_wireless_handler(self.window.log_browser)
 
@@ -264,6 +276,7 @@ class SignalGui(SignalApi):
             return
 
         try:
+            self.backup_spec()
             self.spec.reload_spec(spec=epay_spec, commit=self.config.specification.rewrite_local_spec)
         except Exception as spec_reload_error:
             logger.error(spec_reload_error)
@@ -337,7 +350,7 @@ class SignalGui(SignalApi):
 
         spec_loading_conditions: list[bool] = [
             self.config.specification.remote_spec_url,
-            old_config.specification.remote_spec_url != self.config.specification.remote_spec_url,
+            self.config.terminal.load_remote_spec,
         ]
 
         if all(spec_loading_conditions):
@@ -345,7 +358,8 @@ class SignalGui(SignalApi):
                 self.data_validator.validate_url(self.config.specification.remote_spec_url)
 
             except (ValidationError, DataValidationError, DataValidationWarning) as url_validation_error:
-                logger.error(f"Remote spec URL validation error: {url_validation_error}")
+                logger.error(f'Incorrect remote spec URL "{self.config.specification.remote_spec_url}"')
+                logger.error(url_validation_error)
 
             else:
                 self.set_remote_spec.emit()
@@ -366,11 +380,15 @@ class SignalGui(SignalApi):
         logger.info("Settings applied")
 
     def stop_signal(self) -> None:
+        if self.config.specification.backup_on_shutdown:
+            self.backup_spec()
+
         self.connector.stop_thread()
+
         kill(getpid(), 3)
 
-    def reconnect(self) -> None:
-        Terminal.reconnect(self)
+    def reconnect(self, host: str | None = None, port: str | None = None) -> None:
+        Terminal.reconnect(self, host=self.config.host.host, port=str(self.config.host.port))
 
     def set_connection_status(self) -> None:
         self.window.set_connection_status(self.connector.state())
@@ -710,7 +728,11 @@ class SignalGui(SignalApi):
 
     def copy_bitmap(self) -> None:
         self.set_clipboard_text(self.window.get_bitmap_data())
-        logger.info("The bitmap copied")
+        logger.info("The bitmap was copied")
+
+    def copy_specification(self, spec_window: SpecWindow):
+        self.set_clipboard_text(dumps(loads(spec_window.spec.spec.json()), indent=2))
+        logger.info("The Specification JSON was copied to clipboard")
 
     @staticmethod
     def set_clipboard_text(data: str = str()) -> None:

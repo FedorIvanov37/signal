@@ -1,7 +1,7 @@
 {
     "host": {
-        "host": "",
-        "port": 0,
+        "host": "127.0.0.1",
+        "port": 16677,
         "keep_alive_mode": false,
         "keep_alive_interval": 300,
         "header_length": 2,
@@ -11,14 +11,16 @@
         "process_default_dump": true,
         "connect_on_startup": true,
         "load_remote_spec": false,
-        "show_license_dialog": false
+        "show_license_dialog": false,
+        "run_api": true
     },
     "debug": {
         "level": "INFO",
         "clear_log": true,
-        "parse_subfields": false,
+        "parse_subfields": true,
         "backup_storage_depth": 10,
-        "reduce_keep_alive": false
+        "reduce_keep_alive": true,
+        "print_description": true
     },
     "validation": {
         "validation_enabled": true,
@@ -38,14 +40,17 @@
     "specification": {
         "rewrite_local_spec": false,
         "remote_spec_url": "",
-        "backup_storage_depth": 30,
-        "backup_storage": false,
-        "manual_input_mode": false
+        "backup_storage_depth": 100,
+        "manual_input_mode": false,
+        "backup_storage": true,
+        "backup_on_startup": true,
+        "backup_on_shutdown": true
     },
     "api": {
         "address": "0.0.0.0",
-        "port": 0,
+        "port": 7777,
         "wait_remote_host_response": true,
+        "waiting_timeout_seconds": 10,
         "hide_secrets": true,
         "parse_subfields": true
     }

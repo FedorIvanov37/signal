@@ -46,18 +46,16 @@ from asyncio import (
 
 
 """
-
 Signal Application Program Interface (API) 
 
 This is an API for processing transaction requests, configuration, and a toolkit for working with transactions 
 
-The Signal API is bundled with a Postman collection. Call the API using the GET method using the 
-mapping {{api}}/api/documentation for more information
+The Signal API is bundled with a Postman collection. Call the API using the GET method using the mapping 
+{{api}}/documentation for more information
 
 The API must be started through the graphical user interface or the command line interface, not directly
 
 Command line run command: signal.exe --console --api-mode
-
 """
 
 
@@ -76,7 +74,7 @@ class Api(QObject):
         self._loop: AbstractEventLoop | None = None
         self._queue: Queue | None = None
         self.app = self._build_app()
-        self.pending_jobs: dict[str, Future] = {}
+        self.pending_jobs: dict[uuid4, Future] = {}
         filterwarnings("ignore", message=".*Pydantic serializer warnings*", module="pydantic.*")
 
     def is_api_started(self):

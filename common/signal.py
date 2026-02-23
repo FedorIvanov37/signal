@@ -57,7 +57,7 @@ try:
     with open(config_file) as json_file:  # Read the config
         config: Config = Config.model_validate_json(json_file.read())
 
-    for directory in TermDirs:  # Create important priject directories in case when some of them don't exist
+    for directory in TermDirs:  # Create important project directories in case when some of them don't exist
         makedirs(directory, exist_ok=True)
 
     QLoggingCategory.setFilterRules(  # Reduce redundant log messages from the output
@@ -89,6 +89,7 @@ try:
 
         # GUI session is finished
 
-except Exception as gui_run_exception:
-    logger.error(gui_run_exception)
+except Exception as run_exception:
+    logger.error(run_exception)
+    print(run_exception)
     exit(100)

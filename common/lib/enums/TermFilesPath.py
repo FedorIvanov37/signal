@@ -2,9 +2,10 @@ from enum import StrEnum
 
 
 class TermDirs(StrEnum):
-    DATA_DIR = "common/data"
-    LOG_DIR = "common/log"
-    DOC_DIR = "common/doc"
+    BASE_DIR = "common"
+    DATA_DIR = f"{BASE_DIR}/data"
+    LOG_DIR = f"{BASE_DIR}/log"
+    DOC_DIR = f"{BASE_DIR}/doc"
     SPEC_BACKUP_DIR = f"{DATA_DIR}/spec_backup"
     DEFAULT_MSG_DIR = f"{DATA_DIR}/default"
     LICENSE_DIR = f"{DATA_DIR}/license"
