@@ -1,3 +1,5 @@
+import time
+
 from loguru import logger
 from typing import Union
 from os import getcwd
@@ -75,6 +77,9 @@ class Api(QObject):
         self._queue: Queue | None = None
         self.app = self._build_app()
         self.pending_jobs: dict[uuid4, Future] = {}
+        # self.backend.start_api.connect(self.start)
+        # self.backend.stop_api.connect(self.stop)
+        # self.backend.restart_api.connect(self.restart)
         filterwarnings("ignore", message=".*Pydantic serializer warnings*", module="pydantic.*")
 
     def is_api_started(self):
@@ -92,6 +97,7 @@ class Api(QObject):
             self.start()
 
     def start(self):
+        time.sleep(20)
         if self.is_api_started():
             logger.warning("Unable to start API mode, because it is already started")
             return

@@ -66,6 +66,7 @@ class SignalGui(Terminal):
     connector: ConnectionThread
     trans_timer: TransactionTimer = TransactionTimer(KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION)
     set_remote_spec: pyqtSignal = pyqtSignal()
+    change_api_mode: pyqtSignal = pyqtSignal(ApiModes)
     _run_timer = QTimer()
     _generated_echo_test_transactions: list[Transaction] = []
 
@@ -118,7 +119,9 @@ class SignalGui(Terminal):
             self.reconnect()
 
         if self.config.terminal.run_api:
-            self.api.process_change_api_mode(state=ApiModes.START)
+            self.api.change_api_mode.emit(ApiModes.START)
+
+            # self.api.process_change_api_mode(state=ApiModes.START)
 
         if self.config.specification.backup_on_startup:
             self.backup_spec()

@@ -23,26 +23,32 @@ from common.lib.data_models.Transaction import Transaction
 from common.lib.enums.TermFilesPath import TermFilesPath
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
 from common.lib.core.FieldsGenerator import FieldsGenerator
+from common.api.data_models.ApiRequests import ApiRequestType
+from common.api.exceptions.TerminalApiError import TerminalApiError
+from common.api.data_models.TransactionResp import TransactionResp
+from common.api.core.Api import Api
 
 
 class SignalApi(QObject):
     start_api: pyqtSignal = pyqtSignal()
     stop_api: pyqtSignal = pyqtSignal()
     restart_api: pyqtSignal = pyqtSignal()
-    finish_api: pyqtSignal = pyqtSignal()
     api_started: pyqtSignal = pyqtSignal()
     api_stopped: pyqtSignal = pyqtSignal()
     send_transaction: pyqtSignal = pyqtSignal(Transaction)
     incoming_transaction: pyqtSignal = pyqtSignal(Transaction)
     terminal_response: pyqtSignal = pyqtSignal(ApiRequest)
+    change_api_mode: pyqtSignal = pyqtSignal(ApiModes)
     error_type = str | None | Exception
     open_connection: pyqtSignal = pyqtSignal(str, str)
+    api_tasks = {}
 
     def __init__(self, config: Config, terminal: Terminal):
         super().__init__()
         self.config = config
         self.terminal = terminal
-        self.api = ApiInterface(self, self.config)
+        # self.api = ApiInterface(self, self.config)
+        self.api = Api(self)
         self.terminal.logger.add_api_handler()
         self.requests: dict[str, ApiRequest] = dict()
 
@@ -51,20 +57,64 @@ class SignalApi(QObject):
         api = self.api
 
         connection_map = {
-            api.api_trans_request: self.process_api_request,
-            api.api_reconnect_request: self.process_api_reconnect,
-            api.api_disconnect_request: self.process_api_disconnect,
-            api.api_connect_request: self.process_api_connect,
-            api.api_update_spec: self.process_api_update_spec,
-            api.api_reverse_transaction: self.process_api_reverse_transaction,
-            api.api_update_config: self.process_api_update_config,
+            api.api_request: self.process_api_request,
+            self.change_api_mode: self.process_change_api_mode,
+            # api.api_reconnect_request: self.process_api_reconnect,
+            # api.api_disconnect_request: self.process_api_disconnect,
+            # api.api_connect_request: self.process_api_connect,
+            # api.api_update_spec: self.process_api_update_spec,
+            # api.api_reverse_transaction: self.process_api_reverse_transaction,
+            # api.api_update_config: self.process_api_update_config,
             api.api_started: self.api_started,
             api.api_stopped: self.api_stopped,
             self.incoming_transaction: self.process_incoming_transaction,
+            self.start_api: self.process_start_api,
         }
 
         for signal, slot in connection_map.items():
             signal.connect(slot)
+
+    def process_start_api(self):
+        self.api.start()
+
+    def process_api_call(self, request: ApiRequest):
+        self.api_tasks[request.request_id] = request
+
+        request_signal_map = {
+            ApiRequestType.OUTGOING_TRANSACTION: self.process_api_request,
+            ApiRequestType.RECONNECT: self.process_api_reconnect,
+            ApiRequestType.DISCONNECT: self.process_api_disconnect,
+            ApiRequestType.CONNECT: self.process_api_connect,
+            ApiRequestType.UPDATE_SPEC: self.process_api_update_spec,
+            ApiRequestType.REVERSE_TRANSACTION: self.process_api_reverse_transaction,
+            ApiRequestType.UPDATE_CONFIG: self.process_api_update_config,
+        }
+
+        if not (signal := request_signal_map.get(request.request_type, False)):
+            raise TerminalApiError(
+                http_status=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail=f"Cannot process API call, unknown request type: {request.request_type}"
+            )
+
+        signal.emit(request)
+
+        if request.request_type not in (ApiRequestType.OUTGOING_TRANSACTION, ApiRequestType.REVERSE_TRANSACTION):
+            return
+
+        if not self.config.api.wait_remote_host_response:
+            request.http_status = HTTPStatus.OK
+            request.response_data = TransactionResp()
+            request.response_data.status = request.response_data.status % request.request_id
+            self.delivery_api_response(request)
+
+    def delivery_api_response(self, response: ApiRequest):
+        if not self.api.is_api_started():
+            return
+
+        with suppress(KeyError):
+            self.api_tasks.pop(response.request_id)
+
+        self.api.process_backend_response(response)
 
     def process_incoming_transaction(self, transaction: Transaction) -> None:
         if not (trans_request := self.get_transaction_request(transaction)):
