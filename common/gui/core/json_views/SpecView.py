@@ -446,4 +446,4 @@ class SpecView(TreeView):
 
         fields_set: FieldSet = generate_fields()
 
-        return EpaySpecModel(name=name, fields=fields_set, mti=self.spec.mti)
+        return EpaySpecModel(name=name, fields=fields_set, mti=self.spec.mti, utrnno_path=self.spec.utrnno_path)
