@@ -55,6 +55,9 @@ class SignalCli(Terminal):
             logger.error(f"Error run in Console Mode: {config_parsing_error}")
             exit(100)
 
+        if not self._cli_config.no_print:
+            print(f"{TextConstants.HELLO_MESSAGE}\n")
+
         if self._cli_config.log_file != TermFilesPath.LOG_FILE_NAME:
             self.logger.remove()
             self.logger.add_file_handler(filename=self._cli_config.log_file)
@@ -62,10 +65,29 @@ class SignalCli(Terminal):
         if not self._cli_config.no_print:
             self.logger.add_stdout_handler()
 
+        logger.info("Press CTRL+C to exit")
+        logger.info(str())
+        logger.info(LogMarks.BEGIN % self._job_id)
+
         try:
             self.show_license_dialog()
         except LicenseRejected:
             exit(100)
+
+        if self._cli_config.specification == TermFilesPath.SPECIFICATION:
+            return
+
+        logger.info(f"Trying to apply custom specification {self._cli_config.specification}")
+
+        try:
+            self.spec.parse_file(self._cli_config.specification)
+
+        except Exception as spec_parsing_error:
+            logger.error(f"Custom specification parsing error: {spec_parsing_error}")
+            logger.error("Default specification will be used instead")
+
+        else:
+            logger.info("Custom specification successfully applied")
 
     def connect_all(self):
         self.run_timer.timeout.connect(self.main)
@@ -81,12 +103,6 @@ class SignalCli(Terminal):
 
         This is the main function, which runs after CLI mode begin
 
-        The function goes by scenario
-
-        1. Print data if requested
-        2. Check the api-mode request and runs the API
-        3. Tries to parse the requested files and send the transactions if needed
-
         Important: --repeat flag has a priority over --api-mode. When --repeat flag set along with the --api-mode
         the api-mode will newer be run because the files will be parsed and sent in endless cycle
 
@@ -95,13 +111,6 @@ class SignalCli(Terminal):
         if self._cli_config.repeat and self._cli_config.api_mode:
             logger.error("Mutually exclusive flags --repeat and --api-mode are set")
             kill(getpid(), 9)
-
-        logger.info(LogMarks.BEGIN % self._job_id)
-
-        if not self._cli_config.no_print:
-            print(f"{TextConstants.HELLO_MESSAGE}\n")
-
-        # 1. Print data if requested
 
         print_data_map = {
             self._cli_config.version: self.log_printer.print_version,
@@ -119,8 +128,6 @@ class SignalCli(Terminal):
             except Exception as print_error:
                 logger.error(print_error)
 
-        # 2. Check the api-mode request and runs the API
-
         if self._cli_config.api_mode:
 
             if files := self.get_files_to_process():
@@ -130,16 +137,11 @@ class SignalCli(Terminal):
 
             return
 
-        # 3. Tries to parse the requested files and send the transactions if needed
-
         if not (filenames := self.get_files_to_process()):
             if not any([self._cli_config.about, self._cli_config.version]):
                 logger.warning("No files are specified to process")
 
             self.finish()
-
-        logger.info("Press CTRL+C to exit")
-        logger.info(str())
 
         while True:
             for file in filenames:
@@ -234,7 +236,7 @@ class SignalCli(Terminal):
         print("")
         print("  Welcome to SIGNAL Command Line Mode!")
         print("")
-        print("  SIGNAL distributes under GNU/GPL license as a free software. "
+        print("  Signal distributes under GNU/GPL license as a free software. "
               "To proceed work you have to read and accept license agreement")
         print("")
         print("")

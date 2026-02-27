@@ -105,6 +105,14 @@ class EpaySpecification(EpaySpecificationData):
             self.MESSAGE_TYPE_INDICATORS.REVERSAL_ADVICE_RESPONSE
         )
 
+    def parse_file(self, path):
+        with open(path) as json_file:
+            self._specification_model: EpaySpecModel = EpaySpecModel.model_validate_json(json_file.read())
+
+        self._dictionary = self.create_dictionary()
+
+        self.reload_spec(self._specification_model, commit=False)
+
     def is_secret(self, path: FieldPath) -> bool:
         spec = self.spec
 

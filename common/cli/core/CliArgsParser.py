@@ -52,7 +52,7 @@ class CliArgsParser(ArgumentParser):
 
         self.add_argument("-t", "--timeout", type=int, default=60, help="Timeout of waiting resp")
 
-        self.add_argument("--about", action="store_true",help="Show info about the Signal")
+        self.add_argument("--about", action="store_true", help="Show info about the Signal")
 
         self.add_argument("-e", "--echo-test", action="store_true", help="Send echo-test")
 
@@ -63,6 +63,9 @@ class CliArgsParser(ArgumentParser):
         self.add_argument("--print-config", action="store_true", help="Print configuration parameters")
 
         self.add_argument("--api-mode", action="store_true", default=False, help="Run Signal in API mode")
+
+        self.add_argument("-s", "--specification", action="store", default=TermFilesPath.SPECIFICATION,
+                          help="Set custom Specification JSON file path")
 
     def parse_arguments(self) -> CliConfig:
         cli_arguments = self.parse_args()
