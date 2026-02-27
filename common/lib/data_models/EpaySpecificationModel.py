@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, field_validator, ConfigDict
+from common.lib.data_models.Types import FieldPath
 from typing import ForwardRef
 from enum import Enum
 
@@ -99,6 +100,7 @@ class IsoField(BaseModel):
     reserved_for_future: bool
     description: str = str()
     is_secret: bool = False
+    is_utrnno: bool = False
     fields: FieldSet | None = None
 
     @field_validator("is_secret", mode="before")
@@ -122,3 +124,4 @@ class EpaySpecModel(BaseModel):
     name: str | None = "ISO-8583 E-pay Specification"
     mti: list[Mti] = []
     fields: FieldSet = {}
+    utrnno_path: FieldPath = ["47", "064"]

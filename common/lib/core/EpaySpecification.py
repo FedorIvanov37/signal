@@ -31,6 +31,17 @@ class EpaySpecification(EpaySpecificationData):
         self._dictionary = self.create_dictionary()
 
     @property
+    def utrnno_path(self):
+        return self.spec.utrnno_path
+
+    @utrnno_path.setter
+    def utrnno_path(self, utrnno_path):
+        if not utrnno_path:
+            return
+
+        self.spec.utrnno_path = utrnno_path
+
+    @property
     def dictionary(self):
         if self._dictionary is not None:
             return self._dictionary
@@ -206,6 +217,9 @@ class EpaySpecification(EpaySpecificationData):
             parent = self.fields
 
         for field, field_data in parent.items():
+            if field_data.field_path != self.utrnno_path:
+                field_data.is_utrnno = False
+
             if field_data.field_path == field_spec.field_path:
                 parent[field_spec.field_number] = field_spec
                 return True

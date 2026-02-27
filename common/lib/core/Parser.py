@@ -19,6 +19,7 @@ from common.lib.enums.DumpDefinition import DumpLength, DumpFillers
 from common.lib.enums.IniMessageDefinition import IniMessageDefinition
 from common.lib.enums.MessageLength import MessageLength
 from common.lib.enums.TermFilesPath import TermFilesPath
+from common.lib.data_models.Types import FieldPath
 
 
 class Parser:
@@ -368,8 +369,11 @@ class Parser:
         complex_field_data: RawFieldSet = dict()
 
         if spec is None:  # First entry
-            spec: EpaySpecification = EpaySpecification()
-            spec: IsoField = spec.get_field_spec([field])
+            epay_spec: EpaySpecification = EpaySpecification()
+            spec: IsoField = epay_spec.get_field_spec([field])
+
+            if not epay_spec.is_field_complex(spec.field_path):
+                return field_data
 
         while field_data:
             tag_number = field_data[:spec.tag_length]
@@ -487,6 +491,18 @@ class Parser:
         transaction.trans_id = generate_trans_id()
 
         return transaction
+
+    @staticmethod
+    def get_field_data(fields: FieldSet, field_path: FieldPath):
+        for field_number, field_data in fields.items():
+            fields[field_number] = Parser.split_complex_field(field_number, field_data)
+
+        field_data = fields
+
+        for field_number in field_path:
+            field_data = field_data.get(field_number)
+
+        return field_data
 
     def parse_ini_string(self, ini_data: str) -> Transaction:
         ini: ConfigParser = ConfigParser()
