@@ -12,7 +12,7 @@ class ApiLogHandler(Handler):
         try:
             level = logger.level(record.levelname).name
 
-        except Exception as err:
+        except Exception:
 
             level = record.levelno
 

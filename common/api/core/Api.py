@@ -1,5 +1,3 @@
-import time
-
 from loguru import logger
 from typing import Union
 from os import getcwd
@@ -19,6 +17,7 @@ from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
 from common.gui.enums.ApiMode import ApiModes
 from common.api.data_models.TransValidationErrors import TransValidationErrors
 from common.api.data_models.ExceptionContent import ExceptionContent
+from common.api.decorators.log_api_call import log_api_call
 from common.api.enums.ApiUrl import ApiUrl
 from common.api.data_models.Connection import Connection
 from common.api.data_models.TransactionResp import TransactionResp
@@ -77,9 +76,6 @@ class Api(QObject):
         self._queue: Queue | None = None
         self.app = self._build_app()
         self.pending_jobs: dict[uuid4, Future] = {}
-        self.backend.start_api.connect(self.start)
-        self.backend.stop_api.connect(self.stop)
-        self.backend.restart_api.connect(self.restart)
         self.backend.terminal_response.connect(self.process_backend_response)
         filterwarnings("ignore", message=".*Pydantic serializer warnings*", module="pydantic.*")
 
@@ -196,14 +192,17 @@ class Api(QObject):
             return JSONResponse(ExceptionContent(detail=exception.detail).dict(), exception.http_status)
 
         @app.get(ApiUrl.SIGNAL, response_class=HTMLResponse)
+        @log_api_call
         def get_signal_info():
             return HTMLResponse(self.backend.get_signal_info())
 
         @app.get(ApiUrl.DOCUMENT, include_in_schema=False)
-        def docs():
+        @log_api_call
+        def get_docs():
             return FileResponse("common/doc/signal_user_reference_guide.html", media_type="text/html")
 
         @api.post(ApiUrl.VALIDATE_TRANSACTION, response_model=TransValidationErrors)
+        @log_api_call
         def validate_transaction(transaction: Transaction):
             return self.backend.validate_transaction(transaction)
 
@@ -215,18 +214,22 @@ class Api(QObject):
         """
 
         @api.get(ApiUrl.GET_CONNECTION, response_model=Connection)
+        @log_api_call
         def get_connection():
             return self.backend.get_connection()
 
         @api.get(ApiUrl.GET_SPECIFICATION, response_model=EpaySpecModel)
+        @log_api_call
         def get_specification():
             return self.backend.get_spec()
 
         @api.get(ApiUrl.GET_TRANSACTIONS, response_model=dict[str, Transaction])
+        @log_api_call
         def get_transactions():
             return self.backend.get_transactions()
 
         @api.get(ApiUrl.GET_TRANSACTION, response_model=Transaction)
+        @log_api_call
         def get_transaction(trans_id: str):
             try:
                 return self.backend.get_transaction(trans_id)
@@ -234,6 +237,7 @@ class Api(QObject):
                 raise TerminalApiError(http_status=HTTPStatus.NOT_FOUND, detail=transaction_lookup_error)
 
         @api.get(ApiUrl.GET_CONFIG, response_model=Config)
+        @log_api_call
         def get_config():
             return self.backend.get_config()
 

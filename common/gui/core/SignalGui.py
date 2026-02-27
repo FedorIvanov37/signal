@@ -4,6 +4,7 @@ from os.path import basename, normpath, abspath
 from json import loads, dumps
 from typing import Callable
 from loguru import logger
+from functools import wraps
 from pydantic import ValidationError
 from webbrowser import open as open_url
 from PyQt6.QtWidgets import QApplication, QFileDialog
@@ -66,7 +67,6 @@ class SignalGui(Terminal):
     connector: ConnectionThread
     trans_timer: TransactionTimer = TransactionTimer(KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION)
     set_remote_spec: pyqtSignal = pyqtSignal()
-    change_api_mode: pyqtSignal = pyqtSignal(ApiModes)
     _run_timer = QTimer()
     _generated_echo_test_transactions: list[Transaction] = []
 
@@ -74,6 +74,7 @@ class SignalGui(Terminal):
 
         # This decorator sets focus on the self.window.json_view after the decorated function execution is finished
 
+        @wraps(function)
         def wrapper(self, *args, **kwargs):
             try:
                 return function(self, *args, **kwargs)
@@ -119,7 +120,7 @@ class SignalGui(Terminal):
             self.reconnect()
 
         if self.config.terminal.run_api:
-            self.change_api_mode.emit(ApiModes.START)
+            self.api.start()
 
         if self.config.specification.backup_on_startup:
             self.backup_spec()
@@ -162,7 +163,7 @@ class SignalGui(Terminal):
             window.repeat: self.trans_timer.set_trans_loop_interval,
             window.validate_message: lambda force: self.validate_main_window(force=force),
             window.parse_complex_field: lambda: ComplexFieldsParser(self.config, self).exec(),
-            window.api_mode_changed: self.change_api_mode,
+            window.api_mode_changed: self.api.process_change_api_mode,
             window.exit: sys_exit,
             window.show_document: self.show_document,
             window.show_license: lambda: self.show_license_dialog(force=True),

@@ -6,13 +6,8 @@ from typing import Any
 from loguru import logger
 from fastapi import HTTPException
 from PyQt6.QtCore import pyqtSignal, QObject
+from PyQt6.QtNetwork import QTcpSocket
 from common.gui.enums.GuiFilesPath import GuiFiles
-from common.api.data_models.TransValidationErrors import TransValidationErrors
-from common.api.data_models.Connection import Connection
-from common.api.enums.ApiModes import ApiModes
-from common.api.data_models.ApiRequests import ApiTransactionRequest, ApiRequest, ConfigAction
-from common.api.enums.ApiUrl import ApiUrl
-from common.api.enums.DataCoversionFormats import DataConversionFormats
 from common.lib.exceptions.exceptions import DataValidationError, DataValidationWarning
 from common.lib.enums.TextConstants import TextConstants, ReleaseDefinition
 from common.lib.core.Terminal import Terminal
@@ -22,6 +17,12 @@ from common.lib.data_models.Transaction import Transaction
 from common.lib.enums.TermFilesPath import TermFilesPath
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
 from common.lib.core.FieldsGenerator import FieldsGenerator
+from common.api.data_models.TransValidationErrors import TransValidationErrors
+from common.api.data_models.Connection import Connection
+from common.api.enums.ApiModes import ApiModes
+from common.api.data_models.ApiRequests import ApiTransactionRequest, ApiRequest, ConfigAction
+from common.api.enums.ApiUrl import ApiUrl
+from common.api.enums.DataCoversionFormats import DataConversionFormats
 from common.api.data_models.ApiRequests import ApiRequestType
 from common.api.exceptions.TerminalApiError import TerminalApiError
 from common.api.data_models.TransactionResp import TransactionResp
@@ -29,9 +30,6 @@ from common.api.core.Api import Api
 
 
 class SignalApi(QObject):
-    start_api: pyqtSignal = pyqtSignal()
-    stop_api: pyqtSignal = pyqtSignal()
-    restart_api: pyqtSignal = pyqtSignal()
     api_started: pyqtSignal = pyqtSignal()
     api_stopped: pyqtSignal = pyqtSignal()
     send_transaction: pyqtSignal = pyqtSignal(Transaction)
@@ -58,13 +56,60 @@ class SignalApi(QObject):
             api.api_request: self.process_api_call,
             api.api_started: self.api_started,
             api.api_stopped: self.api_stopped,
-            self.terminal.change_api_mode: self.process_change_api_mode,
             self.terminal.trans_queue.incoming_transaction: self.process_incoming_transaction,
             self.terminal.trans_queue.socket_error: self.process_sending_error,
+            self.terminal_response: lambda resp: logger.info(f'API request "{resp.request_id}" processing finished')
         }
 
         for signal, slot in connection_map.items():
             signal.connect(slot)
+
+    def start(self):
+        self.api.start()
+
+    def stop(self):
+        self.api.stop()
+
+    def restart(self):
+        self.api.restart()
+
+    def process_api_call(self, request: ApiRequest):
+        logger.info(
+            f'API got incoming request. Request type: "{request.request_type}"; Request ID: "{request.request_id}"'
+        )
+
+        self.api_tasks[request.request_id] = request
+
+        processor_map = {
+            ApiRequestType.OUTGOING_TRANSACTION: self.process_api_trans_request,
+            ApiRequestType.RECONNECT: self.process_api_reconnect,
+            ApiRequestType.DISCONNECT: self.process_api_disconnect,
+            ApiRequestType.CONNECT: self.process_api_connect,
+            ApiRequestType.UPDATE_SPEC: self.process_api_update_spec,
+            ApiRequestType.REVERSE_TRANSACTION: self.process_api_reverse_transaction,
+            ApiRequestType.UPDATE_CONFIG: self.process_api_update_config,
+        }
+
+        processor = processor_map.get(request.request_type)
+
+        if processor is None:
+            raise TerminalApiError(
+                http_status=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail=f"Cannot process API call, unknown request type: {request.request_type}"
+            )
+
+        processor(request)
+
+        if request.request_type not in (ApiRequestType.OUTGOING_TRANSACTION, ApiRequestType.REVERSE_TRANSACTION):
+            return
+
+        if self.config.api.wait_remote_host_response:
+            return
+
+        request.http_status = HTTPStatus.OK
+        request.response_data = TransactionResp()
+        request.response_data.status = request.response_data.status % request.request_id
+        self.api.process_backend_response(request)
 
     def process_sending_error(self, transaction: Transaction):
         if transaction is None:
@@ -107,38 +152,6 @@ class SignalApi(QObject):
                 request.http_status = HTTPStatus.BAD_GATEWAY
 
             return request
-
-    def process_api_call(self, request: ApiRequest):
-        self.api_tasks[request.request_id] = request
-
-        processor_map = {
-            ApiRequestType.OUTGOING_TRANSACTION: self.process_api_request,
-            ApiRequestType.RECONNECT: self.process_api_reconnect,
-            ApiRequestType.DISCONNECT: self.process_api_disconnect,
-            ApiRequestType.CONNECT: self.process_api_connect,
-            ApiRequestType.UPDATE_SPEC: self.process_api_update_spec,
-            ApiRequestType.REVERSE_TRANSACTION: self.process_api_reverse_transaction,
-            ApiRequestType.UPDATE_CONFIG: self.process_api_update_config,
-        }
-
-        processor = processor_map.get(request.request_type)
-
-        if processor is None:
-            raise TerminalApiError(
-                http_status=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail=f"Cannot process API call, unknown request type: {request.request_type}"
-            )
-
-        processor(request)
-
-        if request.request_type not in (ApiRequestType.OUTGOING_TRANSACTION, ApiRequestType.REVERSE_TRANSACTION):
-            return
-
-        if not self.config.api.wait_remote_host_response:
-            request.http_status = HTTPStatus.OK
-            request.response_data = TransactionResp()
-            request.response_data.status = request.response_data.status % request.request_id
-            self.api.process_backend_response(request)
 
     def validate_transaction(self, transaction: Transaction):
 
@@ -244,7 +257,7 @@ class SignalApi(QObject):
 
     def process_api_connect(self, request: ApiRequest):
         if self.terminal.connector.connection_in_progress():
-            self.send_response(request, HTTPStatus.NOT_ACCEPTABLE, error="Connection is in progress")
+            self.send_response(request, HTTPStatus.SERVICE_UNAVAILABLE, error="Connection is in progress")
             return
 
         if self.terminal.connector.is_connected():
@@ -275,7 +288,8 @@ class SignalApi(QObject):
                 return
 
             if self.terminal.connector.error():
-                break
+                if self.terminal.connector.error() is not QTcpSocket.SocketError.UnknownSocketError:
+                    break
 
             sleep(0.01)
 
@@ -285,7 +299,7 @@ class SignalApi(QObject):
 
         self.send_response(request, HTTPStatus.OK, message=self.get_connection())
 
-    def process_api_request(self, request: ApiTransactionRequest):
+    def process_api_trans_request(self, request: ApiTransactionRequest):
         try:
             self.terminal.trans_validator.validate_transaction(request.transaction)
 
@@ -296,6 +310,13 @@ class SignalApi(QObject):
             logger.error(validation_error)
             self.send_response(request, HTTPStatus.UNPROCESSABLE_ENTITY, error=f"Validation error: {validation_error}")
             return
+
+        if self.terminal.connector.connection_in_progress():
+            self.send_response(
+                request,
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                error="Cannot send the transaction while the host connection is in progress"
+            )
 
         self.api_tasks[request.request_id] = request
 
@@ -354,19 +375,17 @@ class SignalApi(QObject):
         match state:
 
             case ApiModes.START:
-                api_signal = self.start_api
+                self.start()
 
             case ApiModes.STOP:
-                api_signal = self.stop_api
+                self.stop()
 
             case ApiModes.RESTART:
-                api_signal = self.restart_api
+                self.restart()
 
             case _:
                 logger.error(f"Cannot run API, unknown command: {state}")
                 return
-
-        api_signal.emit()
 
     @staticmethod
     def get_signal_info():
