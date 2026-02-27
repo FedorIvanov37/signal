@@ -98,7 +98,7 @@ class Terminal(QObject):
         )
 
     def socket_error(self) -> None:
-        if self.connector.error() == QTcpSocket.SocketError.UnknownSocketError:  # TODO
+        if self.connector.error() == QTcpSocket.SocketError.UnknownSocketError:
             return
 
         logger.error(f"Received a socket error from host: {self.connector.errorString()}")

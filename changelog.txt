@@ -364,20 +364,19 @@ To fix
     • Publish on confluence
     • Spec explanation
     • Radio buttons
-    • Add a link to the manual to the about window
+    + Add a link to the manual to the about window
     + Add [FINISHED] string to console mode
     + Render doc.html by QWebEngineView # Added link to HTML instead
     + Toolbar
     + Buttons to enable/disable field items
 
 
-
 • Bugs
     + Error on console when run AboutWindow - Could not update timestamps for skipped samples
-    • Last tab bug - cannot process tab limits correctly
-    • No data in socket if delete field in spec
-    • Fields constructor cannot set field when if does not exist
-        • Sort fields adding a new one
+    + Last tab bug - cannot process tab limits correctly
+    + No data in socket if delete field in spec
+    • Fields constructor cannot set field when is does not exist
+    + Sort fields adding a new one
 
 • Licensing preparation
     • Change the framework to pyside
@@ -403,20 +402,14 @@ To fix
 • Docs
 • Resp logic - possibility to send 0110
 
-• Config change approach
-• TLS
-• Encoding
-
-
-
-
++ Config change approach
 
 ? Music
 • Encoding
 • TLS
 • Egg
 • Cursor color
-• default config
++ default config
 • Tests
 
 + postman collection

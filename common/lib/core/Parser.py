@@ -176,11 +176,14 @@ class Parser:
         for subfield, subfield_data in field_data.items():
             path.append(subfield)
 
-            if not (subfield_spec := spec.get_field_spec(path)):
+            subfield_spec = spec.get_field_spec(path)
+
+            if not subfield_spec:
                 raise ValueError(f"Lost specification for field {'.'.join(path)}")
 
             if subfield_spec.fields:
                 result += Parser.join_complex_field(subfield, subfield_data, path, hide_secrets=hide_secrets)
+
             else:
                 if subfield_spec.is_secret and hide_secrets:
                     subfield_data = mask_secret(subfield_data)
@@ -483,7 +486,7 @@ class Parser:
 
     @staticmethod
     def _parse_json_file(filename: str) -> Transaction:
-        JsonConverter.convert(filename)  # TODO: Temporary solution for transfer period
+        JsonConverter.convert(filename)  # Temporary solution for transfer period
 
         with open(filename) as json_file:
             transaction: Transaction = Transaction.model_validate_json(json_file.read())
@@ -500,7 +503,10 @@ class Parser:
         field_data = fields
 
         for field_number in field_path:
-            field_data = field_data.get(field_number)
+            if field_data := field_data.get(field_number):
+                continue
+
+            return
 
         return field_data
 
