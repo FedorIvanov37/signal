@@ -1,7 +1,7 @@
 from sys import exit
 from glob import glob
 from time import sleep
-from uuid import uuid1
+from uuid import uuid4
 from os import listdir, path, system, getpid, kill
 from os.path import normpath, basename, isfile, abspath
 from loguru import logger
@@ -26,7 +26,7 @@ from common.api.enums.ApiModes import ApiModes
 class SignalCli(Terminal):
     _cli_config: CliConfig = None
     _finished: pyqtSignal = pyqtSignal()
-    _job_id: str = str(uuid1())
+    _job_id: str = str(uuid4())
 
     def __init__(self, config: Config):
         super(SignalCli, self).__init__(config)
@@ -98,7 +98,8 @@ class SignalCli(Terminal):
 
         logger.info(LogMarks.BEGIN % self._job_id)
 
-        print(f"{TextConstants.HELLO_MESSAGE}\n")
+        if not self._cli_config.no_print:
+            print(f"{TextConstants.HELLO_MESSAGE}\n")
 
         # 1. Print data if requested
 
@@ -133,7 +134,7 @@ class SignalCli(Terminal):
 
         if not (filenames := self.get_files_to_process()):
             if not any([self._cli_config.about, self._cli_config.version]):
-                logger.warning("No files specified to parse")
+                logger.warning("No files are specified to process")
 
             self.finish()
 

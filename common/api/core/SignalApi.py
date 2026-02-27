@@ -118,10 +118,24 @@ class SignalApi(QObject):
     def get_predefined_transaction(self, trans_type: TransTypes) -> Transaction:
         match trans_type:
             case TransTypes.ECHO_TEST:
-                return self.parser.parse_file(ApiFiles.ECHO_TEST)
+                trans_file = ApiFiles.ECHO_TEST
 
             case TransTypes.EPOS_PURCHASE:
-                return self.parser.parse_file(ApiFiles.PURCHASE)
+                trans_file = ApiFiles.PURCHASE
+
+            case TransTypes.KEEP_ALIVE:
+                trans_file = ApiFiles.KEEP_ALIVE
+
+            case TransTypes.PAYOUT:
+                trans_file = ApiFiles.PAYOUT
+
+            case _:
+                raise ValueError(f"Unknown predefined transaction type: {trans_type}")
+
+        try:
+            return self.parser.parse_file(trans_file)
+        except Exception as parsing_error:
+            raise RuntimeError(f"Cannot parse predefined transactions file {trans_file}. {parsing_error}")
 
     def process_sending_error(self, transaction: Transaction):
         if transaction is None:
