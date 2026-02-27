@@ -9,8 +9,6 @@ class ApiUrl(StrEnum):
     GET_TRANSACTION = "/transactions/{trans_id}"
     GET_CONFIG = "/config"
     CREATE_TRANSACTION = "/transactions"
-    ECHO_TEST = "/transactions/echo-test"
-    PURCHASE = "/transactions/purchase"
     REVERSE_TRANSACTION = "/transactions/{trans_id}/reverse"
     UPDATE_SPECIFICATION = "/specification"
     RECONNECT = "/connection/restart"
@@ -21,3 +19,4 @@ class ApiUrl(StrEnum):
     CONVERT = "/tools/transactions/convert"
     VALIDATE_TRANSACTION = "/tools/transactions/validate"
     DOCUMENT = "/documentation"
+    CREATE_PREDEFINED_TRANSACTION = "/transactions/{trans_type}"

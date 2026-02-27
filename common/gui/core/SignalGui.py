@@ -156,13 +156,13 @@ class SignalGui(Terminal):
             window.field_removed: self.set_bitmap,
             window.field_added: self.set_bitmap,
             window.settings: self.settings,
-            window.hotkeys: lambda: HotKeysHintWindow().exec(),
+            window.hotkeys: self.show_hotkeys,
             window.specification: self.run_specification_window,
             window.about: lambda: self.settings(about=True),
             window.keep_alive: self.keep_alive_timer.set_trans_loop_interval,
             window.repeat: self.trans_timer.set_trans_loop_interval,
             window.validate_message: lambda force: self.validate_main_window(force=force),
-            window.parse_complex_field: lambda: ComplexFieldsParser(self.config, self).exec(),
+            window.parse_complex_field: self.parse_complex_field,
             window.api_mode_changed: self.api.process_change_api_mode,
             window.exit: sys_exit,
             window.show_document: self.show_document,
@@ -226,6 +226,7 @@ class SignalGui(Terminal):
         doc_path = normpath(f"{getcwd()}/{GuiFilesPath.DOC}")
         open_url(doc_path)
 
+    @set_json_view_focus
     def show_license_dialog(self, force: bool = False) -> None:
         try:
             license_window: LicenseWindow = LicenseWindow(self.config, force=force)
@@ -238,10 +239,18 @@ class SignalGui(Terminal):
 
         except LicenceAlreadyAccepted:
             return
-
+    
     @staticmethod
     def open_spec_backup_dir():
         startfile(abspath(TermDirs.SPEC_BACKUP_DIR))
+
+    @set_json_view_focus
+    def parse_complex_field(self):
+        ComplexFieldsParser(self.config, self).exec()
+
+    @set_json_view_focus
+    def show_hotkeys(self):
+        HotKeysHintWindow().exec()
 
     @set_json_view_focus
     def run_specification_window(self) -> None:

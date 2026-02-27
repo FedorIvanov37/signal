@@ -8,6 +8,7 @@ class KeySequences(StrEnum):
     CTRL_E = "Ctrl+E"
     CTRL_W = "Ctrl+W"
     CTRL_Q = "Ctrl+Q"
+    CTRL_D = "Ctrl+D"
     CTRL_ALT_Q = "Ctrl+Alt+Q"
     CTRL_ENTER = "Ctrl+Return"
     CTRL_SHIFT_ENTER = "Ctrl+Shift+Return"

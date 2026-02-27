@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>480</width>
-    <height>780</height>
+    <height>802</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -22,13 +22,13 @@
   <property name="minimumSize">
    <size>
     <width>480</width>
-    <height>780</height>
+    <height>802</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
     <width>480</width>
-    <height>780</height>
+    <height>802</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -167,17 +167,17 @@
      </row>
      <row>
       <property name="text">
-       <string>Delete</string>
-      </property>
-     </row>
-     <row>
-      <property name="text">
        <string>Ctrl + E</string>
       </property>
      </row>
      <row>
       <property name="text">
        <string>Ctrl + W</string>
+      </property>
+     </row>
+     <row>
+      <property name="text">
+       <string>Ctrl + D</string>
       </property>
      </row>
      <row>
@@ -208,6 +208,11 @@
      <row>
       <property name="text">
        <string>Ctrl + Alt + P</string>
+      </property>
+     </row>
+     <row>
+      <property name="text">
+       <string>Delete</string>
       </property>
      </row>
      <row>
@@ -347,32 +352,32 @@
      </item>
      <item row="10" column="0">
       <property name="text">
-       <string>Delete</string>
+       <string>Ctrl + E</string>
       </property>
      </item>
      <item row="10" column="1">
       <property name="text">
-       <string>Remove field</string>
+       <string>Edit current field data</string>
       </property>
      </item>
      <item row="11" column="0">
       <property name="text">
-       <string>Ctrl + E</string>
+       <string>Ctrl + W</string>
       </property>
      </item>
      <item row="11" column="1">
       <property name="text">
-       <string>Edit current field data</string>
+       <string>Edit current field number</string>
       </property>
      </item>
      <item row="12" column="0">
       <property name="text">
-       <string>Ctrl + W</string>
+       <string>Ctrl + D</string>
       </property>
      </item>
      <item row="12" column="1">
       <property name="text">
-       <string>Edit current field number</string>
+       <string>Disabe / Enable row</string>
       </property>
      </item>
      <item row="13" column="0">
@@ -437,50 +442,60 @@
      </item>
      <item row="19" column="0">
       <property name="text">
-       <string>Ctrl + T</string>
+       <string>Delete</string>
       </property>
      </item>
      <item row="19" column="1">
       <property name="text">
-       <string>New tab</string>
+       <string>Remove field</string>
       </property>
      </item>
      <item row="20" column="0">
       <property name="text">
-       <string>Ctrl + PgDn /  Ctrl + Tab</string>
+       <string>Ctrl + T</string>
       </property>
      </item>
      <item row="20" column="1">
       <property name="text">
-       <string>Next tab</string>
+       <string>New tab</string>
       </property>
      </item>
      <item row="21" column="0">
       <property name="text">
-       <string>Ctrl + PgUp / Ctrl + Shift + Tab</string>
+       <string>Ctrl + PgDn /  Ctrl + Tab</string>
       </property>
      </item>
      <item row="21" column="1">
       <property name="text">
-       <string>Previous Tab</string>
+       <string>Next tab</string>
       </property>
      </item>
      <item row="22" column="0">
       <property name="text">
-       <string>Ctrl + F4</string>
+       <string>Ctrl + PgUp / Ctrl + Shift + Tab</string>
       </property>
      </item>
      <item row="22" column="1">
       <property name="text">
-       <string>Close current tab</string>
+       <string>Previous Tab</string>
       </property>
      </item>
      <item row="23" column="0">
       <property name="text">
-       <string>Ctrl + Alt + Q</string>
+       <string>Ctrl + F4</string>
       </property>
      </item>
      <item row="23" column="1">
+      <property name="text">
+       <string>Close current tab</string>
+      </property>
+     </item>
+     <item row="24" column="0">
+      <property name="text">
+       <string>Ctrl + Alt + Q</string>
+      </property>
+     </item>
+     <item row="24" column="1">
       <property name="text">
        <string>Quit Signal</string>
       </property>

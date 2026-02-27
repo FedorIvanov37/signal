@@ -19,6 +19,7 @@ from common.lib.enums.DumpDefinition import DumpLength, DumpFillers
 from common.lib.enums.IniMessageDefinition import IniMessageDefinition
 from common.lib.enums.MessageLength import MessageLength
 from common.lib.enums.TermFilesPath import TermFilesPath
+from common.lib.data_models.Types import FieldPath
 
 
 class Parser:
@@ -175,11 +176,14 @@ class Parser:
         for subfield, subfield_data in field_data.items():
             path.append(subfield)
 
-            if not (subfield_spec := spec.get_field_spec(path)):
+            subfield_spec = spec.get_field_spec(path)
+
+            if not subfield_spec:
                 raise ValueError(f"Lost specification for field {'.'.join(path)}")
 
             if subfield_spec.fields:
                 result += Parser.join_complex_field(subfield, subfield_data, path, hide_secrets=hide_secrets)
+
             else:
                 if subfield_spec.is_secret and hide_secrets:
                     subfield_data = mask_secret(subfield_data)
@@ -368,8 +372,11 @@ class Parser:
         complex_field_data: RawFieldSet = dict()
 
         if spec is None:  # First entry
-            spec: EpaySpecification = EpaySpecification()
-            spec: IsoField = spec.get_field_spec([field])
+            epay_spec: EpaySpecification = EpaySpecification()
+            spec: IsoField = epay_spec.get_field_spec([field])
+
+            if not epay_spec.is_field_complex(spec.field_path):
+                return field_data
 
         while field_data:
             tag_number = field_data[:spec.tag_length]
@@ -479,7 +486,7 @@ class Parser:
 
     @staticmethod
     def _parse_json_file(filename: str) -> Transaction:
-        JsonConverter.convert(filename)  # TODO: Temporary solution for transfer period
+        JsonConverter.convert(filename)  # Temporary solution for transfer period
 
         with open(filename) as json_file:
             transaction: Transaction = Transaction.model_validate_json(json_file.read())
@@ -487,6 +494,21 @@ class Parser:
         transaction.trans_id = generate_trans_id()
 
         return transaction
+
+    @staticmethod
+    def get_field_data(fields: FieldSet, field_path: FieldPath):
+        for field_number, field_data in fields.items():
+            fields[field_number] = Parser.split_complex_field(field_number, field_data)
+
+        field_data = fields
+
+        for field_number in field_path:
+            if field_data := field_data.get(field_number):
+                continue
+
+            return
+
+        return field_data
 
     def parse_ini_string(self, ini_data: str) -> Transaction:
         ini: ConfigParser = ConfigParser()

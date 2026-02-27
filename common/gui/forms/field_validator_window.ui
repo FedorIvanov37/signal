@@ -239,6 +239,32 @@
       <string>Field Usage</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_4">
+      <item row="3" column="0">
+       <widget class="QCheckBox" name="CheckBoxGeneratible">
+        <property name="font">
+         <font>
+          <family>Calibri</family>
+          <pointsize>12</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Field can be generated</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QCheckBox" name="CheckBoxSecret">
+        <property name="font">
+         <font>
+          <family>Calibri</family>
+          <pointsize>12</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Hide field value</string>
+        </property>
+       </widget>
+      </item>
       <item row="2" column="0">
        <widget class="QCheckBox" name="CheckBoxReversal">
         <property name="font">
@@ -265,29 +291,10 @@
         </property>
        </widget>
       </item>
-      <item row="4" column="0">
-       <widget class="QCheckBox" name="CheckBoxSecret">
-        <property name="font">
-         <font>
-          <family>Calibri</family>
-          <pointsize>12</pointsize>
-         </font>
-        </property>
+      <item row="5" column="0">
+       <widget class="QCheckBox" name="CheckBoxUtrnno">
         <property name="text">
-         <string>Hide field value</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QCheckBox" name="CheckBoxGeneratible">
-        <property name="font">
-         <font>
-          <family>Calibri</family>
-          <pointsize>12</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>Field can be generated</string>
+         <string>Is unique transaction number</string>
         </property>
        </widget>
       </item>

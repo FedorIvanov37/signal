@@ -253,15 +253,10 @@ class Api(QObject):
         shutdown of the PyQt application
         """
 
-        @api.post(ApiUrl.ECHO_TEST, response_model=Transaction)
-        async def create_echo_test():
-            echo_test: Transaction = self.backend.get_predefined_transaction(TransTypes.ECHO_TEST)
-            return await self.backend_request(ApiTransactionRequest(transaction=echo_test))
-
-        @api.post(ApiUrl.PURCHASE, response_model=Transaction)
-        async def create_purchase():
-            purchase: Transaction = self.backend.get_predefined_transaction(TransTypes.EPOS_PURCHASE)
-            return await self.backend_request(ApiTransactionRequest(transaction=purchase))
+        @api.post(ApiUrl.CREATE_PREDEFINED_TRANSACTION, response_model=Transaction)
+        async def create_predefined_transaction(trans_type: TransTypes):
+            transaction: Transaction = self.backend.get_predefined_transaction(trans_type)
+            return await self.backend_request(ApiTransactionRequest(transaction=transaction))
 
         @api.post(ApiUrl.CREATE_TRANSACTION, response_model=Union[Transaction, TransactionResp])
         async def create_transaction(request: Transaction):

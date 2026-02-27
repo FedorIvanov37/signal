@@ -270,6 +270,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             KeySequences.CTRL_L: self.clear_log,
             KeySequences.CTRL_E: lambda: self.json_view.edit_column(FieldsSpec.ColumnsOrder.VALUE),
             KeySequences.CTRL_W: lambda: self.json_view.edit_column(FieldsSpec.ColumnsOrder.FIELD),
+            KeySequences.CTRL_D: self.set_item_disabled,
             KeySequences.CTRL_Q: self._tab_view.close_current_tab,
             KeySequences.CTRL_SHIFT_N: self._tab_view.next_level,
             KeySequences.CTRL_ALT_Q: exit,
@@ -339,6 +340,16 @@ class MainWindow(Ui_MainWindow, QMainWindow):
 
             button.setMenu(menu)
 
+    def set_item_disabled(self):
+        if not (item := self.json_view.currentItem()):
+            return
+
+        if item.is_disabled:
+            self.enable_item.emit()
+            return
+
+        self.disable_item.emit()
+
     def process_repeat_action(self, action: QAction, button: QPushButton):
         interval = action.data()
 
@@ -405,7 +416,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             self.ButtonPrint: {
                 ToolBarElements.JSON: lambda: self.print.emit(OutputFilesFormat.JSON),
                 ToolBarElements.INI: lambda: self.print.emit(OutputFilesFormat.INI),
-                ToolBarElements.DUMP.title(): lambda: self.print.emit(OutputFilesFormat.DUMP),
+                ToolBarElements.DUMP: lambda: self.print.emit(OutputFilesFormat.DUMP),
 
                 ButtonActions.PrintButtonDataFormats.SPEC.title():
                     lambda: self.print.emit(ButtonActions.PrintButtonDataFormats.SPEC),

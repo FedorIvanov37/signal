@@ -85,6 +85,7 @@ class FieldDataSet(Ui_FieldDataSet, QDialog):
             self.FillUpTo.currentTextChanged: self.process_fill_size_text_change,
             self.OkButton.clicked: self.ok,
             self.CheckBoxGeneratible.stateChanged: self.set_generate,
+            self.CheckBoxUtrnno.stateChanged: self.set_utrnno_path,
         }
 
         for signal, slot in connection_map.items():
@@ -109,6 +110,12 @@ class FieldDataSet(Ui_FieldDataSet, QDialog):
         self.prepare_field_spec(self.field_spec)
         self.field_spec_accepted.emit(self.field_spec)
         self.accept()
+
+    def set_utrnno_path(self):
+        if not self.CheckBoxUtrnno.isChecked():
+            return
+
+        self.spec.utrnno_path = self.field_spec.field_path
 
     def process_fill_size_text_change(self, text: str):
         if text.lower() == Justification.CUSTOM.value.lower():
@@ -237,6 +244,7 @@ class FieldDataSet(Ui_FieldDataSet, QDialog):
         field_spec.reversal = self.CheckBoxReversal.isChecked()
         field_spec.generate = self.CheckBoxGeneratible.isChecked()
         field_spec.is_secret = self.CheckBoxSecret.isChecked()
+        field_spec.is_utrnno = self.CheckBoxUtrnno.isChecked()
 
         field_spec.validators.justification_length = int()
         field_spec.validators.justification_element = None
@@ -423,6 +431,7 @@ class FieldDataSet(Ui_FieldDataSet, QDialog):
             self.CheckBoxReversal: iso_field.reversal,
             self.CheckBoxGeneratible: iso_field.generate,
             self.CheckBoxSecret: iso_field.is_secret,
+            self.CheckBoxUtrnno: iso_field.field_path == self.spec.utrnno_path,
         }
 
         length_property_map: dict[QSpinBox, int] = {
