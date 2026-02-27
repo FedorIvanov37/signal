@@ -122,7 +122,9 @@ class SignalApi(QObject):
         if transaction is None:
             return
 
-        resp = self.prepare_api_transaction_resp(transaction)
+        if not (resp := self.prepare_api_transaction_resp(transaction)):
+            return
+
         self.send_response(resp, resp.http_status, message=transaction)
 
     def prepare_api_transaction_resp(self, transaction: Transaction) -> ApiTransactionRequest:

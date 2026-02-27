@@ -212,7 +212,6 @@ class Terminal(QObject):
 
         if not response.is_keep_alive:
             logger.info(f"Incoming transaction ID [{resp_trans_id}] received")
-            logger.info("")
 
         validation_conditions = (
             self.config.validation.validation_enabled,
