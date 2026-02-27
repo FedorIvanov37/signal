@@ -94,9 +94,7 @@ class SignalApi(QObject):
             ApiRequestType.UPDATE_CONFIG: self.process_api_update_config,
         }
 
-        processor = processor_map.get(request.request_type)
-
-        if processor is None:
+        if not (processor := processor_map.get(request.request_type)):
             raise TerminalApiError(
                 http_status=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail=f"Cannot process API call, unknown request type: {request.request_type}"
