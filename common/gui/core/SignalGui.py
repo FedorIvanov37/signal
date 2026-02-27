@@ -119,9 +119,7 @@ class SignalGui(Terminal):
             self.reconnect()
 
         if self.config.terminal.run_api:
-            self.api.change_api_mode.emit(ApiModes.START)
-
-            # self.api.process_change_api_mode(state=ApiModes.START)
+            self.change_api_mode.emit(ApiModes.START)
 
         if self.config.specification.backup_on_startup:
             self.backup_spec()
@@ -164,7 +162,7 @@ class SignalGui(Terminal):
             window.repeat: self.trans_timer.set_trans_loop_interval,
             window.validate_message: lambda force: self.validate_main_window(force=force),
             window.parse_complex_field: lambda: ComplexFieldsParser(self.config, self).exec(),
-            window.api_mode_changed: self.api.process_change_api_mode,
+            window.api_mode_changed: self.change_api_mode,
             window.exit: sys_exit,
             window.show_document: self.show_document,
             window.show_license: lambda: self.show_license_dialog(force=True),
@@ -184,7 +182,6 @@ class SignalGui(Terminal):
             self.api.api_started: lambda: window.process_api_mode_change(ApiModes.START),
             self.api.api_stopped: lambda: window.process_api_mode_change(ApiModes.STOP),
             self.api.send_transaction: lambda transaction: self.send(transaction, is_api_call=True),
-            self.trans_queue.incoming_transaction: self.api.incoming_transaction,
             self._run_timer.timeout: self.on_startup,
         }
 

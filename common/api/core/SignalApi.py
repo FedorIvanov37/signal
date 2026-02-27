@@ -9,7 +9,6 @@ from PyQt6.QtCore import pyqtSignal, QObject
 from common.gui.enums.GuiFilesPath import GuiFiles
 from common.api.data_models.TransValidationErrors import TransValidationErrors
 from common.api.data_models.Connection import Connection
-from common.api.core.ApiInterface import ApiInterface
 from common.api.enums.ApiModes import ApiModes
 from common.api.data_models.ApiRequests import ApiTransactionRequest, ApiRequest, ConfigAction
 from common.api.enums.ApiUrl import ApiUrl
@@ -47,7 +46,6 @@ class SignalApi(QObject):
         super().__init__()
         self.config = config
         self.terminal = terminal
-        # self.api = ApiInterface(self, self.config)
         self.api = Api(self)
         self.terminal.logger.add_api_handler()
         self.requests: dict[str, ApiRequest] = dict()
@@ -57,30 +55,63 @@ class SignalApi(QObject):
         api = self.api
 
         connection_map = {
-            api.api_request: self.process_api_request,
-            self.change_api_mode: self.process_change_api_mode,
-            # api.api_reconnect_request: self.process_api_reconnect,
-            # api.api_disconnect_request: self.process_api_disconnect,
-            # api.api_connect_request: self.process_api_connect,
-            # api.api_update_spec: self.process_api_update_spec,
-            # api.api_reverse_transaction: self.process_api_reverse_transaction,
-            # api.api_update_config: self.process_api_update_config,
+            api.api_request: self.process_api_call,
             api.api_started: self.api_started,
             api.api_stopped: self.api_stopped,
-            self.incoming_transaction: self.process_incoming_transaction,
-            self.start_api: self.process_start_api,
+            self.terminal.change_api_mode: self.process_change_api_mode,
+            self.terminal.trans_queue.incoming_transaction: self.process_incoming_transaction,
+            self.terminal.trans_queue.socket_error: self.process_sending_error,
         }
 
         for signal, slot in connection_map.items():
             signal.connect(slot)
 
-    def process_start_api(self):
-        self.api.start()
+    def process_sending_error(self, transaction: Transaction):
+        if transaction is None:
+            return
+
+        resp = self.prepare_api_transaction_resp(transaction)
+        self.send_response(resp, resp.http_status, error=self.terminal.connector.errorString())
+
+    def process_incoming_transaction(self, transaction: Transaction) -> None:
+        if transaction is None:
+            return
+
+        resp = self.prepare_api_transaction_resp(transaction)
+        self.send_response(resp, resp.http_status, message=transaction)
+
+    def prepare_api_transaction_resp(self, transaction: Transaction) -> ApiTransactionRequest:
+        for request_id, request in self.api_tasks.items():
+            if request.request_type not in (ApiRequestType.OUTGOING_TRANSACTION, ApiRequestType.REVERSE_TRANSACTION):
+                continue
+
+            if request.transaction is None:
+                continue
+
+            conditions = (
+                request.transaction.trans_id == transaction.trans_id,
+                request.transaction.trans_id == transaction.match_id,
+            )
+
+            if not any(conditions):
+                continue
+
+            transaction_error = transaction.error
+
+            if transaction.match_id == request.transaction.trans_id and transaction.matched:
+                request.response_data = self.clean_transaction(transaction)
+                request.http_status = HTTPStatus.OK
+
+            else:
+                request.error = transaction_error
+                request.http_status = HTTPStatus.BAD_GATEWAY
+
+            return request
 
     def process_api_call(self, request: ApiRequest):
         self.api_tasks[request.request_id] = request
 
-        request_signal_map = {
+        processor_map = {
             ApiRequestType.OUTGOING_TRANSACTION: self.process_api_request,
             ApiRequestType.RECONNECT: self.process_api_reconnect,
             ApiRequestType.DISCONNECT: self.process_api_disconnect,
@@ -90,13 +121,15 @@ class SignalApi(QObject):
             ApiRequestType.UPDATE_CONFIG: self.process_api_update_config,
         }
 
-        if not (signal := request_signal_map.get(request.request_type, False)):
+        processor = processor_map.get(request.request_type)
+
+        if processor is None:
             raise TerminalApiError(
                 http_status=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail=f"Cannot process API call, unknown request type: {request.request_type}"
             )
 
-        signal.emit(request)
+        processor(request)
 
         if request.request_type not in (ApiRequestType.OUTGOING_TRANSACTION, ApiRequestType.REVERSE_TRANSACTION):
             return
@@ -105,37 +138,7 @@ class SignalApi(QObject):
             request.http_status = HTTPStatus.OK
             request.response_data = TransactionResp()
             request.response_data.status = request.response_data.status % request.request_id
-            self.delivery_api_response(request)
-
-    def delivery_api_response(self, response: ApiRequest):
-        if not self.api.is_api_started():
-            return
-
-        with suppress(KeyError):
-            self.api_tasks.pop(response.request_id)
-
-        self.api.process_backend_response(response)
-
-    def process_incoming_transaction(self, transaction: Transaction) -> None:
-        if not (trans_request := self.get_transaction_request(transaction)):
-            return
-
-        self.send_response(request=trans_request, status=HTTPStatus.OK, message=transaction)
-
-    def get_transaction_request(self, transaction: Transaction) -> ApiTransactionRequest | None:
-        trans_request: ApiTransactionRequest
-
-        for request_id, trans_request in self.requests.items():
-            if not trans_request.transaction.matched:
-                continue
-
-            if not trans_request.transaction.trans_id == transaction.match_id:
-                continue
-
-            if not transaction.trans_id == trans_request.transaction.match_id:
-                continue
-
-            return trans_request
+            self.api.process_backend_response(request)
 
     def validate_transaction(self, transaction: Transaction):
 
@@ -294,16 +297,23 @@ class SignalApi(QObject):
             self.send_response(request, HTTPStatus.UNPROCESSABLE_ENTITY, error=f"Validation error: {validation_error}")
             return
 
-        self.requests[request.request_id] = request
+        self.api_tasks[request.request_id] = request
 
         self.send_transaction.emit(request.transaction)
 
     def send_response(self, request: ApiRequest, status: HTTPStatus, message: Any = None, error: error_type = None):
+        if isinstance(request, TransactionResp):
+            self.terminal_response.emit(request)
+            return
+
         request.http_status = status
         request.response_data = message
 
         if error is not None:
             request.error = str(error)
+
+        with suppress(KeyError):
+            self.api_tasks.pop(request.request_id)
 
         self.terminal_response.emit(request)
 
@@ -341,17 +351,22 @@ class SignalApi(QObject):
             self.send_response(request, HTTPStatus.OK, message=self.get_connection())
 
     def process_change_api_mode(self, state: ApiModes) -> None:
-        signals_map = {
-            ApiModes.START: self.start_api,
-            ApiModes.STOP: self.stop_api,
-            ApiModes.RESTART: self.restart_api,
-        }
+        match state:
 
-        if not (signal := signals_map.get(state)):
-            logger.error(f"Cannot run API, unknown command: {state}")
-            return
+            case ApiModes.START:
+                api_signal = self.start_api
 
-        signal.emit()
+            case ApiModes.STOP:
+                api_signal = self.stop_api
+
+            case ApiModes.RESTART:
+                api_signal = self.restart_api
+
+            case _:
+                logger.error(f"Cannot run API, unknown command: {state}")
+                return
+
+        api_signal.emit()
 
     @staticmethod
     def get_signal_info():
