@@ -15,6 +15,7 @@ class CliArgsParser(ArgumentParser):
         self.init_arguments()
 
     def init_arguments(self):
+
         self.add_argument("-c", "--console", action="store_true", required=True,
                           help="Run Signal in Command Line Interface mode")
 

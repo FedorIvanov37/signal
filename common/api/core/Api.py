@@ -15,8 +15,10 @@ from common.lib.data_models.Config import Config
 from common.lib.data_models.Transaction import Transaction
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
 from common.gui.enums.ApiMode import ApiModes
+from common.api.enums.TransTypes import TransTypes
 from common.api.data_models.TransValidationErrors import TransValidationErrors
 from common.api.data_models.ExceptionContent import ExceptionContent
+from common.api.decorators.log_api_call import log_api_call
 from common.api.enums.ApiUrl import ApiUrl
 from common.api.data_models.Connection import Connection
 from common.api.data_models.TransactionResp import TransactionResp
@@ -75,6 +77,7 @@ class Api(QObject):
         self._queue: Queue | None = None
         self.app = self._build_app()
         self.pending_jobs: dict[uuid4, Future] = {}
+        self.backend.terminal_response.connect(self.process_backend_response)
         filterwarnings("ignore", message=".*Pydantic serializer warnings*", module="pydantic.*")
 
     def is_api_started(self):
@@ -190,14 +193,17 @@ class Api(QObject):
             return JSONResponse(ExceptionContent(detail=exception.detail).dict(), exception.http_status)
 
         @app.get(ApiUrl.SIGNAL, response_class=HTMLResponse)
+        @log_api_call
         def get_signal_info():
             return HTMLResponse(self.backend.get_signal_info())
 
         @app.get(ApiUrl.DOCUMENT, include_in_schema=False)
-        def docs():
+        @log_api_call
+        def get_docs():
             return FileResponse("common/doc/signal_user_reference_guide.html", media_type="text/html")
 
         @api.post(ApiUrl.VALIDATE_TRANSACTION, response_model=TransValidationErrors)
+        @log_api_call
         def validate_transaction(transaction: Transaction):
             return self.backend.validate_transaction(transaction)
 
@@ -209,18 +215,22 @@ class Api(QObject):
         """
 
         @api.get(ApiUrl.GET_CONNECTION, response_model=Connection)
+        @log_api_call
         def get_connection():
             return self.backend.get_connection()
 
         @api.get(ApiUrl.GET_SPECIFICATION, response_model=EpaySpecModel)
+        @log_api_call
         def get_specification():
             return self.backend.get_spec()
 
         @api.get(ApiUrl.GET_TRANSACTIONS, response_model=dict[str, Transaction])
+        @log_api_call
         def get_transactions():
             return self.backend.get_transactions()
 
         @api.get(ApiUrl.GET_TRANSACTION, response_model=Transaction)
+        @log_api_call
         def get_transaction(trans_id: str):
             try:
                 return self.backend.get_transaction(trans_id)
@@ -228,6 +238,7 @@ class Api(QObject):
                 raise TerminalApiError(http_status=HTTPStatus.NOT_FOUND, detail=transaction_lookup_error)
 
         @api.get(ApiUrl.GET_CONFIG, response_model=Config)
+        @log_api_call
         def get_config():
             return self.backend.get_config()
 
@@ -241,6 +252,16 @@ class Api(QObject):
         to cover this endpoint. Otherwise, it can lead to unforeseen consequences such as lost data or the spontaneous 
         shutdown of the PyQt application
         """
+
+        @api.post(ApiUrl.ECHO_TEST, response_model=Transaction)
+        async def create_echo_test():
+            echo_test: Transaction = self.backend.get_predefined_transaction(TransTypes.ECHO_TEST)
+            return await self.backend_request(ApiTransactionRequest(transaction=echo_test))
+
+        @api.post(ApiUrl.PURCHASE, response_model=Transaction)
+        async def create_purchase():
+            purchase: Transaction = self.backend.get_predefined_transaction(TransTypes.EPOS_PURCHASE)
+            return await self.backend_request(ApiTransactionRequest(transaction=purchase))
 
         @api.post(ApiUrl.CREATE_TRANSACTION, response_model=Union[Transaction, TransactionResp])
         async def create_transaction(request: Transaction):
@@ -288,6 +309,7 @@ class Api(QObject):
             return PlainTextResponse(self.backend.convert_to(transaction, to_format))
 
         @api.get(ApiUrl.DOCUMENT, response_class=FileResponse)
+        @log_api_call
         def get_document():
             return normpath(f"{getcwd()}/{GuiFilesPath.DOC}")
 

@@ -12,15 +12,15 @@
         "connect_on_startup": false,
         "load_remote_spec": false,
         "show_license_dialog": false,
-        "run_api": false
+        "run_api": true
     },
     "debug": {
         "level": "INFO",
         "clear_log": true,
-        "parse_subfields": true,
+        "parse_subfields": false,
         "backup_storage_depth": 10,
-        "reduce_keep_alive": true,
-        "print_description": true
+        "reduce_keep_alive": false,
+        "print_description": false
     },
     "validation": {
         "validation_enabled": true,
@@ -39,12 +39,12 @@
     },
     "specification": {
         "rewrite_local_spec": false,
-        "remote_spec_url": "http://127.0.0.1:7777/api/specification",
-        "backup_storage_depth": 100,
-        "backup_storage": true,
+        "remote_spec_url": "",
+        "backup_storage_depth": 30,
+        "backup_storage": false,
         "manual_input_mode": false,
-        "backup_on_startup": true,
-        "backup_on_shutdown": true
+        "backup_on_startup": false,
+        "backup_on_shutdown": false
     },
     "api": {
         "address": "0.0.0.0",

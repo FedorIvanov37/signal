@@ -11,6 +11,7 @@ class TermDirs(StrEnum):
     LICENSE_DIR = f"{DATA_DIR}/license"
     CONFIG_DIR = f"{DATA_DIR}/settings"
     DICTIONARY_DIR = f"{DATA_DIR}/dictionary"
+    API_TRANSACTIONS = f"{DATA_DIR}/api_transactions"
 
 
 class TermFiles(StrEnum):

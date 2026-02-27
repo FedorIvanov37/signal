@@ -7,8 +7,10 @@ from common.lib.data_models.Config import Config
 from common.lib.enums.TextConstants import TextConstants
 from common.lib.enums.ReleaseDefinition import ReleaseDefinition
 from PyQt6.QtCore import QObject
+from common.lib.decorators.singleton import singleton
 
 
+@singleton
 class LogPrinter(QObject):
     spec: EpaySpecification = EpaySpecification()
     default_level = logger.info
@@ -38,7 +40,7 @@ class LogPrinter(QObject):
         level("Startup finished")
 
     def print_startup_info(self, level=default_level):
-        LogPrinter.print_multi_row(TextConstants.HELLO_MESSAGE)
+        LogPrinter().print_multi_row(TextConstants.HELLO_MESSAGE)
         self.print_config(self.config, level=level)
 
     def print_config(self, config: Config | None = None, path=None, level=default_level):
@@ -74,8 +76,6 @@ class LogPrinter(QObject):
         message = "\n\n  ".join(elements)
 
         print(message)
-
-        # self.print_multi_row(message)
 
     def print_transaction(self, transaction: Transaction, level=default_level):
         if transaction.is_keep_alive:
