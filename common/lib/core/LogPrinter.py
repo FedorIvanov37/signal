@@ -77,8 +77,6 @@ class LogPrinter(QObject):
 
         print(message)
 
-        # self.print_multi_row(message)
-
     def print_transaction(self, transaction: Transaction, level=default_level):
         if transaction.is_keep_alive:
             return

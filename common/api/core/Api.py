@@ -15,6 +15,7 @@ from common.lib.data_models.Config import Config
 from common.lib.data_models.Transaction import Transaction
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
 from common.gui.enums.ApiMode import ApiModes
+from common.api.enums.TransTypes import TransTypes
 from common.api.data_models.TransValidationErrors import TransValidationErrors
 from common.api.data_models.ExceptionContent import ExceptionContent
 from common.api.decorators.log_api_call import log_api_call
@@ -252,6 +253,16 @@ class Api(QObject):
         shutdown of the PyQt application
         """
 
+        @api.post(ApiUrl.ECHO_TEST, response_model=Transaction)
+        async def create_echo_test():
+            echo_test: Transaction = self.backend.get_predefined_transaction(TransTypes.ECHO_TEST)
+            return await self.backend_request(ApiTransactionRequest(transaction=echo_test))
+
+        @api.post(ApiUrl.PURCHASE, response_model=Transaction)
+        async def create_purchase():
+            purchase: Transaction = self.backend.get_predefined_transaction(TransTypes.EPOS_PURCHASE)
+            return await self.backend_request(ApiTransactionRequest(transaction=purchase))
+
         @api.post(ApiUrl.CREATE_TRANSACTION, response_model=Union[Transaction, TransactionResp])
         async def create_transaction(request: Transaction):
             return await self.backend_request(ApiTransactionRequest(transaction=request))
@@ -298,6 +309,7 @@ class Api(QObject):
             return PlainTextResponse(self.backend.convert_to(transaction, to_format))
 
         @api.get(ApiUrl.DOCUMENT, response_class=FileResponse)
+        @log_api_call
         def get_document():
             return normpath(f"{getcwd()}/{GuiFilesPath.DOC}")
 

@@ -8,6 +8,8 @@ from fastapi import HTTPException
 from PyQt6.QtCore import pyqtSignal, QObject
 from PyQt6.QtNetwork import QTcpSocket
 from common.gui.enums.GuiFilesPath import GuiFiles
+from common.api.enums.ApiFiles import ApiFiles
+from common.lib.core.Parser import Parser
 from common.lib.exceptions.exceptions import DataValidationError, DataValidationWarning
 from common.lib.enums.TextConstants import TextConstants, ReleaseDefinition
 from common.lib.core.Terminal import Terminal
@@ -26,6 +28,7 @@ from common.api.enums.DataCoversionFormats import DataConversionFormats
 from common.api.data_models.ApiRequests import ApiRequestType
 from common.api.exceptions.TerminalApiError import TerminalApiError
 from common.api.data_models.TransactionResp import TransactionResp
+from common.api.enums.TransTypes import TransTypes
 from common.api.core.Api import Api
 
 
@@ -47,6 +50,7 @@ class SignalApi(QObject):
         self.api = Api(self)
         self.terminal.logger.add_api_handler()
         self.requests: dict[str, ApiRequest] = dict()
+        self.parser = Parser(self.config)
 
         # Connect all
 
@@ -111,6 +115,14 @@ class SignalApi(QObject):
         request.response_data.status = request.response_data.status % request.request_id
         self.api.process_backend_response(request)
 
+    def get_predefined_transaction(self, trans_type: TransTypes) -> Transaction:
+        match trans_type:
+            case TransTypes.ECHO_TEST:
+                return self.parser.parse_file(ApiFiles.ECHO_TEST)
+
+            case TransTypes.EPOS_PURCHASE:
+                return self.parser.parse_file(ApiFiles.PURCHASE)
+
     def process_sending_error(self, transaction: Transaction):
         if transaction is None:
             return
@@ -125,7 +137,7 @@ class SignalApi(QObject):
         if not (resp := self.prepare_api_transaction_resp(transaction)):
             return
 
-        self.send_response(resp, resp.http_status, message=transaction)
+        self.send_response(resp, resp.http_status, message=resp.response_data)
 
     def prepare_api_transaction_resp(self, transaction: Transaction) -> ApiTransactionRequest:
         for request_id, request in self.api_tasks.items():

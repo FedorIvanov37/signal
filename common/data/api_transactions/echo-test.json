@@ -1,0 +1,10 @@
+{
+  "message_type": "0800",
+  "generate_fields": [
+    "7",
+    "11"
+  ],
+  "data_fields": {
+    "70": "301"
+  }
+}
