@@ -31,7 +31,6 @@ def frameless_window(setup_function: callable):
 
     def wrapper(window: QDialog, *args, **kwargs):
         window.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-        window.setWindowIcon(QIcon(GuiFilesPath.MAIN_LOGO))
         setup_function(window, *args, **kwargs)
 
     return wrapper
