@@ -5,7 +5,6 @@ from common.api.core.ApiLogHandler import ApiLogHandler
 from common.lib.enums.TermFilesPath import TermFilesPath
 from common.lib.data_models.Config import Config
 from common.lib.constants import LogDefinition
-from common.gui.core.WirelessHandler import WirelessHandler
 
 
 class Logger:
@@ -63,11 +62,7 @@ class Logger:
             diagnose=False,
         )
 
-    def add_wireless_handler(self, log_browser) -> int:
-        wireless_handler = WirelessHandler()
-
-        wireless_handler.new_record_appeared.connect(log_browser.append)
-
+    def add_wireless_handler(self, wireless_handler) -> int:
         handler_id = logger.add(
             wireless_handler,
             format=LogDefinition.DISPLAY_DATE_FORMAT,

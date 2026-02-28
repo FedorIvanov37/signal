@@ -21,6 +21,7 @@ from common.gui.enums import ButtonActions, SpecFieldDef, Buttons
 from common.lib.enums.TermFilesPath import TermFilesPath, TermDirs
 from common.lib.enums.TextConstants import TextConstants
 from common.gui.tools.create_gui_elements import create_button
+from common.gui.core.WirelessHandler import WirelessHandler
 
 
 class SpecWindow(Ui_SpecificationWindow, QDialog):
@@ -50,6 +51,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         super(SpecWindow, self).__init__()
         self.connector = connector
         self.config = config
+        self.wireless_handler = WirelessHandler()
         self.setupUi(self)
         self._setup()
 
@@ -105,7 +107,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
 
         self.SpecTreeLayout.addWidget(self.SpecView)
         self.logger = Logger(self.config)
-        self.handler_id = self.logger.add_wireless_handler(self.LogArea)
+        self.handler_id = self.logger.add_wireless_handler(self.wireless_handler)
         self.connect_all()
         self.set_read_only(self.CheckBoxReadOnly.isChecked())
         self.set_hello_message()
@@ -123,6 +125,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             self.reset_spec: self.reload_spec,
             self.connector.got_remote_spec: self.process_remote_spec,
             self.load_remote_spec: self.connector.get_remote_spec,
+            self.wireless_handler.new_record_appeared: self.LogArea.append,
         }
 
         buttons_connection_map = {

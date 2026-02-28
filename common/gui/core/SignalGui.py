@@ -23,6 +23,7 @@ from common.gui.core.ConnectionThread import ConnectionThread
 from common.gui.enums import ButtonActions
 from common.gui.enums.Colors import Colors
 from common.gui.enums.GuiFilesPath import GuiDirs
+from common.gui.core.WirelessHandler import WirelessHandler
 from common.lib.enums import KeepAlive
 from common.lib.enums.TermFilesPath import TermFilesPath, TermDirs
 from common.lib.enums.DataFormats import DataFormats, PrintDataFormats, OutputFilesFormat, InputFilesFormat
@@ -65,10 +66,10 @@ Starts MainWindow when starting its work, being a kind of low-level adapter betw
 
 class SignalGui(Terminal):
     connector: ConnectionThread
-    trans_timer: TransactionTimer = TransactionTimer(KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION)
+    trans_timer: TransactionTimer
     set_remote_spec: pyqtSignal = pyqtSignal()
-    _run_timer = QTimer()
-    _generated_echo_test_transactions: list[Transaction] = []
+    _run_timer: QTimer
+    _generated_echo_test_transactions: list[Transaction]
 
     def set_json_view_focus(function: callable):
 
@@ -90,6 +91,10 @@ class SignalGui(Terminal):
         self.api = SignalApi(self.config, terminal=self)
         self.window: MainWindow = MainWindow(self.config)
         self.thread_pool: QThreadPool = QThreadPool()
+        self.wireless_handler = WirelessHandler()
+        self.trans_timer = TransactionTimer(KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION)
+        self._generated_echo_test_transactions = list()
+        self._run_timer = QTimer()
         self.connect_widgets()
         self.setup()
 
@@ -97,7 +102,7 @@ class SignalGui(Terminal):
         QDir.addSearchPath(GuiDirs.STYLE_DIR.name, GuiDirs.STYLE_DIR)
         self._run_timer.setSingleShot(True)
         self._run_timer.start(int())
-        self.logger.add_wireless_handler(self.window.log_browser)
+        self.logger.add_wireless_handler(self.wireless_handler)
 
     def on_startup(self) -> None:  # Runs on startup to make all the preparation activity, then shows MainWindow
         self.show_license_dialog()
@@ -173,6 +178,7 @@ class SignalGui(Terminal):
             window.files_dropped: self.process_files_drop,
             window.undo: window.undo_changes,
             window.redo: window.redo_changes,
+            self.wireless_handler.new_record_appeared: window.log_browser.append,
             self.api.open_connection: lambda: self.reconnect(self.config.host.host, str(self.config.host.port)),
             self.connector.stateChanged: self.set_connection_status,
             self.set_remote_spec: self.connector.get_remote_spec,
@@ -184,6 +190,7 @@ class SignalGui(Terminal):
             self.api.api_stopped: lambda: window.process_api_mode_change(ApiModes.STOP),
             self.api.send_transaction: lambda transaction: self.send(transaction, is_api_call=True),
             self._run_timer.timeout: self.on_startup,
+
         }
 
         for signal, slot in terminal_connections_map.items():
@@ -261,7 +268,7 @@ class SignalGui(Terminal):
         spec_window.open_spec_backup_dir.connect(SignalGui.open_spec_backup_dir)
         spec_window.copy_specification.connect(lambda: self.copy_specification(spec_window))
         spec_window.exec()
-        self.logger.add_wireless_handler(self.window.log_browser)
+        self.logger.add_wireless_handler(self.wireless_handler)
 
         if self.config.fields.hide_secrets:
             self.window.json_view.hide_secrets()
@@ -333,7 +340,7 @@ class SignalGui(Terminal):
 
         if self.config.debug.level != old_config.debug.level:
             self.logger.remove()
-            self.logger.add_wireless_handler(self.window.log_browser)
+            self.logger.add_wireless_handler(self.wireless_handler)
 
         self.window.json_view.enable_json_mode_checkboxes(enable=self.config.validation.validate_window)
 

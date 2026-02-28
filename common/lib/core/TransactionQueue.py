@@ -1,5 +1,4 @@
 from loguru import logger
-from contextlib import suppress
 from collections import deque
 from datetime import datetime, timedelta
 from PyQt6.QtCore import QObject, pyqtSignal
@@ -13,7 +12,7 @@ from common.lib.interfaces.ConnectorInterface import ConnectionInterface
 
 class TransactionQueue(QObject):
     spec: EpaySpecification = EpaySpecification()
-    queue: deque[Transaction] = deque(maxlen=1024)
+    queue: deque[Transaction] = None
     incoming_transaction: pyqtSignal = pyqtSignal(Transaction)
     outgoing_transaction: pyqtSignal = pyqtSignal(Transaction)
     transaction_timeout: pyqtSignal = pyqtSignal(Transaction, float)
@@ -25,6 +24,7 @@ class TransactionQueue(QObject):
         self.connector = connector
         self.generator: FieldsGenerator = FieldsGenerator()
         self.timers: dict[str, QTimer] = {}
+        self.queue = deque(maxlen=10000)
         self.ready_to_send.connect(self.connector.send_transaction_data)
         self.connector.incoming_transaction_data.connect(self.receive_transaction_data)
         self.connector.transaction_sent.connect(self.request_was_sent)
@@ -131,7 +131,7 @@ class TransactionQueue(QObject):
                 return
 
             time_spend: timedelta = datetime.now() - request.sending_time
-            time_spend: float = round(time_spend.microseconds / 1000000, 3)
+            time_spend: float = round(time_spend.total_seconds(), 3)
 
             return time_spend
 

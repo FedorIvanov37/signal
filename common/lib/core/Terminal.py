@@ -27,20 +27,17 @@ from common.lib.enums.ConnectionStatus import ConnectionStatus
 
 
 class Terminal(QObject):
-    spec: EpaySpecification = EpaySpecification(TermFilesPath.SPECIFICATION)
-    keep_alive_timer: TransactionTimer = TransactionTimer(KeepAlive.TransTypes.TRANS_TYPE_KEEP_ALIVE)
+    spec: EpaySpecification = None
+    keep_alive_timer: TransactionTimer
     currencies_dictionary: Currencies
     countries_dictionary: Countries
-
-    with open(TermFilesPath.CONFIG) as json_file:
-        config: Config = Config.model_validate_json(json_file.read())
-
     trans_validator: TransValidator
     need_reconnect: pyqtSignal = pyqtSignal(str, str)
 
     def __init__(self, config: Config, connector: ConnectionInterface | None = None, application=QApplication([])):
         super(Terminal, self).__init__()
 
+        self.keep_alive_timer = TransactionTimer(KeepAlive.TransTypes.TRANS_TYPE_KEEP_ALIVE)
         self.pyqt_application = application
         self.config: Config = config
 
@@ -55,6 +52,7 @@ class Terminal(QObject):
         self.generator: FieldsGenerator = FieldsGenerator()
         self.logger: Logger = Logger(self.config)
         self.trans_queue: TransactionQueue = TransactionQueue(self.connector)
+        self.spec: EpaySpecification = EpaySpecification(TermFilesPath.SPECIFICATION)
         self.connect_interfaces()
 
     def run(self) -> int:
