@@ -30,8 +30,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
     open_user_guide: pyqtSignal = pyqtSignal(str)
     _config: Config = None
     config_file_dropped: pyqtSignal = pyqtSignal(str)
-    audio_output = QAudioOutput()
-    player = QMediaPlayer()
     movie: QMovie
 
     @property
@@ -46,6 +44,8 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         super().__init__()
         self.setupUi(self)
         self.config = config
+        self.audio_output = QAudioOutput()
+        self.player = QMediaPlayer()
         self.setup(about=about)
 
     @set_window_icon

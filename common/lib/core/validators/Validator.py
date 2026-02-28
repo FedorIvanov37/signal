@@ -11,7 +11,7 @@ from common.lib.data_models.Validation import ValidationResult, ValidationTypes
 from common.lib.data_models.EpaySpecificationModel import IsoField
 from common.lib.enums.Validation import ValidationMode, CustomValidations, ExtendedValidations
 from common.lib.data_models.Transaction import TypeFields
-from common.gui.enums.FieldTypeParams import FieldTypeParams
+from common.lib.enums.FieldTypeParams import FieldTypeParams
 from common.lib.core.Parser import Parser
 
 
@@ -276,7 +276,10 @@ class Validator:
                     continue
 
                 if field not in (
-                ExtendedValidations.COUNTRY_A3, ExtendedValidations.COUNTRY_N3, ExtendedValidations.COUNTRY_A2):
+                        ExtendedValidations.COUNTRY_A3,
+                        ExtendedValidations.COUNTRY_N3,
+                        ExtendedValidations.COUNTRY_A2
+                ):
                     continue
 
                 if field_value in allowed_country_codes:
@@ -300,7 +303,7 @@ class Validator:
                 if not value:
                     continue
 
-                if field not in (ExtendedValidations.CURRENCY_A3, ExtendedValidations.COUNTRY_N3):
+                if field not in (ExtendedValidations.CURRENCY_A3, ExtendedValidations.CURRENCY_N3):
                     continue
 
                 if field_value not in allowed_currency_codes:

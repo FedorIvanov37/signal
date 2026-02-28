@@ -10,7 +10,7 @@ from common.lib.data_models.EpaySpecificationModel import IsoField, Justificatio
 from common.lib.core.EpaySpecification import EpaySpecification
 from common.lib.enums.ValidationParams import LiteralValidations
 from common.gui.enums.Colors import Colors
-from common.gui.enums.FieldTypeParams import FieldTypeParams
+from common.lib.enums.FieldTypeParams import FieldTypeParams
 
 
 class FieldDataSet(Ui_FieldDataSet, QDialog):

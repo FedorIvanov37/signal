@@ -2,9 +2,11 @@ from contextlib import suppress
 from http import HTTPStatus
 from time import sleep
 from datetime import datetime
+from copy import deepcopy
 from typing import Any
 from loguru import logger
 from fastapi import HTTPException
+from threading import Lock
 from PyQt6.QtCore import pyqtSignal, QObject
 from PyQt6.QtNetwork import QTcpSocket
 from common.gui.enums.GuiFilesPath import GuiFiles
@@ -22,7 +24,7 @@ from common.lib.core.FieldsGenerator import FieldsGenerator
 from common.api.data_models.TransValidationErrors import TransValidationErrors
 from common.api.data_models.Connection import Connection
 from common.api.enums.ApiModes import ApiModes
-from common.api.data_models.ApiRequests import ApiTransactionRequest, ApiRequest, ConfigAction
+from common.api.data_models.ApiRequests import ApiTransactionRequest, ApiRequest, ConfigAction, ReversalRequest
 from common.api.enums.ApiUrl import ApiUrl
 from common.api.enums.DataCoversionFormats import DataConversionFormats
 from common.api.data_models.ApiRequests import ApiRequestType
@@ -41,10 +43,11 @@ class SignalApi(QObject):
     change_api_mode: pyqtSignal = pyqtSignal(ApiModes)
     error_type = str | None | Exception
     open_connection: pyqtSignal = pyqtSignal(str, str)
-    api_tasks = {}
 
     def __init__(self, config: Config, terminal: Terminal):
         super().__init__()
+        self.api_tasks = {}
+        self.lock = Lock()
         self.config = config
         self.terminal = terminal
         self.api = Api(self)
@@ -82,7 +85,8 @@ class SignalApi(QObject):
             f'API got incoming request. Request type: "{request.request_type}"; Request ID: "{request.request_id}"'
         )
 
-        self.api_tasks[request.request_id] = request
+        with self.lock:
+            self.api_tasks[request.request_id] = request
 
         processor_map = {
             ApiRequestType.OUTGOING_TRANSACTION: self.process_api_trans_request,
@@ -135,11 +139,28 @@ class SignalApi(QObject):
         except Exception as parsing_error:
             raise RuntimeError(f"Cannot parse predefined transactions file {trans_file}. {parsing_error}")
 
+    def is_api_transaction(self, transaction: Transaction) -> bool:
+        with self.lock:
+            api_tasks = deepcopy(self.api_tasks)
+
+        for request in api_tasks.values():
+            if type(request) not in (ApiTransactionRequest, ReversalRequest):
+                continue
+
+            if request.transaction.trans_id == transaction.trans_id:
+                return True
+
+        return False
+
     def process_sending_error(self, transaction: Transaction):
         if transaction is None:
             return
 
+        if not self.is_api_transaction(transaction):
+            return
+
         resp = self.prepare_api_transaction_resp(transaction)
+
         self.send_response(resp, resp.http_status, error=self.terminal.connector.errorString())
 
     def process_incoming_transaction(self, transaction: Transaction) -> None:
@@ -152,7 +173,10 @@ class SignalApi(QObject):
         self.send_response(resp, resp.http_status, message=resp.response_data)
 
     def prepare_api_transaction_resp(self, transaction: Transaction) -> ApiTransactionRequest:
-        for request_id, request in self.api_tasks.items():
+        with self.lock:
+            tasks = deepcopy(self.api_tasks)
+
+        for request_id, request in tasks.items():
             if request.request_type not in (ApiRequestType.OUTGOING_TRANSACTION, ApiRequestType.REVERSE_TRANSACTION):
                 continue
 
@@ -344,7 +368,8 @@ class SignalApi(QObject):
                 error="Cannot send the transaction while the host connection is in progress"
             )
 
-        self.api_tasks[request.request_id] = request
+        with self.lock:
+            self.api_tasks[request.request_id] = request
 
         self.send_transaction.emit(request.transaction)
 
@@ -359,7 +384,7 @@ class SignalApi(QObject):
         if error is not None:
             request.error = str(error)
 
-        with suppress(KeyError):
+        with suppress(KeyError), self.lock:
             self.api_tasks.pop(request.request_id)
 
         self.terminal_response.emit(request)

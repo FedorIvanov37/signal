@@ -5,13 +5,14 @@ from common.lib.enums import KeepAlive
 
 
 class TransactionTimer(QObject):
-    _trans_loop_timer: QTimer = QTimer()
+    _trans_loop_timer: QTimer
     send_transaction: pyqtSignal = pyqtSignal()
     interval_was_set: pyqtSignal = pyqtSignal(str, str)
 
     def __init__(self, trans_type: str):
         super().__init__()
         self.trans_type = trans_type
+        self._trans_loop_timer = QTimer()
 
     def activate_transaction_loop(self, interval: int):
         self._trans_loop_timer.stop()
