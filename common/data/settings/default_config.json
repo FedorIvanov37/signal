@@ -40,7 +40,7 @@
     "specification": {
         "rewrite_local_spec": false,
         "remote_spec_url": "",
-        "backup_storage_depth": 100,
+        "backup_storage_depth": 10,
         "manual_input_mode": false,
         "backup_storage": true,
         "backup_on_startup": true,
