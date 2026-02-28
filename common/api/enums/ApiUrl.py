@@ -20,3 +20,4 @@ class ApiUrl(StrEnum):
     VALIDATE_TRANSACTION = "/tools/transactions/validate"
     DOCUMENT = "/documentation"
     CREATE_PREDEFINED_TRANSACTION = "/transactions/{trans_type}"
+    SWAGGER = "/swagger"

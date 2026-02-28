@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from uvicorn import Config as UvicornConfig, Server as UvicornServer
 from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse, HTMLResponse
 from PyQt6.QtCore import QObject, pyqtSignal
+from common.lib.enums.TextConstants import TextConstants
 from common.lib.data_models.Config import Config
 from common.lib.data_models.Transaction import Transaction
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
@@ -182,7 +183,12 @@ class Api(QObject):
 
         # The API endpoints builder. Builds HTTP API based on FastAPI
 
-        app: FastAPI = FastAPI(docs_url=None, redoc_url=None)
+        app: FastAPI = FastAPI(
+            title=f"{TextConstants.SYSTEM_NAME} API Specification",
+            description=f"```{TextConstants.HELLO_MESSAGE}",
+            docs_url=ApiUrl.SWAGGER,
+            redoc_url=None
+        )
 
         app.mount("/static", StaticFiles(directory="common/doc/static"), name="static")
 

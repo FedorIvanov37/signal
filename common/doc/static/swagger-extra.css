@@ -1,0 +1,12 @@
+.swagger-ui .markdown pre,
+.swagger-ui .markdown code {
+  color: #0A2840 !important;
+}
+
+.swagger-ui .markdown pre code {
+  color: #0A2840 !important;
+}
+
+.swagger-ui .markdown pre code span {
+  color: inherit !important;
+}
