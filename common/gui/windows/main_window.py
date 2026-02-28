@@ -3,7 +3,6 @@ from ctypes import windll
 from itertools import batched
 from PyQt6.QtNetwork import QTcpSocket
 from PyQt6.QtCore import pyqtSignal, Qt
-from PyQt6.QtGui import QCloseEvent, QKeySequence, QShortcut, QPixmap, QIcon, QActionGroup, QAction
 from PyQt6.QtWidgets import QMainWindow, QMenu, QPushButton
 from common.lib.enums.MessageLength import MessageLength
 from common.lib.enums.DataFormats import OutputFilesFormat
@@ -24,6 +23,16 @@ from common.gui.enums.ConnectionStatus import ConnectionIcon
 from common.gui.core.tab_view.TabView import TabView
 from common.gui.enums.ToolBarElements import ToolBarElements
 from common.gui.tools.create_gui_elements import create_button, create_vertical_line
+
+from PyQt6.QtGui import (
+    QCloseEvent,
+    QKeySequence,
+    QShortcut,
+    QPixmap,
+    QIcon,
+    QActionGroup,
+    QAction,
+)
 
 
 """
@@ -200,6 +209,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             button.setIcon(QIcon(GuiFilesPath.GREY_CIRCLE))
 
     def _connect_all(self) -> None:
+
         """
         This function connects buttons, key sequences, and special menu buttons to corresponding data processing
         requests. The MainWindow doesn't process the data by itself, instead of this it will send a data processing
@@ -622,8 +632,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
     def set_bitmap(self, bitmap: str = str()) -> None:
         self._tab_view.bit_map.setText(bitmap)
 
+    # Closing network connections and so on before MainWindow switch off
     def closeEvent(self, a0: QCloseEvent) -> None:
-        # Closing network connections and so on before MainWindow switch off
         self.hide()
         self.window_close.emit()
         a0.accept()

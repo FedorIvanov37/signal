@@ -827,7 +827,11 @@ class JsonView(TreeView):
         if specification is None:
             specification = self.spec.spec
 
+        if parent is self.root:
+            input_json = {key: input_json[key] for key in sorted(input_json.keys(), key=int)}
+
         for field, field_data in input_json.items():
+
             try:
                 field_spec = specification.fields.get(field)
 

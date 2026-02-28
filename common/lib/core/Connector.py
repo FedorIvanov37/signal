@@ -32,6 +32,7 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
         QTcpSocket.__init__(self)
         self.config = config
         self.readyRead.connect(self.read_transaction_data)
+        self._recv_buffer = bytes()
 
     def connection_in_progress(self):
         return self.state() == self.SocketState.ConnectingState
@@ -67,14 +68,23 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
         logger.debug(f"bytes sent {bytes_sent}")
 
         self.flush()
+
         self.transaction_sent.emit(trans_id)
 
     def read_transaction_data(self):
-        logger.debug(f"Socket has {self.bytesAvailable()} bytes of an incoming data")
-        incoming_data = self.readAll()
-        incoming_data = incoming_data.data()
-        logger.debug(incoming_data)
-        self.incoming_transaction_data.emit(incoming_data)
+        self._recv_buffer += self.readAll().data()
+
+        header_len = self.config.host.header_length if self.config.host.header_length_exists else int()
+
+        while len(self._recv_buffer) >= header_len:
+            msg_len = int.from_bytes(self._recv_buffer[:header_len], 'big')
+
+            if len(self._recv_buffer) < header_len + msg_len:
+                break
+
+            message = self._recv_buffer[:header_len + msg_len]
+            self._recv_buffer = self._recv_buffer[header_len + msg_len:]
+            self.incoming_transaction_data.emit(message)
 
     def connect_sv(self, host: str | None = None, port: int | None = None):
         if host is None:
@@ -98,6 +108,7 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
         self.waitForConnected(msecs=10000)
 
         if self.state() is self.SocketState.ConnectedState:
+            self.setSocketOption(QTcpSocket.SocketOption.LowDelayOption, 1)
             return
 
         return self.error()

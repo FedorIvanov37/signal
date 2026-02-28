@@ -268,7 +268,7 @@ class Parser:
 
         messages = list()
 
-        while raw_data:
+        while raw_data:  # Loop for multi messages processing
             try:
                 if len(raw_data) < header_length:
                     raise IndexError

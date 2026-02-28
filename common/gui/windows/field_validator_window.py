@@ -85,7 +85,7 @@ class FieldDataSet(Ui_FieldDataSet, QDialog):
             self.FillUpTo.currentTextChanged: self.process_fill_size_text_change,
             self.OkButton.clicked: self.ok,
             self.CheckBoxGeneratible.stateChanged: self.set_generate,
-            self.CheckBoxUtrnno.stateChanged: self.set_utrnno_path,
+            # self.CheckBoxUtrnno.stateChanged: self.set_utrnno_path,
         }
 
         for signal, slot in connection_map.items():
@@ -109,6 +109,7 @@ class FieldDataSet(Ui_FieldDataSet, QDialog):
     def ok(self):
         self.prepare_field_spec(self.field_spec)
         self.field_spec_accepted.emit(self.field_spec)
+        self.set_utrnno_path()
         self.accept()
 
     def set_utrnno_path(self):
