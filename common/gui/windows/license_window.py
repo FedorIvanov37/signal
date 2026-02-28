@@ -30,8 +30,8 @@ class LicenseWindow(Ui_LicenseWindow, QDialog):
         self.setupUi(self)
         self._setup()
 
-    @frameless_window
     @set_window_icon
+    @frameless_window
     def _setup(self):
         self.LogoLabel.setPixmap(QPixmap(GuiFilesPath.SIGNED_LOGO))
         self.InfoBoard.setText(TextConstants.LICENSE_AGREEMENT)

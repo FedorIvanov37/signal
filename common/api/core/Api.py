@@ -287,7 +287,7 @@ class Api(QObject):
         async def update_spec(spec: EpaySpecModel):
             return await self.backend_request(SpecAction(request_type=ApiRequestType.UPDATE_SPEC, spec=spec))
 
-        @api.put(ApiUrl.RECONNECT, response_model=Connection, tags=[EndpointTags.CONNECTION])
+        @api.post(ApiUrl.RECONNECT, response_model=Connection, tags=[EndpointTags.CONNECTION])
         async def reconnect(connection: Connection | None = None):
             if connection is None:
                 connection = Connection()
@@ -296,11 +296,11 @@ class Api(QObject):
                 ConnectionAction(request_type=ApiRequestType.RECONNECT, connection=connection)
             )
 
-        @api.put(ApiUrl.DISCONNECT, response_model=Connection, tags=[EndpointTags.CONNECTION])
+        @api.post(ApiUrl.DISCONNECT, response_model=Connection, tags=[EndpointTags.CONNECTION])
         async def disconnect():
             return await self.backend_request(ConnectionAction(request_type=ApiRequestType.DISCONNECT))
 
-        @api.put(ApiUrl.CONNECT, response_model=Connection, tags=[EndpointTags.CONNECTION])
+        @api.post(ApiUrl.CONNECT, response_model=Connection, tags=[EndpointTags.CONNECTION])
         async def connect(connection: Connection | None = None):
             if connection is None:
                 connection = Connection()
