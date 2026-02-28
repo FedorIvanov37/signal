@@ -2,10 +2,12 @@ from os import remove, listdir, path
 from random import sample
 from datetime import datetime
 from loguru import logger
+from os.path import abspath
 from common.lib.data_models.Config import Config
 from common.lib.enums.TermFilesPath import TermDirs
 from common.lib.core.EpaySpecification import EpaySpecification
 from common.lib.decorators.singleton import singleton
+from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
 
 
 @singleton
@@ -30,6 +32,21 @@ class SpecFilesRotator:
         if not (filename := self.get_spec_file_name()):
             logger.error("Cannot get Specification Backup filename")
             return
+
+        try:
+            backup_files = listdir(TermDirs.SPEC_BACKUP_DIR)
+        except Exception as dir_access_error:
+            logger.error(f"Cannot get specification backup files list: {dir_access_error}")
+            return
+
+        if backup_files:
+
+            backup_files.sort(reverse=True)
+            last_backup_file = backup_files[int()]
+            last_backup_spec = EpaySpecModel.parse_file(abspath(f"{TermDirs.SPEC_BACKUP_DIR}/{last_backup_file}"))
+
+            if last_backup_spec == self.spec.spec:  # Specification was not changed; return
+                return
 
         with open(filename, "w") as file:
             file.write(self.spec.spec.model_dump_json(indent=4))
