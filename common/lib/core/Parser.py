@@ -61,7 +61,7 @@ class Parser:
     @staticmethod
     def hide_secret_fields(transaction: Transaction) -> Transaction:
         spec: EpaySpecification = EpaySpecification()
-        transaction: Transaction = Transaction.model_validate(transaction.dict())
+        transaction: Transaction = Transaction.model_validate(transaction.model_dump())
 
         for field, field_data in transaction.data_fields.items():
             if field == spec.FIELD_SET.FIELD_001_BITMAP_SECONDARY:

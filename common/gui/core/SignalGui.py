@@ -26,7 +26,6 @@ from common.gui.enums.GuiFilesPath import GuiDirs
 from common.gui.core.WirelessHandler import WirelessHandler
 from common.lib.enums import KeepAlive
 from common.lib.enums.TermFilesPath import TermFilesPath, TermDirs
-from common.lib.enums.DataFormats import DataFormats, PrintDataFormats, OutputFilesFormat, InputFilesFormat
 from common.lib.enums.MessageLength import MessageLength
 from common.lib.enums.TextConstants import TextConstants
 from common.lib.core.TransTimer import TransactionTimer
@@ -37,6 +36,14 @@ from common.lib.data_models.Transaction import Transaction, TypeFields
 from common.lib.data_models.EpaySpecificationModel import EpaySpecModel
 from common.api.core.SignalApi import SignalApi
 from common.api.enums.ApiModes import ApiModes
+
+from common.lib.enums.DataFormats import (
+    DataFormats,
+    PrintDataFormats,
+    OutputFilesFormat,
+    InputFilesFormat
+)
+
 from common.lib.exceptions.exceptions import (
     LicenceAlreadyAccepted,
     LicenseDataLoadingError,
@@ -405,9 +412,6 @@ class SignalGui(Terminal):
         self.connector.stop_thread()
 
         kill(getpid(), 3)
-
-    # def reconnect(self, host: str | None = None, port: str | None = None) -> None:
-    #     Terminal.reconnect(self, host=self.config.host.host, port=str(self.config.host.port))
 
     def set_connection_status(self) -> None:
         self.window.set_connection_status(self.connector.state())
@@ -821,7 +825,6 @@ class SignalGui(Terminal):
 
             if new_tab:
                 self.window.tab_view.add_tab()
-                self.set_default_values(log=False)
                 self.window.set_tab_name(basename(filename))
 
             try:
@@ -835,8 +838,6 @@ class SignalGui(Terminal):
 
     @set_json_view_focus
     def parse_transaction(self, transaction: Transaction, generate_trans_id=True) -> None:
-        # transaction: Transaction = self.sort_transaction_fields(transaction)
-
         try:
             self.window.tab_view.set_mti_value(transaction.message_type)
             self.window.tab_view.set_transaction_fields(transaction, generate_trans_id=generate_trans_id)

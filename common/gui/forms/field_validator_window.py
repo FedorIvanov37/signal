@@ -398,7 +398,7 @@ class Ui_FieldDataSet(object):
         self.CheckBoxSecret.setText(_translate("FieldDataSet", "Hide field value"))
         self.CheckBoxReversal.setText(_translate("FieldDataSet", "Use field for reversal"))
         self.CheckBoxMatching.setText(_translate("FieldDataSet", "Use field for matching"))
-        self.CheckBoxUtrnno.setText(_translate("FieldDataSet", "Is unique transaction number"))
+        self.CheckBoxUtrnno.setText(_translate("FieldDataSet", "Unique transaction number"))
         self.groupBox_3.setTitle(_translate("FieldDataSet", "Field Data Padding"))
         self.label_2.setText(_translate("FieldDataSet", "Pad side"))
         self.FillSide.setItemText(0, _translate("FieldDataSet", "Not set"))

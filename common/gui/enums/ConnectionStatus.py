@@ -1,13 +1,7 @@
 from PyQt6.QtNetwork import QTcpSocket
 from common.gui.enums.GuiFilesPath import GuiFilesPath
+from common.lib.enums.ConnectionStatus import ConnectionStatuses
 from enum import StrEnum
-
-
-class ConnectionStatuses(StrEnum):
-    CONNECTED = "Connected"
-    DISCONNECTED = "Disconnected"
-    IN_PROGRESS = "Connection In Progress"
-    UNKNOWN = "Unknown"
 
 
 class ConnectionIcons(StrEnum):
@@ -37,6 +31,10 @@ ConnectionIconDict = {
     QTcpSocket.SocketState.ListeningState: GuiFilesPath.GREY_CIRCLE,
 }
 
+ConnectionStatus = StrEnum(
+    "ConnectionStatus", {field.name: value for field, value in ConnectionStatusDict.items()}
+)
 
-ConnectionStatus = StrEnum("ConnectionStatus", {field.name: value for field, value in ConnectionStatusDict.items()})
-ConnectionIcon = StrEnum("ConnectionIcon", {field.name: value for field, value in ConnectionIconDict.items()})
+ConnectionIcon = StrEnum(
+    "ConnectionIcon", {field.name: value for field, value in ConnectionIconDict.items()}
+)

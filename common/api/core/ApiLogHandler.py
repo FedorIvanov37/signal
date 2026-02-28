@@ -10,11 +10,9 @@ class ApiLogHandler(Handler):
     def emit(self, record: LogRecord) -> None:
 
         try:
-            level = logger.level(record.levelname).name
-
+            level: str = logger.level(record.levelname).name
         except Exception:
-
-            level = record.levelno
+            level: int = record.levelno
 
         message = record.getMessage()
 

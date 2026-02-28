@@ -294,7 +294,7 @@
       <item row="5" column="0">
        <widget class="QCheckBox" name="CheckBoxUtrnno">
         <property name="text">
-         <string>Is unique transaction number</string>
+         <string>Unique transaction number</string>
         </property>
        </widget>
       </item>

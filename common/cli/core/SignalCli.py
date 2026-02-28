@@ -23,6 +23,18 @@ from common.cli.enums.LogMarks import LogMarks
 from common.api.enums.ApiModes import ApiModes
 
 
+"""
+
+ CLI and API runner for Signal
+ 
+ Extends Terminal with command-line argument handling, license management, file-based transaction processing, 
+ and REST API hosting
+ 
+ Use "signal.exe --help" to get the all the params description
+
+"""
+
+
 class SignalCli(Terminal):
     _cli_config: CliConfig = None
     _finished: pyqtSignal = pyqtSignal()
@@ -99,6 +111,7 @@ class SignalCli(Terminal):
         self.application.exec()
 
     def main(self):
+
         """
 
         This is the main function, which runs after CLI mode begin

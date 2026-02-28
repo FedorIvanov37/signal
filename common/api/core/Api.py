@@ -80,10 +80,10 @@ class Api(QObject):
         self.backend.terminal_response.connect(self.process_backend_response)
         filterwarnings("ignore", message=".*Pydantic serializer warnings*", module="pydantic.*")
 
-    def is_api_started(self):
+    def is_api_started(self) -> bool:
         return self._thread and self._thread.is_alive()
 
-    def restart(self):
+    def restart(self) -> None:
         logger.debug("Restarting API")
 
         if not self.is_api_started():
@@ -94,7 +94,7 @@ class Api(QObject):
             self.stop()
             self.start()
 
-    def start(self):
+    def start(self) -> None:
         if self.is_api_started():
             logger.warning("Unable to start API mode, because it is already started")
             return
@@ -102,7 +102,7 @@ class Api(QObject):
         self._thread = Thread(target=self._run, daemon=True)
         self._thread.start()
 
-    def stop(self, timeout=5.0):
+    def stop(self, timeout=5.0) -> None:
         if not self.is_api_started():
             logger.warning("Unable to stop API mode, because it is not started")
             return
@@ -118,13 +118,13 @@ class Api(QObject):
 
         self._thread = self._server = self._loop = self._queue = None
 
-    def _run(self):
+    def _run(self) -> None:
         loop = new_event_loop()
         set_event_loop(loop)
         self._loop = loop
         self._queue = Queue()
 
-        config = UvicornConfig(
+        config: UvicornConfig = UvicornConfig(
             self.app, host="0.0.0.0", port=self.backend.config.api.port, log_config=None, access_log=True
         )
 
@@ -140,7 +140,7 @@ class Api(QObject):
             loop.close()
             self.api_stopped.emit(ApiModes.STOP)
 
-    async def backend_request(self, request: ApiRequest):  # Use this to create long-time job
+    async def backend_request(self, request: ApiRequest) -> None:  # Use this to create long-time job
         request.request_id = uuid4()
         loop = get_running_loop()
         future: Future = loop.create_future()
@@ -182,11 +182,11 @@ class Api(QObject):
 
         # The API endpoints builder. Builds HTTP API based on FastAPI
 
-        app = FastAPI(docs_url=None, redoc_url=None)
+        app: FastAPI = FastAPI(docs_url=None, redoc_url=None)
 
         app.mount("/static", StaticFiles(directory="common/doc/static"), name="static")
 
-        api = APIRouter(prefix=ApiUrl.API)
+        api: APIRouter = APIRouter(prefix=ApiUrl.API)
 
         @app.exception_handler(TerminalApiError)
         def terminal_api_errors_handler(request, exception: TerminalApiError):

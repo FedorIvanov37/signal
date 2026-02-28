@@ -81,7 +81,7 @@ class LogPrinter(QObject):
         if transaction.is_keep_alive:
             return
 
-        transaction: Transaction = transaction.copy(deep=True)
+        transaction: Transaction = transaction.model_copy(deep=True)
         transaction: Transaction = Parser.parse_complex_fields(transaction, split=False)
 
         if self.config.fields.hide_secrets:
