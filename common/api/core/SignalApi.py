@@ -34,6 +34,14 @@ from common.api.enums.TransTypes import TransTypes
 from common.api.core.Api import Api
 
 
+"""
+This is an API interface. A bridge between FastAPI and PyQt Terminal application e.g. SignalGUI or SignalCLI
+
+Connected to FastAPI from one side and PyQt Terminal application from the other, supplies safe translation of API calls
+to PyQt event loop
+"""
+
+
 class SignalApi(QObject):
     api_started: pyqtSignal = pyqtSignal()
     api_stopped: pyqtSignal = pyqtSignal()
