@@ -8,6 +8,7 @@ from threading import Thread
 from warnings import filterwarnings
 from fastapi import FastAPI, APIRouter, Response
 from fastapi.staticfiles import StaticFiles
+from fastapi.openapi.docs import get_swagger_ui_html
 from uvicorn import Config as UvicornConfig, Server as UvicornServer
 from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse, HTMLResponse
 from PyQt6.QtCore import QObject, pyqtSignal
@@ -21,6 +22,7 @@ from common.api.data_models.TransValidationErrors import TransValidationErrors
 from common.api.data_models.ExceptionContent import ExceptionContent
 from common.api.decorators.log_api_call import log_api_call
 from common.api.enums.ApiUrl import ApiUrl
+from common.api.enums.EndpointTags import EndpointTags
 from common.api.data_models.Connection import Connection
 from common.api.data_models.TransactionResp import TransactionResp
 from common.api.enums.ApiRequestType import ApiRequestType
@@ -186,7 +188,7 @@ class Api(QObject):
         app: FastAPI = FastAPI(
             title=f"{TextConstants.SYSTEM_NAME} API Specification",
             description=f"```{TextConstants.HELLO_MESSAGE}",
-            docs_url=ApiUrl.SWAGGER,
+            docs_url=None,
             redoc_url=None
         )
 
@@ -194,21 +196,30 @@ class Api(QObject):
 
         api: APIRouter = APIRouter(prefix=ApiUrl.API)
 
+        @app.get(ApiUrl.SWAGGER, response_class=HTMLResponse, tags=[EndpointTags.DOCS])
+        def get_openapi_documentation():
+            html = get_swagger_ui_html(
+                openapi_url="/openapi.json",
+                title="Signal API Specification",
+            )
+
+            body = html.body.decode("utf-8").replace(
+                "</head>",
+                '<link rel="stylesheet" href="/static/swagger-extra.css"></head>'
+            )
+
+            return HTMLResponse(body)
+
         @app.exception_handler(TerminalApiError)
         def terminal_api_errors_handler(request, exception: TerminalApiError):
             return JSONResponse(ExceptionContent(detail=exception.detail).dict(), exception.http_status)
 
-        @app.get(ApiUrl.SIGNAL, response_class=HTMLResponse)
+        @app.get(ApiUrl.SIGNAL, response_class=HTMLResponse, tags=[EndpointTags.DOCS], include_in_schema=False)
         @log_api_call
         def get_signal_info():
             return HTMLResponse(self.backend.get_signal_info())
 
-        @app.get(ApiUrl.DOCUMENT, include_in_schema=False)
-        @log_api_call
-        def get_docs():
-            return FileResponse("common/doc/signal_user_reference_guide.html", media_type="text/html")
-
-        @api.post(ApiUrl.VALIDATE_TRANSACTION, response_model=TransValidationErrors)
+        @api.post(ApiUrl.VALIDATE_TRANSACTION, response_model=TransValidationErrors, tags=[EndpointTags.TOOLS])
         @log_api_call
         def validate_transaction(transaction: Transaction):
             return self.backend.validate_transaction(transaction)
@@ -220,22 +231,22 @@ class Api(QObject):
         approach. Use for data-read functions only. In case of data modification, signals/slots required
         """
 
-        @api.get(ApiUrl.GET_CONNECTION, response_model=Connection)
+        @api.get(ApiUrl.GET_CONNECTION, response_model=Connection, tags=[EndpointTags.CONNECTION])
         @log_api_call
         def get_connection():
             return self.backend.get_connection()
 
-        @api.get(ApiUrl.GET_SPECIFICATION, response_model=EpaySpecModel)
+        @api.get(ApiUrl.GET_SPECIFICATION, response_model=EpaySpecModel, tags=[EndpointTags.CONFIG])
         @log_api_call
         def get_specification():
             return self.backend.get_spec()
 
-        @api.get(ApiUrl.GET_TRANSACTIONS, response_model=dict[str, Transaction])
+        @api.get(ApiUrl.GET_TRANSACTIONS, response_model=dict[str, Transaction], tags=[EndpointTags.TRANSACTIONS])
         @log_api_call
         def get_transactions():
             return self.backend.get_transactions()
 
-        @api.get(ApiUrl.GET_TRANSACTION, response_model=Transaction)
+        @api.get(ApiUrl.GET_TRANSACTION, response_model=Transaction, tags=[EndpointTags.TRANSACTIONS])
         @log_api_call
         def get_transaction(trans_id: str):
             try:
@@ -243,7 +254,7 @@ class Api(QObject):
             except LookupError as transaction_lookup_error:
                 raise TerminalApiError(http_status=HTTPStatus.NOT_FOUND, detail=transaction_lookup_error)
 
-        @api.get(ApiUrl.GET_CONFIG, response_model=Config)
+        @api.get(ApiUrl.GET_CONFIG, response_model=Config, tags=[EndpointTags.CONFIG])
         @log_api_call
         def get_config():
             return self.backend.get_config()
@@ -259,24 +270,24 @@ class Api(QObject):
         shutdown of the PyQt application
         """
 
-        @api.post(ApiUrl.CREATE_PREDEFINED_TRANSACTION, response_model=Transaction)
+        @api.post(ApiUrl.CREATE_PREDEFINED_TRANSACTION, response_model=Transaction, tags=[EndpointTags.TRANSACTIONS])
         async def create_predefined_transaction(trans_type: TransTypes):
             transaction: Transaction = self.backend.get_predefined_transaction(trans_type)
             return await self.backend_request(ApiTransactionRequest(transaction=transaction))
 
-        @api.post(ApiUrl.CREATE_TRANSACTION, response_model=Union[Transaction, TransactionResp])
+        @api.post(ApiUrl.CREATE_TRANSACTION, response_model=Union[Transaction, TransactionResp], tags=[EndpointTags.TRANSACTIONS])
         async def create_transaction(request: Transaction):
             return await self.backend_request(ApiTransactionRequest(transaction=request))
 
-        @api.post(ApiUrl.REVERSE_TRANSACTION, response_model=Transaction)
+        @api.post(ApiUrl.REVERSE_TRANSACTION, response_model=Transaction, tags=[EndpointTags.TRANSACTIONS])
         async def reverse_transaction(trans_id: str):
             return await self.backend_request(ReversalRequest(original_trans_id=trans_id))
 
-        @api.put(ApiUrl.UPDATE_SPECIFICATION, response_model=EpaySpecModel)
+        @api.put(ApiUrl.UPDATE_SPECIFICATION, response_model=EpaySpecModel, tags=[EndpointTags.CONFIG])
         async def update_spec(spec: EpaySpecModel):
             return await self.backend_request(SpecAction(request_type=ApiRequestType.UPDATE_SPEC, spec=spec))
 
-        @api.put(ApiUrl.RECONNECT, response_model=Connection)
+        @api.put(ApiUrl.RECONNECT, response_model=Connection, tags=[EndpointTags.CONNECTION])
         async def reconnect(connection: Connection | None = None):
             if connection is None:
                 connection = Connection()
@@ -285,11 +296,11 @@ class Api(QObject):
                 ConnectionAction(request_type=ApiRequestType.RECONNECT, connection=connection)
             )
 
-        @api.put(ApiUrl.DISCONNECT, response_model=Connection)
+        @api.put(ApiUrl.DISCONNECT, response_model=Connection, tags=[EndpointTags.CONNECTION])
         async def disconnect():
             return await self.backend_request(ConnectionAction(request_type=ApiRequestType.DISCONNECT))
 
-        @api.put(ApiUrl.CONNECT, response_model=Connection)
+        @api.put(ApiUrl.CONNECT, response_model=Connection, tags=[EndpointTags.CONNECTION])
         async def connect(connection: Connection | None = None):
             if connection is None:
                 connection = Connection()
@@ -298,20 +309,21 @@ class Api(QObject):
                 ConnectionAction(request_type=ApiRequestType.CONNECT, connection=connection)
             )
 
-        @api.put(ApiUrl.UPDATE_CONFIG, response_model=Config)
+        @api.put(ApiUrl.UPDATE_CONFIG, response_model=Config, tags=[EndpointTags.CONFIG])
         async def update_config(config: Config):
             return await self.backend_request(ConfigAction(request_type=ApiRequestType.UPDATE_CONFIG, config=config))
 
-        @api.post(ApiUrl.CONVERT, response_model=Transaction, responses={200: {"content": {"text/plain": {}}}})
+        @api.post(ApiUrl.CONVERT, response_model=Transaction,
+                  responses={200: {"content": {"text/plain": {}}}}, tags=[EndpointTags.TOOLS])
         def convert_transaction(transaction: Transaction, to_format: DataConversionFormats) -> Response:
             if to_format == DataConversionFormats.JSON:
                 return self.backend.clean_transaction(transaction)
 
             return PlainTextResponse(self.backend.convert_to(transaction, to_format))
 
-        @api.get(ApiUrl.DOCUMENT, response_class=FileResponse)
+        @app.get(ApiUrl.DOCUMENT, response_class=FileResponse, tags=[EndpointTags.DOCS])
         @log_api_call
-        def get_document():
+        def get_user_guide():
             return normpath(f"{getcwd()}/{GuiFilesPath.DOC}")
 
         app.include_router(api)
