@@ -9,6 +9,7 @@ from common.lib.enums.TermFilesPath import TermFilesPath
 from common.gui.decorators.window_settings import set_window_icon, has_close_button_only
 from common.gui.enums.GuiFilesPath import GuiFilesPath
 from common.lib.enums.ReleaseDefinition import ReleaseDefinition
+from common.api.enums.ApiUrl import ApiUrl
 from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PyQt6.QtCore import Qt, QUrl, QRegularExpression, pyqtSignal
 from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QApplication
@@ -62,7 +63,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.MaxAmount.setValidator(QIntValidator(1, 2_100_000_000, self.MaxAmount))
         self.DebugLevel.addItems(LogDefinition.LOG_LEVEL)
         self.UserGuideLink.setText(TextConstants.USER_REFERENCE_GUIDE)
-        self.ApiInfoLabel.setText(TextConstants.API_EXPLANATION)
+        self.ApiInfoLabel.setText(f"{TextConstants.API_EXPLANATION}")
 
         for button_box in self.GeneralButtonBox, self.FieldsButtonBox, self.ApiButtonBox, self.SpecificationButtonBox:
             button_box.accepted.connect(self.ok)
@@ -77,8 +78,10 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.LoadSpec.stateChanged.connect(lambda: self.LoadSpecGeneral.setChecked(self.LoadSpec.isChecked()))
         self.ApiRun.stateChanged.connect(lambda: self.ApiRunGeneral.setCheckState(self.ApiRun.checkState()))
         self.ApiRunGeneral.stateChanged.connect(lambda: self.ApiRun.setCheckState(self.ApiRunGeneral.checkState()))
+        self.LogBackupStorageExists.stateChanged.connect(lambda: self.LogStorageDepth.setEnabled(self.LogBackupStorageExists.isChecked()))
+        self.SpecBackupStorageExists.stateChanged.connect(lambda: self.StorageDepth.setEnabled(self.SpecBackupStorageExists.isChecked()))
         self.ValidationEnabled.stateChanged.connect(self.process_validation_change)
-        self.ApiInfoLabel.linkActivated.connect(self.open_user_guide)
+        self.ApiInfoLabel.linkActivated.connect(lambda: self.open_url(f"http://127.0.0.1:{self.config.api.port}{ApiUrl.SWAGGER}"))
         self.MusicOnOfButton.clicked.connect(self.switch_music)
         self.ContactLabel.linkActivated.connect(self.open_url)
         self.CopySpecUrl.clicked.connect(self.copy_remote_spec_url)
@@ -87,7 +90,6 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.set_data_about()
         self.MainTabs.setCurrentIndex(self.MainTabs.count() - 1 if about else int())
         self.UserGuideLink.linkActivated.connect(self.open_user_guide)
-
         self.ManualInputMode.setChecked(False)
         self.ManualInputMode.hide()
 
@@ -128,6 +130,8 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
             self.PrintDescription: config.debug.print_description,
             self.BackupLocalSpecStartup: config.specification.backup_on_startup,
             self.BackupLocalSpecShutdown: config.specification.backup_on_shutdown,
+            self.LogBackupStorageExists: config.debug.backup_storage_depth_exists,
+            self.SpecBackupStorageExists: config.specification.backup_storage,
         }
 
         scales_value_map = {
@@ -143,13 +147,21 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         for checkbox, state in checkboxes_state_map.items():
             checkbox.setChecked(state)
 
+        enabled_dependence = {
+            self.HeaderLength: lambda: config.host.header_length_exists,
+            self.KeepAliveInterval: self.KeepAliveMode.isChecked,
+            self.MaxAmount: self.MaxAmountBox.isChecked,
+            self.StorageDepth: self.SpecBackupStorageExists.isChecked,
+            self.LogStorageDepth: self.LogBackupStorageExists.isChecked,
+        }
+
+        for item, enabled in enabled_dependence.items():
+            item.setEnabled(enabled())
+
         for scale, value in scales_value_map.items():
             scale.setValue(int(value))
 
         self.DebugLevel.setCurrentText(config.debug.level)
-        self.HeaderLength.setEnabled(config.host.header_length_exists)
-        self.KeepAliveInterval.setEnabled(self.KeepAliveMode.isChecked())
-        self.MaxAmount.setEnabled(self.MaxAmountBox.isChecked())
         self.SvAddress.setText(config.host.host)
         self.RemoteSpecUrl.setText(config.specification.remote_spec_url)
         self.RemoteSpecUrl.setCursorPosition(int())
@@ -318,6 +330,8 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         config.debug.print_description = self.PrintDescription.isChecked()
         config.specification.backup_on_shutdown = self.BackupLocalSpecShutdown.isChecked()
         config.specification.backup_on_startup = self.BackupLocalSpecStartup.isChecked()
+        config.debug.backup_storage_depth_exists = self.LogBackupStorageExists.isChecked()
+        config.specification.backup_storage = self.SpecBackupStorageExists.isChecked()
         config.specification.rewrite_local_spec = all(
             [
                 self.RewriteLocalSpec.isChecked(),

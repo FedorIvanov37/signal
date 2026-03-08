@@ -19,6 +19,7 @@
         "clear_log": true,
         "parse_subfields": true,
         "backup_storage_depth": 10,
+        "backup_storage_depth_exists": true,
         "reduce_keep_alive": true,
         "print_description": true
     },

@@ -12,10 +12,11 @@ def log_api_call(function: Callable):
     @wraps(function)
     def wrapper(*args, **kwargs):
         request_id = uuid4()
+        request_type = " ".join(function.__name__.split("_")).title()
 
         logger.info(
             f'API got incoming request. '
-            f'Request type: "{function.__name__.upper()}"; '
+            f'Request type: "{request_type}"; '
             f'Request ID: "{request_id}"'
         )
 

@@ -35,7 +35,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="MainTabs">
      <property name="currentIndex">
-      <number>2</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="General">
       <attribute name="title">
@@ -312,20 +312,24 @@
           <string>Log</string>
          </property>
          <layout class="QGridLayout" name="gridLayout_6">
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_4">
+          <item row="2" column="0">
+           <widget class="QCheckBox" name="ClearLog">
             <property name="text">
-             <string>Debug level</string>
+             <string>Clear log before sent message</string>
             </property>
            </widget>
           </item>
-          <item row="0" column="3">
-           <widget class="QComboBox" name="DebugLevel"/>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="LogBackupLabel">
+          <item row="3" column="0" colspan="2">
+           <widget class="QCheckBox" name="ReduceKeepAlive">
             <property name="text">
-             <string>Logfile backup storage depth</string>
+             <string>Hide Keep-Alive in log</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="3">
+           <widget class="QSpinBox" name="LogStorageDepth">
+            <property name="maximum">
+             <number>999</number>
             </property>
            </widget>
           </item>
@@ -342,51 +346,13 @@
             </property>
            </spacer>
           </item>
-          <item row="1" column="3">
-           <widget class="QSpinBox" name="LogStorageDepth">
-            <property name="maximum">
-             <number>999</number>
-            </property>
-           </widget>
+          <item row="0" column="3">
+           <widget class="QComboBox" name="DebugLevel"/>
           </item>
-          <item row="2" column="0">
-           <widget class="QCheckBox" name="ClearLog">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_4">
             <property name="text">
-             <string>Clear log before sent message</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0" colspan="2">
-           <widget class="QCheckBox" name="ReduceKeepAlive">
-            <property name="text">
-             <string>Hide Keep-Alive in log</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="2" colspan="2">
-           <spacer name="horizontalSpacer_7">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>99</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item row="4" column="0" colspan="2">
-           <widget class="QCheckBox" name="PrintSubfields">
-            <property name="text">
-             <string>Parse complex fields</string>
-            </property>
-           </widget>
-          </item>
-          <item row="5" column="0" colspan="2">
-           <widget class="QCheckBox" name="PrintDescription">
-            <property name="text">
-             <string>Print fields description</string>
+             <string>Debug level</string>
             </property>
            </widget>
           </item>
@@ -416,6 +382,13 @@
             </property>
            </spacer>
           </item>
+          <item row="4" column="0" colspan="2">
+           <widget class="QCheckBox" name="PrintSubfields">
+            <property name="text">
+             <string>Parse complex fields</string>
+            </property>
+           </widget>
+          </item>
           <item row="2" column="2" colspan="2">
            <spacer name="horizontalSpacer_2">
             <property name="orientation">
@@ -428,6 +401,33 @@
              </size>
             </property>
            </spacer>
+          </item>
+          <item row="5" column="0" colspan="2">
+           <widget class="QCheckBox" name="PrintDescription">
+            <property name="text">
+             <string>Print fields description</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="2" colspan="2">
+           <spacer name="horizontalSpacer_7">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>99</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="1" column="0">
+           <widget class="QCheckBox" name="LogBackupStorageExists">
+            <property name="text">
+             <string>Logfiles backup storage depth</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>
@@ -711,13 +711,6 @@
          <layout class="QGridLayout" name="gridLayout_15">
           <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout_4">
-            <item row="5" column="0">
-             <widget class="QLabel" name="label_5">
-              <property name="text">
-               <string>Backup retention debth</string>
-              </property>
-             </widget>
-            </item>
             <item row="5" column="1">
              <widget class="QSpinBox" name="StorageDepth">
               <property name="minimum">
@@ -774,6 +767,13 @@
              <widget class="Line" name="line_3">
               <property name="orientation">
                <enum>Qt::Horizontal</enum>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="0">
+             <widget class="QCheckBox" name="SpecBackupStorageExists">
+              <property name="text">
+               <string>Backup storage depth</string>
               </property>
              </widget>
             </item>

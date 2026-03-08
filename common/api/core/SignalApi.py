@@ -6,9 +6,13 @@ from copy import deepcopy
 from typing import Any
 from loguru import logger
 from fastapi import HTTPException
+from fastapi.responses import HTMLResponse
 from threading import Lock
 from PyQt6.QtCore import pyqtSignal, QObject
 from PyQt6.QtNetwork import QTcpSocket
+from pygments import highlight
+from pygments.lexers import TextLexer
+from pygments.formatters import HtmlFormatter
 from common.gui.enums.GuiFilesPath import GuiFiles
 from common.api.enums.ApiFiles import ApiFiles
 from common.lib.core.Parser import Parser
@@ -89,9 +93,9 @@ class SignalApi(QObject):
         self.api.restart()
 
     def process_api_call(self, request: ApiRequest):
-        logger.info(
-            f'API got incoming request. Request type: "{request.request_type}"; Request ID: "{request.request_id}"'
-        )
+        request_type = " ".join(request.request_type.split("_")).title()
+
+        logger.info(f'API got incoming request. Request type: "{request_type}"; Request ID: "{request.request_id}"')
 
         with self.lock:
             self.api_tasks[request.request_id] = request
@@ -123,6 +127,7 @@ class SignalApi(QObject):
         request.http_status = HTTPStatus.OK
         request.response_data = TransactionResp()
         request.response_data.status = request.response_data.status % request.request_id
+
         self.api.process_backend_response(request)
 
     def get_predefined_transaction(self, trans_type: TransTypes) -> Transaction:
@@ -307,6 +312,31 @@ class SignalApi(QObject):
             return
 
         self.send_transaction.emit(request.transaction)
+
+    @staticmethod
+    def get_log(plain_text: bool) -> HTMLResponse:
+        with open(TermFilesPath.LOG_FILE_NAME) as logfile:
+            log_data = logfile.read()
+
+        if plain_text:
+            return HTMLResponse(log_data)
+
+        style: str = "dracula"  # Styles list is here: https://pygments.org/styles
+        formatter: HtmlFormatter = HtmlFormatter(style=style)
+
+        log_data_html = f"""
+        <html>
+         <head>
+          <style>
+           {formatter.get_style_defs('.highlight')}
+          </style>
+         </head>
+         <body>
+          {highlight(log_data, TextLexer(), formatter)}
+         </body>
+        </html>"""
+
+        return HTMLResponse(log_data_html)
 
     def process_api_update_spec(self, request: ApiRequest):
         SpecFilesRotator(self.config).backup_spec()

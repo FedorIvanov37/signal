@@ -51,6 +51,7 @@ class Logger:
             compression=self.compression,
             backtrace=False,
             diagnose=False,
+            retention=self.config.debug.backup_storage_depth if self.config.debug.backup_storage_depth_exists else 0,
         )
 
     def add_stdout_handler(self):

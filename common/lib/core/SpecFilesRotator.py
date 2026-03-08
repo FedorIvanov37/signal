@@ -2,7 +2,7 @@ from os import remove, listdir, path
 from random import sample
 from datetime import datetime
 from loguru import logger
-from os.path import abspath
+from os.path import abspath, basename
 from common.lib.data_models.Config import Config
 from common.lib.enums.TermFilesPath import TermDirs
 from common.lib.core.EpaySpecification import EpaySpecification
@@ -46,6 +46,7 @@ class SpecFilesRotator:
             last_backup_spec = EpaySpecModel.parse_file(abspath(f"{TermDirs.SPEC_BACKUP_DIR}/{last_backup_file}"))
 
             if last_backup_spec == self.spec.spec:  # Specification was not changed; return
+                logger.info(f"Specification backup is up to date. Filename: {last_backup_file}")
                 return
 
         with open(filename, "w") as file:
@@ -53,10 +54,10 @@ class SpecFilesRotator:
 
         self.clear_spec_backup()
 
-        return filename
+        return basename(filename)
 
     def clear_spec_backup(self):
-        storage_debt = self.config.specification.backup_storage_depth
+        storage_debt = self.config.specification.backup_storage_depth if self.config.specification.backup_storage else 1
 
         try:
             files = listdir(TermDirs.SPEC_BACKUP_DIR)
