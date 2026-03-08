@@ -15,7 +15,7 @@ def log_api_call(function: Callable):
         request_type = " ".join(function.__name__.split("_")).title()
 
         logger.info(
-            f'API got incoming request. '
+            f'API got an incoming request. '
             f'Request type: "{request_type}"; '
             f'Request ID: "{request_id}"'
         )

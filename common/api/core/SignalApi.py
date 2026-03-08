@@ -98,7 +98,7 @@ class SignalApi(QObject):
     def process_api_call(self, request: ApiRequest):
         request_type = " ".join(request.request_type.split("_")).title()
 
-        logger.info(f'API got incoming request. Request type: "{request_type}"; Request ID: "{request.request_id}"')
+        logger.info(f'API got an incoming request. Request type: "{request_type}"; Request ID: "{request.request_id}"')
 
         with self.lock:
             self.api_tasks[request.request_id] = request

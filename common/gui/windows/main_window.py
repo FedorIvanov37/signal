@@ -502,16 +502,15 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self._tab_view.json_view.redo()
 
     def process_api_mode_change(self, state: ApiModes):
+        menu_disabled = True
 
         match state:
 
             case ApiMode.ApiModes.NOT_RUN:
                 icon = GuiFilesPath.GREY_CIRCLE
-                menu_disabled = True
 
             case ApiMode.ApiModes.STOP:
                 icon = GuiFilesPath.RED_CIRCLE
-                menu_disabled = True
 
             case ApiMode.ApiModes.START:
                 icon = GuiFilesPath.GREEN_CIRCLE
@@ -519,7 +518,6 @@ class MainWindow(Ui_MainWindow, QMainWindow):
 
             case _:
                 icon = GuiFilesPath.GREY_CIRCLE
-                menu_disabled = False
 
         self.ApiStatus.setText(ApiMode.ApiModeNames[state])
         self.ApiStatusLabel.setPixmap(QPixmap(icon))
