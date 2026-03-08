@@ -23,6 +23,7 @@ class ToolBarElements(StrEnum):
     SPECIFICATION = "Specification"
     CONFIGURATION = "Configuration"
     DOCUMENTATION = "User reference guide"
+    OPENAPI_DOC = "API Specification"
     HOTKEYS = "Hotkeys"
     ABOUT = "About Signal"
     API = "API"

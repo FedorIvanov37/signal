@@ -185,6 +185,7 @@ class SignalGui(Terminal):
             window.files_dropped: self.process_files_drop,
             window.undo: window.undo_changes,
             window.redo: window.redo_changes,
+            window.show_openapi_doc: self.show_openapi_doc,
             self.wireless_handler.new_record_appeared: window.log_browser.append,
             self.api.open_connection: lambda: self.reconnect(self.config.host.host, str(self.config.host.port)),
             self.connector.stateChanged: self.set_connection_status,
@@ -239,6 +240,13 @@ class SignalGui(Terminal):
     def show_document():  # Open the User guide in a default browser
         doc_path = normpath(f"{getcwd()}/{GuiFilesPath.DOC}")
         open_url(doc_path)
+
+    def show_openapi_doc(self):
+        if not self.api.is_started():
+            logger.error("Signal API is not started. Cannot open the API specification page")
+            return
+
+        self.api.show_openapi_doc()
 
     @set_json_view_focus
     def show_license_dialog(self, force: bool = False) -> None:
