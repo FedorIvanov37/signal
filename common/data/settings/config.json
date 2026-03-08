@@ -12,7 +12,7 @@
         "connect_on_startup": true,
         "load_remote_spec": false,
         "show_license_dialog": false,
-        "run_api": false
+        "run_api": true
     },
     "debug": {
         "level": "INFO",

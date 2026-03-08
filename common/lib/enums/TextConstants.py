@@ -35,7 +35,6 @@ class TextConstants(StrEnum):
   "data_fields": {
     "7": "0308075419",
     "11": "414743",
-    "38": "FJ1OEF",
     "39": "00",
     "70": "301"
   },
@@ -70,8 +69,6 @@ command to get beautified JSON output
 $ curl -X POST %s | jq  # We added jq command to get beautified JSON output
 
 %s
-
-$ 
 ```
 
 ## Resources 

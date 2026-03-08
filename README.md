@@ -210,7 +210,6 @@ Check the parameters opened by the "Tools -> Settings" button to make your setti
 
 ![image](common/doc/static/main_window.png)
 
-
 The MainWidow is a generic user interaction point. The main purpose is transaction data representation, data 
 validations, and generators, access to the transaction processing tools, sending and receiving transactions
 
@@ -580,6 +579,17 @@ The Signal uses the PyQt6 as a core even if the application does not have any GU
 the [Resources](#resources) chapter and make an acquaintance with basic PyQt6 and Pydantic concepts. Otherwise, if you 
 are already familiar with those packages, just go forth
 
+## Signal modules
+
+This diagram shows the Signal's internal modules. The modules are divided into groups: the user interface, the 
+processing core, and the remote host interface
+
+The modules are loosely coupled to each other and can be used 
+individually, without connecting all the modules at once 
+
+![image](common/doc/static/diagram.png)
+
+
 ## Requirements
 
 Unlike GUI the Signal library requires you to install dependencies, defined in the "requirements.txt" file from the 
@@ -588,15 +598,15 @@ for Signal v0.19.1
 
 The following dependencies are required to install to run the library
 
-| Dependency                                                 | Version | Higher version allowed | 
-|------------------------------------------------------------|---------|------------------------| 
-| [Python](https://www.python.org/)                          | 3.12    | Yes                    |
-| [PyQt6](https://wiki.python.org/moin/PyQt)                 | 6.6.1   | Yes                    |
-| [Pydantic](https://pydantic.dev/)                          | 2.6.3   | Yes                    |
-| [Flask](https://flask.palletsprojects.com/en/3.0.x/)       | 3.0.3   | Yes                    |
-| [Flask-pydantic](https://pypi.org/project/Flask-Pydantic/) | 0.12.0  | Yes                    |
-
-
+| Dependency                                               | Version | Higher version allowed | 
+|----------------------------------------------------------|---------|------------------------| 
+| [Python](https://www.python.org/)                        | 3.12.2  | Yes                    |
+| [PyQt6](https://wiki.python.org/moin/PyQt)               | 6.6.1   | Yes                    |
+| [Pydantic](https://pydantic.dev/)                        | 2.6.3   | Yes                    |
+| [FastAPI](https://fastapi.tiangolo.com/)                 | 0.135.1 | Yes                    |
+| [Uvicorn](https://uvicorn.dev/)                          | 0.41.0  | Yes                    |
+| [Loguru](https://loguru.readthedocs.io/en/stable/)       | 0.7.2   | Yes                    |
+| [click](https://click.palletsprojects.com/en/stable/)    | 8.3.1   | Yes                    |
 
 Refer to chapter [Library installation](#library-installation) to figure the dependencies installation process out
 
