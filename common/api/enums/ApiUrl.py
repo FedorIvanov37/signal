@@ -2,6 +2,7 @@ from enum import StrEnum
 
 
 class ApiUrl(StrEnum):
+    BASE = "http://127.0.0.1:%s"
     API = "/api"
     GET_CONNECTION = "/connection"
     GET_SPECIFICATION = "/specification"
@@ -24,3 +25,5 @@ class ApiUrl(StrEnum):
     LIVE_LOG = "/log/live"
     RAW_LOG = "/log/raw"
     LOG = "/log"
+    ECHO_TEST = "/api/transactions/predefined/echo-test"
+    POSTMAN = "/postman_collection"

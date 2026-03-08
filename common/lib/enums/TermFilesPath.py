@@ -12,6 +12,7 @@ class TermDirs(StrEnum):
     CONFIG_DIR = f"{DATA_DIR}/settings"
     DICTIONARY_DIR = f"{DATA_DIR}/dictionary"
     API_TRANSACTIONS = f"{DATA_DIR}/api_transactions"
+    POSTMAN = f"{DATA_DIR}/postman"
 
 
 class TermFiles(StrEnum):
@@ -27,6 +28,7 @@ class TermFiles(StrEnum):
     CURRENCY_DICT = "currencies.json"
     COUNTRY_DICT = "countries.json"
     MCC_DICT = "merch_categories.json"
+    POSTMAN = "Signal_v0.19.1_postman_collection.zip"
 
 
 class TermFilesPath(StrEnum):
@@ -42,3 +44,4 @@ class TermFilesPath(StrEnum):
     COUNTRY_DICT = f"{TermDirs.DICTIONARY_DIR}/{TermFiles.COUNTRY_DICT}"
     MCC_DICT = f"{TermDirs.DICTIONARY_DIR}/{TermFiles.MCC_DICT}"
     LICENSE_AGREEMENT = f"{TermDirs.LICENSE_DIR}/{TermFiles.LICENSE_AGREEMENT}"
+    POSTMAN_COLLECTION = f"{TermDirs.POSTMAN}/{TermFiles.POSTMAN}"

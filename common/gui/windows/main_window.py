@@ -79,6 +79,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
     api_mode_changed: pyqtSignal = pyqtSignal(ApiModes)
     exit: pyqtSignal = pyqtSignal(int)
     show_document: pyqtSignal = pyqtSignal()
+    show_openapi_doc: pyqtSignal = pyqtSignal()
     show_license: pyqtSignal = pyqtSignal()
     disable_item: pyqtSignal = pyqtSignal()
     enable_item: pyqtSignal = pyqtSignal()
@@ -474,6 +475,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
 
             self.ButtonHelp: {
                 ToolBarElements.DOCUMENTATION: self.show_document,
+                ToolBarElements.OPENAPI_DOC: self.show_openapi_doc,
                 ToolBarElements.HOTKEYS: self.hotkeys,
                 ToolBarElements.LICENSE: self.show_license,
                 ToolBarElements.ABOUT: self.about,
@@ -481,6 +483,17 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         }
 
         process_menu_structure(structure=buttons_menu_structure)
+
+    def disable_openapi_menu(self, disable: bool):
+        menu = self.ButtonHelp.menu()
+
+        for action in menu.actions():
+            if not action.text() == ToolBarElements.OPENAPI_DOC:
+                continue
+
+            action.setDisabled(disable)
+
+            return
 
     def undo_changes(self):
         self._tab_view.json_view.undo()
@@ -494,19 +507,24 @@ class MainWindow(Ui_MainWindow, QMainWindow):
 
             case ApiMode.ApiModes.NOT_RUN:
                 icon = GuiFilesPath.GREY_CIRCLE
+                menu_disabled = True
 
             case ApiMode.ApiModes.STOP:
                 icon = GuiFilesPath.RED_CIRCLE
+                menu_disabled = True
 
             case ApiMode.ApiModes.START:
                 icon = GuiFilesPath.GREEN_CIRCLE
+                menu_disabled = False
 
             case _:
                 icon = GuiFilesPath.GREY_CIRCLE
+                menu_disabled = False
 
         self.ApiStatus.setText(ApiMode.ApiModeNames[state])
         self.ApiStatusLabel.setPixmap(QPixmap(icon))
         self.ButtonApi.setIcon(QIcon(icon))
+        self.disable_openapi_menu(disable=menu_disabled)
 
     def set_tab_name(self, tab_name):
         self._tab_view.setTabText(label=tab_name)

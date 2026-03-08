@@ -9,6 +9,7 @@ from pathlib import Path
 from fastapi import HTTPException
 from fastapi.responses import HTMLResponse
 from threading import Lock
+from webbrowser import open as open_url
 from PyQt6.QtCore import pyqtSignal, QObject
 from PyQt6.QtNetwork import QTcpSocket
 from common.gui.enums.GuiFilesPath import GuiFiles
@@ -90,6 +91,9 @@ class SignalApi(QObject):
 
     def restart(self):
         self.api.restart()
+
+    def is_started(self):
+        return self.api.is_api_started()
 
     def process_api_call(self, request: ApiRequest):
         request_type = " ".join(request.request_type.split("_")).title()
@@ -231,6 +235,9 @@ class SignalApi(QObject):
             host=self.terminal.connector.get_connected_host(),
             port=self.terminal.connector.get_connected_port()
         )
+
+    def show_openapi_doc(self):
+        open_url(f"{ApiUrl.BASE % self.config.api.port}{ApiUrl.SWAGGER}")
 
     def get_spec(self) -> EpaySpecModel:
         return self.terminal.spec.spec

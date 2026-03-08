@@ -12,6 +12,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from uvicorn import Config as UvicornConfig, Server as UvicornServer
 from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse, HTMLResponse
 from PyQt6.QtCore import QObject, pyqtSignal
+from common.lib.enums.TermFilesPath import TermFilesPath, TermFiles
 from common.lib.enums.TextConstants import TextConstants
 from common.lib.data_models.Config import Config
 from common.lib.data_models.Transaction import Transaction
@@ -160,7 +161,6 @@ class Api(QObject):
             raise TerminalApiError(http_status=HTTPStatus.NOT_FOUND, detail=lost_transaction)
 
         finally:
-
             self.pending_jobs.pop(request.request_id)
 
     def process_backend_response(self, request: ApiRequest):
@@ -187,7 +187,14 @@ class Api(QObject):
 
         app: FastAPI = FastAPI(
             title=f"{TextConstants.SYSTEM_NAME} API Specification",
-            description=f"```{TextConstants.HELLO_MESSAGE}",
+            description=TextConstants.OPENAPI_HELLO_MESSAGE % (
+                f"{ApiUrl.BASE}{ApiUrl.ECHO_TEST}" % self.backend.config.api.port,
+                f"{ApiUrl.BASE}{ApiUrl.ECHO_TEST}" % self.backend.config.api.port,
+                TextConstants.ECHO_TEST_RESPONSE,
+                ApiUrl.DOCUMENT,
+                ApiUrl.POSTMAN,
+                f"{ApiUrl.API}{ApiUrl.LIVE_LOG}",
+            ),
             docs_url=None,
             redoc_url=None
         )
@@ -231,8 +238,13 @@ class Api(QObject):
         #
         # @app.get("/favicon.ico", response_class=FileResponse)
         # def favicon():
-        #     return FileResponse("common/doc/static/triforce_unsigned.png")
+        #     return FileResponse(r"C:\Users\admin\PycharmProjects\_signal\common\doc\static\triforce_unsigned.png")
         #
+
+        @app.get(ApiUrl.POSTMAN, response_class=FileResponse, tags=[EndpointTags.TOOLS], include_in_schema=False)
+        @log_api_call
+        def get_postman_collection():
+            return FileResponse(TermFilesPath.POSTMAN_COLLECTION, filename=TermFiles.POSTMAN)
 
         @api.get(ApiUrl.RAW_LOG, response_class=PlainTextResponse, tags=[EndpointTags.TOOLS])
         def get_raw_log():
