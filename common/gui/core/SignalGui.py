@@ -243,7 +243,7 @@ class SignalGui(Terminal):
 
     def show_openapi_doc(self):
         if not self.api.is_started():
-            logger.error("Signal API is not started. Cannot open the API specification page")
+            logger.error("Signal API is not started. Cannot open the API Specification page")
             return
 
         self.api.show_openapi_doc()
@@ -342,8 +342,10 @@ class SignalGui(Terminal):
     def settings(self, about=False) -> None:
         try:
             old_config: Config = self.config.model_copy(deep=True)
+
             settings_window: SettingsWindow = SettingsWindow(self.config, about=about)
             settings_window.accepted.connect(lambda: self.process_config_change(old_config))
+            settings_window.open_api_spec.connect(self.show_openapi_doc)
             settings_window.open_user_guide.connect(self.show_document)
             settings_window.exec()
             

@@ -9,7 +9,6 @@ from common.lib.enums.TermFilesPath import TermFilesPath
 from common.gui.decorators.window_settings import set_window_icon, has_close_button_only
 from common.gui.enums.GuiFilesPath import GuiFilesPath
 from common.lib.enums.ReleaseDefinition import ReleaseDefinition
-from common.api.enums.ApiUrl import ApiUrl
 from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PyQt6.QtCore import Qt, QUrl, QRegularExpression, pyqtSignal
 from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QApplication
@@ -31,6 +30,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
     open_user_guide: pyqtSignal = pyqtSignal(str)
     _config: Config = None
     config_file_dropped: pyqtSignal = pyqtSignal(str)
+    open_api_spec: pyqtSignal = pyqtSignal()
     movie: QMovie
 
     @property
@@ -63,7 +63,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.MaxAmount.setValidator(QIntValidator(1, 2_100_000_000, self.MaxAmount))
         self.DebugLevel.addItems(LogDefinition.LOG_LEVEL)
         self.UserGuideLink.setText(TextConstants.USER_REFERENCE_GUIDE)
-        self.ApiInfoLabel.setText(f"{TextConstants.API_EXPLANATION}")
+        self.ApiInfoLabel.setText(TextConstants.API_EXPLANATION_URL)
 
         for button_box in self.GeneralButtonBox, self.FieldsButtonBox, self.ApiButtonBox, self.SpecificationButtonBox:
             button_box.accepted.connect(self.ok)
@@ -78,10 +78,17 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.LoadSpec.stateChanged.connect(lambda: self.LoadSpecGeneral.setChecked(self.LoadSpec.isChecked()))
         self.ApiRun.stateChanged.connect(lambda: self.ApiRunGeneral.setCheckState(self.ApiRun.checkState()))
         self.ApiRunGeneral.stateChanged.connect(lambda: self.ApiRun.setCheckState(self.ApiRunGeneral.checkState()))
-        self.LogBackupStorageExists.stateChanged.connect(lambda: self.LogStorageDepth.setEnabled(self.LogBackupStorageExists.isChecked()))
-        self.SpecBackupStorageExists.stateChanged.connect(lambda: self.StorageDepth.setEnabled(self.SpecBackupStorageExists.isChecked()))
+
+        self.LogBackupStorageExists.stateChanged.connect(
+            lambda: self.LogStorageDepth.setEnabled(self.LogBackupStorageExists.isChecked())
+        )
+
+        self.SpecBackupStorageExists.stateChanged.connect(
+            lambda: self.StorageDepth.setEnabled(self.SpecBackupStorageExists.isChecked())
+        )
+
         self.ValidationEnabled.stateChanged.connect(self.process_validation_change)
-        self.ApiInfoLabel.linkActivated.connect(lambda: self.open_url(f"http://127.0.0.1:{self.config.api.port}{ApiUrl.SWAGGER}"))
+        self.ApiInfoLabel.linkActivated.connect(self.open_api_spec)
         self.MusicOnOfButton.clicked.connect(self.switch_music)
         self.ContactLabel.linkActivated.connect(self.open_url)
         self.CopySpecUrl.clicked.connect(self.copy_remote_spec_url)
