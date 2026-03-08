@@ -177,7 +177,9 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             button.setFont(font)
 
     def backup(self):
-        backup_filename: str = SpecFilesRotator(self.config).backup_spec()
+        if not (backup_filename := SpecFilesRotator(self.config).backup_spec()):
+            return
+
         logger.info(f"Specification backup is done. Filename: {backup_filename}")
 
     def set_hello_message(self):
@@ -222,8 +224,8 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         spec: EpaySpecification = EpaySpecification()
 
         if self.config.specification.backup_storage:
-            backup_filename: str = SpecFilesRotator(self.config).backup_spec()
-            logger.debug(f"Backup local specification file name: {backup_filename}")
+            if backup_filename := SpecFilesRotator(self.config).backup_spec():
+                logger.debug(f"Backup local specification file name: {backup_filename}")
 
         try:
             spec_model_data: EpaySpecModel = EpaySpecModel.model_validate_json(spec_data)

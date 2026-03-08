@@ -23,6 +23,7 @@ class Debug(BaseModel):
     level: str = "INFO"
     clear_log: bool = True
     parse_subfields: bool = False
+    backup_storage_depth_exists: bool = True
     backup_storage_depth: int = 30
     reduce_keep_alive: bool = True
     print_description: bool = False

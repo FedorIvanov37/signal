@@ -236,6 +236,11 @@ class Api(QObject):
         def get_connection():
             return self.backend.get_connection()
 
+        @api.get(ApiUrl.LOGFILE, response_class=HTMLResponse, tags=[EndpointTags.TOOLS])
+        @log_api_call
+        def get_log(plain_text: bool = False):
+            return self.backend.get_log(plain_text)
+
         @api.get(ApiUrl.GET_SPECIFICATION, response_model=EpaySpecModel, tags=[EndpointTags.CONFIG])
         @log_api_call
         def get_specification():
