@@ -21,9 +21,11 @@ class TextConstants(StrEnum):
 
     CLI_DESCRIPTION = f"{SYSTEM_NAME} {ReleaseDefinition.VERSION}"
 
-    API_EXPLANATION = ("Signal provides HTTP API for external integration. It also has a built-in "
-                       "Postman collection, which covers basic needs.<br><br>Refer to the <a href=\"url.com\"> openapi "
-                       "documentation</a> for details")
+    API_EXPLANATION = ("Signal provides HTTP API for external integration. "
+                       "It also has a built-in Postman collection, which covers basic needs")
+
+    API_EXPLANATION_URL = (f"{API_EXPLANATION}<br><br>Refer to the <a href=\"url.com\"> openapi specification</a>"
+                           f" for details. This link works only when API mode is started")
 
     USER_REFERENCE_GUIDE = '<a href=\"url.com\">User Reference Guide</a>'
 

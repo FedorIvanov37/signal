@@ -22,7 +22,7 @@ class ToolBarElements(StrEnum):
     SET_REVERSAL_FIELDS = "Set reversal fields"
     SPECIFICATION = "Specification"
     CONFIGURATION = "Configuration"
-    DOCUMENTATION = "User reference guide"
+    DOCUMENTATION = "User Reference Guide"
     OPENAPI_DOC = "API Specification"
     HOTKEYS = "Hotkeys"
     ABOUT = "About Signal"

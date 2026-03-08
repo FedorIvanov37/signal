@@ -15,8 +15,7 @@ from common.gui.decorators.window_settings import set_window_icon
 from common.gui.enums import ButtonActions, MainFieldSpec as FieldsSpec
 from common.gui.enums.KeySequences import KeySequences
 from common.gui.enums.GuiFilesPath import GuiFilesPath
-from common.gui.enums import ApiMode
-from common.gui.enums.ApiMode import ApiModes
+from common.gui.enums.ApiMode import ApiModes, ApiModeNames
 from common.gui.enums.Buttons import Buttons
 from common.gui.enums.ConnectionStatus import ConnectionStatus
 from common.gui.enums.ConnectionStatus import ConnectionIcon
@@ -486,12 +485,14 @@ class MainWindow(Ui_MainWindow, QMainWindow):
 
     def disable_openapi_menu(self, disable: bool):
         menu = self.ButtonHelp.menu()
+        disabled_action_text = f"{ToolBarElements.OPENAPI_DOC} | Start API to unlock"
 
         for action in menu.actions():
-            if not action.text() == ToolBarElements.OPENAPI_DOC:
+            if not action.text().startswith(ToolBarElements.OPENAPI_DOC):
                 continue
 
             action.setDisabled(disable)
+            action.setText(disabled_action_text if disable else ToolBarElements.OPENAPI_DOC)
 
             return
 
@@ -502,27 +503,27 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self._tab_view.json_view.redo()
 
     def process_api_mode_change(self, state: ApiModes):
-        menu_disabled = True
+        openapi_menu_disabled = True
 
         match state:
 
-            case ApiMode.ApiModes.NOT_RUN:
+            case ApiModes.NOT_RUN:
                 icon = GuiFilesPath.GREY_CIRCLE
 
-            case ApiMode.ApiModes.STOP:
+            case ApiModes.STOP:
                 icon = GuiFilesPath.RED_CIRCLE
 
-            case ApiMode.ApiModes.START:
+            case ApiModes.START:
                 icon = GuiFilesPath.GREEN_CIRCLE
-                menu_disabled = False
+                openapi_menu_disabled = False
 
             case _:
                 icon = GuiFilesPath.GREY_CIRCLE
 
-        self.ApiStatus.setText(ApiMode.ApiModeNames[state])
+        self.ApiStatus.setText(ApiModeNames[state])
         self.ApiStatusLabel.setPixmap(QPixmap(icon))
         self.ButtonApi.setIcon(QIcon(icon))
-        self.disable_openapi_menu(disable=menu_disabled)
+        self.disable_openapi_menu(disable=openapi_menu_disabled)
 
     def set_tab_name(self, tab_name):
         self._tab_view.setTabText(label=tab_name)
