@@ -1,6 +1,7 @@
 from loguru import logger
 from logging import Handler, LogRecord
 from re import search
+from common.api.enums.ApiUrl import ApiUrl
 
 
 class ApiLogHandler(Handler):
@@ -26,6 +27,9 @@ class ApiLogHandler(Handler):
             if pid := search(r"\d+", message):
                 self.pid = pid.group()
                 return
+
+        if f"GET {ApiUrl.API}{ApiUrl.RAW_LOG}" in message:
+            return
 
         if message.startswith("Waiting for application startup"):
             return

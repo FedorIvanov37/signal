@@ -21,4 +21,6 @@ class ApiUrl(StrEnum):
     DOCUMENT = "/documentation"
     CREATE_PREDEFINED_TRANSACTION = "/transactions/predefined/{trans_type}"
     SWAGGER = "/openapi"
-    LOGFILE = "/log"
+    LIVE_LOG = "/log/live"
+    RAW_LOG = "/log/raw"
+    LOG = "/log"

@@ -5,15 +5,14 @@ from datetime import datetime
 from copy import deepcopy
 from typing import Any
 from loguru import logger
+from pathlib import Path
 from fastapi import HTTPException
 from fastapi.responses import HTMLResponse
 from threading import Lock
 from PyQt6.QtCore import pyqtSignal, QObject
 from PyQt6.QtNetwork import QTcpSocket
-from pygments import highlight
-from pygments.lexers import TextLexer
-from pygments.formatters import HtmlFormatter
 from common.gui.enums.GuiFilesPath import GuiFiles
+from common.api.toolkit.LogTail import LogTail
 from common.api.enums.ApiFiles import ApiFiles
 from common.lib.core.Parser import Parser
 from common.lib.exceptions.exceptions import DataValidationError, DataValidationWarning
@@ -314,29 +313,17 @@ class SignalApi(QObject):
         self.send_transaction.emit(request.transaction)
 
     @staticmethod
-    def get_log(plain_text: bool) -> HTMLResponse:
-        with open(TermFilesPath.LOG_FILE_NAME) as logfile:
-            log_data = logfile.read()
+    def get_raw_log():
+        logfile: Path = Path(TermFilesPath.LOG_FILE_NAME)
 
-        if plain_text:
-            return HTMLResponse(log_data)
+        if not logfile.exists():
+            return str()
 
-        style: str = "dracula"  # Styles list is here: https://pygments.org/styles
-        formatter: HtmlFormatter = HtmlFormatter(style=style)
+        return logfile.read_text(encoding="utf-8", errors="replace")
 
-        log_data_html = f"""
-        <html>
-         <head>
-          <style>
-           {formatter.get_style_defs('.highlight')}
-          </style>
-         </head>
-         <body>
-          {highlight(log_data, TextLexer(), formatter)}
-         </body>
-        </html>"""
-
-        return HTMLResponse(log_data_html)
+    @staticmethod
+    def get_live_log() -> HTMLResponse:
+        return HTMLResponse(LogTail)
 
     def process_api_update_spec(self, request: ApiRequest):
         SpecFilesRotator(self.config).backup_spec()

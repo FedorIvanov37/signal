@@ -219,11 +219,6 @@ class Api(QObject):
         def get_signal_info():
             return HTMLResponse(self.backend.get_signal_info())
 
-        @api.post(ApiUrl.VALIDATE_TRANSACTION, response_model=TransValidationErrors, tags=[EndpointTags.TOOLS])
-        @log_api_call
-        def validate_transaction(transaction: Transaction):
-            return self.backend.validate_transaction(transaction)
-
         """
         Read-only API endpoints. Read data from PYQt application
         
@@ -231,15 +226,27 @@ class Api(QObject):
         approach. Use for data-read functions only. In case of data modification, signals/slots required
         """
 
+        #
+        # Does not work
+        #
+        # @app.get("/favicon.ico", response_class=FileResponse)
+        # def favicon():
+        #     return FileResponse("common/doc/static/triforce_unsigned.png")
+        #
+
+        @api.get(ApiUrl.RAW_LOG, response_class=PlainTextResponse, tags=[EndpointTags.TOOLS])
+        def get_raw_log():
+            return PlainTextResponse(self.backend.get_raw_log())
+
         @api.get(ApiUrl.GET_CONNECTION, response_model=Connection, tags=[EndpointTags.CONNECTION])
         @log_api_call
         def get_connection():
             return self.backend.get_connection()
 
-        @api.get(ApiUrl.LOGFILE, response_class=HTMLResponse, tags=[EndpointTags.TOOLS])
+        @api.get(ApiUrl.LIVE_LOG, response_class=HTMLResponse, tags=[EndpointTags.TOOLS])
         @log_api_call
-        def get_log(plain_text: bool = False):
-            return self.backend.get_log(plain_text)
+        def get_live_log():
+            return self.backend.get_live_log()
 
         @api.get(ApiUrl.GET_SPECIFICATION, response_model=EpaySpecModel, tags=[EndpointTags.CONFIG])
         @log_api_call
@@ -325,6 +332,11 @@ class Api(QObject):
                 return self.backend.clean_transaction(transaction)
 
             return PlainTextResponse(self.backend.convert_to(transaction, to_format))
+
+        @api.post(ApiUrl.VALIDATE_TRANSACTION, response_model=TransValidationErrors, tags=[EndpointTags.TOOLS])
+        @log_api_call
+        def validate_transaction(transaction: Transaction):
+            return self.backend.validate_transaction(transaction)
 
         @app.get(ApiUrl.DOCUMENT, response_class=FileResponse, tags=[EndpointTags.DOCS])
         @log_api_call

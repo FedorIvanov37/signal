@@ -13,4 +13,3 @@ fastapi
 uvicorn
 loguru
 click
-pygments
