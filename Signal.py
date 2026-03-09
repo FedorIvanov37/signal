@@ -12,7 +12,7 @@
 #
 # E-com banking terminal GUI, CLI and API, used for direct interaction with banking system by ISO 8583 protocol
 #
-# Install dependencies from requirements.txt, then run the file by the following command - "python _signal.py"
+# Install dependencies from requirements.txt, then run the file by the following command - "python Signal.py"
 #
 # For test environment only! See details in README.md
 #

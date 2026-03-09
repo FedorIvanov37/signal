@@ -55,7 +55,7 @@ class Terminal(QObject):
         self.spec: EpaySpecification = EpaySpecification(TermFilesPath.SPECIFICATION)
         self.connect_interfaces()
 
-    def run(self) -> int:
+    def run_application(self) -> int:
         self.pyqt_application.setStyle(QStyleFactory.create("windowsvista"))
         status: int = self.pyqt_application.exec()
         return status
