@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1610</width>
-    <height>943</height>
+    <height>1099</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -161,10 +161,16 @@
     </item>
     <item row="3" column="0">
      <widget class="QTextEdit" name="LogArea">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>500</height>
+       </size>
+      </property>
       <property name="maximumSize">
        <size>
         <width>16777215</width>
-        <height>700</height>
+        <height>900</height>
        </size>
       </property>
       <property name="palette">

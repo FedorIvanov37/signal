@@ -66,6 +66,7 @@ class SignalApi(QObject):
         self.terminal.logger.add_api_handler()
         self.requests: dict[str, ApiRequest] = dict()
         self.parser = Parser(self.config)
+        self.generator = FieldsGenerator()
 
         # Connect all
 
@@ -260,7 +261,7 @@ class SignalApi(QObject):
         return self.config
 
     def convert_to(self, transaction: Transaction, to_format: DataConversionFormats):
-        transaction: Transaction = FieldsGenerator().set_generated_fields(transaction)
+        transaction: Transaction = self.generator.set_generated_fields(transaction)
 
         match to_format:
 

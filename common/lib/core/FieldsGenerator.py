@@ -11,6 +11,10 @@ class FieldsGenerator:
     def spec(self):
         return self._spec
 
+    @staticmethod
+    def generate_trans_id() -> str:
+        return f"{datetime.now():%Y%m%d_%H%M%S_%f}{randint(1000, 9999)}"
+
     def generate_original_data_elements(self, transaction: Transaction) -> str:
         try:
             mti: str = transaction.message_type
@@ -21,7 +25,7 @@ class FieldsGenerator:
 
         return f"{mti}{stan}{date}"
 
-    def set_trans_id(self, transaction: Transaction) -> Transaction:
+    def set_trans_id(self, transaction: Transaction) -> Transaction:  # TODO
         if not (de047 := transaction.data_fields.get(self.spec.FIELD_SET.FIELD_047_PROPRIETARY_FIELD)):
             return transaction
 
@@ -89,26 +93,3 @@ class FieldsGenerator:
         data = "".join(data)
 
         return data
-
-    def add_logical_fields(self, transaction: Transaction) -> Transaction:
-        transaction.is_request = self.spec.is_request(transaction)
-        transaction.is_reversal = self.spec.is_reversal(transaction.message_type)
-
-        if transaction.is_request:
-            return transaction
-
-        if transaction.data_fields.get(self.spec.FIELD_SET.FIELD_039_AUTHORIZATION_RESPONSE_CODE) == "00":
-            transaction.success = True
-
-        return transaction
-
-    def merge_trans_data(self, request: Transaction, response: Transaction):
-        for message in (request, response):
-            self.add_logical_fields(message)
-
-        request.utrnno = response.utrnno
-        request.success = response.success
-        request.resp_time_seconds = response.resp_time_seconds
-        response.generate_fields = request.generate_fields
-        response.is_keep_alive = request.is_keep_alive
-        response.is_reversal = request.is_reversal

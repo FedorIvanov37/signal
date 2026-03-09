@@ -177,3 +177,6 @@ class SvEmulator:
         sock.listen(1)
         conn, addr = sock.accept()
         return conn
+
+
+SvEmulator(IsoConfig()).run()

@@ -1,3 +1,4 @@
+from pathlib import Path
 from loguru import logger
 from typing import Callable
 from PyQt6.QtWidgets import QApplication, QStyleFactory
@@ -52,7 +53,7 @@ class Terminal(QObject):
         self.generator: FieldsGenerator = FieldsGenerator()
         self.logger: Logger = Logger(self.config)
         self.trans_queue: TransactionQueue = TransactionQueue(self.connector)
-        self.spec: EpaySpecification = EpaySpecification(TermFilesPath.SPECIFICATION)
+        self.spec: EpaySpecification = EpaySpecification(Path(TermFilesPath.SPECIFICATION))
         self.connect_interfaces()
 
     def run_application(self) -> int:
@@ -125,6 +126,9 @@ class Terminal(QObject):
             file.write(config.model_dump_json(indent=4))
 
     def send(self, transaction: Transaction) -> None:
+        if transaction.generate_fields:
+            transaction: Transaction = self.generator.set_generated_fields(transaction)
+
         self.trans_queue.put_transaction(transaction)
 
     def backup_spec(self):
@@ -267,7 +271,6 @@ class Terminal(QObject):
 
         try:
             transaction: Transaction = self.parser.parse_file(TermFilesPath.KEEP_ALIVE)
-            transaction: Transaction = self.generator.set_generated_fields(transaction)
 
         except Exception as transaction_building_error:
             logger.error(f"Keep alive transaction building error: {transaction_building_error}")

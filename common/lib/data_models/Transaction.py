@@ -1,8 +1,8 @@
+from random import randint
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from pydantic_core import PydanticCustomError
 from common.lib.core.EpaySpecification import EpaySpecification
-from common.lib.toolkit.generate_trans_id import generate_trans_id
 from common.lib.data_models.Enums import generated_field
 from common.lib.enums.MessageLength import MessageLength
 
@@ -11,8 +11,12 @@ spec: EpaySpecification = EpaySpecification()
 TypeFields = dict[str, str | dict]
 
 
+def generate_trans_id():
+    return f"{datetime.now():%Y%m%d_%H%M%S_%f}{randint(1000, 9999)}"
+
+
 class Transaction(BaseModel):
-    model_config: ConfigDict = ConfigDict(
+    model_config = ConfigDict(
         use_enum_values=True,
         validate_assignment=True
     )
@@ -109,7 +113,7 @@ class OldTransaction(BaseModel):
 
 
 class OldTransactionConfig(BaseModel):
-    model_config: ConfigDict = ConfigDict(
+    model_config = ConfigDict(
         use_enum_values=True
     )
 

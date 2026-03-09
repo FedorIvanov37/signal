@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtCore import QTimer
 from common.lib.core.EpaySpecification import EpaySpecification
-from common.lib.core.FieldsGenerator import FieldsGenerator
 from common.lib.data_models.Transaction import Transaction
 from common.lib.core.Parser import Parser
 from common.lib.interfaces.ConnectorInterface import ConnectionInterface
@@ -22,7 +21,6 @@ class TransactionQueue(QObject):
     def __init__(self, connector: ConnectionInterface):
         QObject.__init__(self)
         self.connector = connector
-        self.generator: FieldsGenerator = FieldsGenerator()
         self.timers: dict[str, QTimer] = {}
         self.queue = deque(maxlen=10000)
         self.ready_to_send.connect(self.connector.send_transaction_data)
@@ -108,8 +106,31 @@ class TransactionQueue(QObject):
         response.utrnno = Parser.get_field_data(response.data_fields, self.spec.utrnno_path)
         response.resp_time_seconds = self.stop_transaction_timer(response)
         request = self.get_transaction(response.match_id)
-        self.generator.merge_trans_data(request, response)
+        self.merge_trans_data(request, response)
         self.incoming_transaction.emit(response)
+
+    def add_logical_fields(self, transaction: Transaction) -> Transaction:
+        transaction.is_request = self.spec.is_request(transaction)
+        transaction.is_reversal = self.spec.is_reversal(transaction.message_type)
+
+        if transaction.is_request:
+            return transaction
+
+        if transaction.data_fields.get(self.spec.FIELD_SET.FIELD_039_AUTHORIZATION_RESPONSE_CODE) == "00":
+            transaction.success = True
+
+        return transaction
+
+    def merge_trans_data(self, request: Transaction, response: Transaction):
+        for message in (request, response):
+            self.add_logical_fields(message)
+
+        request.utrnno = response.utrnno
+        request.success = response.success
+        request.resp_time_seconds = response.resp_time_seconds
+        response.generate_fields = request.generate_fields
+        response.is_keep_alive = request.is_keep_alive
+        response.is_reversal = request.is_reversal
 
     def start_transaction_timer(self, transaction: Transaction, timeout=60):
         timer: QTimer = QTimer()

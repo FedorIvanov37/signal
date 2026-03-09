@@ -4,7 +4,6 @@ from loguru import logger
 from PyQt6.QtGui import QUndoStack
 from PyQt6.QtCore import pyqtSignal, QModelIndex, Qt
 from PyQt6.QtWidgets import QTreeWidgetItem, QItemDelegate, QLineEdit
-from common.lib.toolkit.generate_trans_id import generate_trans_id
 from common.lib.core.EpaySpecification import EpaySpecification
 from common.lib.core.FieldsGenerator import FieldsGenerator
 from common.lib.core.Parser import Parser
@@ -98,6 +97,7 @@ class JsonView(TreeView):
         self._config: Config = config
         self.delegate = JsonView.Delegate(self, self.undo_stack)
         self.validator = ItemsValidator(self._config)
+        self.generator = FieldsGenerator()
         self.parser = Parser(self._config)
         self._setup()
 
@@ -292,12 +292,12 @@ class JsonView(TreeView):
             return
 
         if item.is_trans_id:
-            item.field_data = generate_trans_id()
+            item.field_data = self.generator.generate_trans_id()
             self.trans_id_set.emit()
             item.set_length()
             return
 
-        item.field_data = FieldsGenerator.generate_field(item.field_number, self.config.fields.max_amount)
+        item.field_data = self.generator.generate_field(item.field_number, self.config.fields.max_amount)
 
     def process_change_property(self, item: FieldItem) -> None:
         try:
@@ -329,7 +329,7 @@ class JsonView(TreeView):
             return
 
         if field_item.checkbox_checked(CheckBoxesDefinition.GENERATE):
-            trans_id = generate_trans_id()
+            trans_id = self.generator.generate_trans_id()
             self.set_trans_id(trans_id)
             return trans_id
 
@@ -703,7 +703,7 @@ class JsonView(TreeView):
 
         return True
 
-    def parse_transaction(self, transaction: Transaction, to_generate_trans_id=True) -> None:
+    def parse_transaction(self, transaction: Transaction, generate_trans_id=True) -> None:
         for item in self.root.get_children():
             if not item.checkbox_checked(CheckBoxesDefinition.JSON_MODE):
                 continue
@@ -726,7 +726,7 @@ class JsonView(TreeView):
             self.set_flat_mode(item)
 
         if trans_id_item := self.get_trans_id_item():
-            trans_id_item.set_checkbox(to_generate_trans_id)
+            trans_id_item.set_checkbox(generate_trans_id)
 
         self.set_all_items_length()
 

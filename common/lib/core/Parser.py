@@ -5,7 +5,6 @@ from pathlib import Path
 from pydantic import FilePath
 from binascii import hexlify, unhexlify, b2a_hex
 from configparser import ConfigParser, NoSectionError, NoOptionError
-from common.lib.toolkit.generate_trans_id import generate_trans_id
 from common.lib.toolkit.toolkit import mask_secret, mask_pan
 from common.lib.core.EpaySpecification import EpaySpecification
 from common.lib.core.Bitmap import Bitmap
@@ -13,7 +12,6 @@ from common.lib.data_models.Config import Config
 from common.lib.data_models.EpaySpecificationModel import IsoField, FieldSet, RawFieldSet
 from common.lib.data_models.Transaction import TypeFields, Transaction
 from common.lib.core.JsonConverter import JsonConverter
-from common.lib.core.FieldsGenerator import FieldsGenerator
 from common.lib.enums.DataFormats import DataFormats
 from common.lib.enums.DumpDefinition import DumpLength, DumpFillers
 from common.lib.enums.IniMessageDefinition import IniMessageDefinition
@@ -40,7 +38,6 @@ class Parser:
 
     def __init__(self, config: Config):
         self.config: Config = config
-        self.generator = FieldsGenerator()
 
     @staticmethod
     def parse_complex_fields(transaction: Transaction, split: bool = False) -> Transaction:
@@ -479,9 +476,6 @@ class Parser:
         if not transaction:
             raise TypeError("Can't parse incoming file using known formats")
 
-        if transaction.generate_fields:
-            self.generator.set_generated_fields(transaction)
-
         return transaction
 
     @staticmethod
@@ -490,8 +484,6 @@ class Parser:
 
         with open(filename) as json_file:
             transaction: Transaction = Transaction.model_validate_json(json_file.read())
-
-        transaction.trans_id = generate_trans_id()
 
         return transaction
 
