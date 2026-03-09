@@ -12,14 +12,14 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class Ui_SettingsWindow(object):
     def setupUi(self, SettingsWindow):
         SettingsWindow.setObjectName("SettingsWindow")
-        SettingsWindow.resize(420, 600)
+        SettingsWindow.resize(430, 600)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(SettingsWindow.sizePolicy().hasHeightForWidth())
         SettingsWindow.setSizePolicy(sizePolicy)
-        SettingsWindow.setMinimumSize(QtCore.QSize(420, 600))
-        SettingsWindow.setMaximumSize(QtCore.QSize(420, 600))
+        SettingsWindow.setMinimumSize(QtCore.QSize(430, 600))
+        SettingsWindow.setMaximumSize(QtCore.QSize(430, 600))
         self.MainTabs = QtWidgets.QTabWidget(parent=SettingsWindow)
         self.MainTabs.setGeometry(QtCore.QRect(9, 9, 401, 573))
         self.MainTabs.setObjectName("MainTabs")
@@ -527,7 +527,7 @@ class Ui_SettingsWindow(object):
         self.MainTabs.addTab(self.About, "")
 
         self.retranslateUi(SettingsWindow)
-        self.MainTabs.setCurrentIndex(3)
+        self.MainTabs.setCurrentIndex(4)
         QtCore.QMetaObject.connectSlotsByName(SettingsWindow)
 
     def retranslateUi(self, SettingsWindow):
