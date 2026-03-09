@@ -12,7 +12,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1610, 943)
+        MainWindow.resize(1610, 1099)
         MainWindow.setMinimumSize(QtCore.QSize(1610, 650))
         MainWindow.setMaximumSize(QtCore.QSize(16777215, 16777215))
         MainWindow.setMouseTracking(False)
@@ -75,7 +75,8 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addItem(spacerItem1)
         self.gridLayout.addLayout(self.horizontalLayout, 2, 0, 1, 1)
         self.LogArea = QtWidgets.QTextEdit(parent=self.centralwidget)
-        self.LogArea.setMaximumSize(QtCore.QSize(16777215, 700))
+        self.LogArea.setMinimumSize(QtCore.QSize(0, 500))
+        self.LogArea.setMaximumSize(QtCore.QSize(16777215, 900))
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
         brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
