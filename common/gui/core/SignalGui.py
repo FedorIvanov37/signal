@@ -650,8 +650,10 @@ class SignalGui(Terminal):
 
     @staticmethod
     def get_input_filename(multiple_files=False) -> list[str] | str | None:
+        any_file_mask = "Any (*.*)"
+
         file_name_filters = [f"{data_format} (*.{data_format.lower()})" for data_format in InputFilesFormat]
-        file_name_filters.append("Any (*.*)")
+        file_name_filters.append(any_file_mask)
         file_name_filter = ";;".join(file_name_filters)
 
         file_dialog = QFileDialog()
@@ -662,15 +664,16 @@ class SignalGui(Terminal):
             file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
             file_function = file_dialog.getOpenFileName
 
-        file_data = file_function(filter=file_name_filter, initialFilter=InputFilesFormat.JSON)
+        file_data = file_function(filter=file_name_filter, initialFilter=any_file_mask)
 
         if not (file_name := file_data[int()]):
             return
 
         return file_name
 
-    def save_transaction_to_file(self, mode: ButtonActions.SaveMenuActions | None = None,
-                                 file_format: OutputFilesFormat | None = None) -> None:
+    def save_transaction_to_file(
+            self, mode: ButtonActions.SaveMenuActions | None = None, file_format: OutputFilesFormat | None = None
+    ) -> None:
 
         if not file_format:
             file_format = OutputFilesFormat.JSON

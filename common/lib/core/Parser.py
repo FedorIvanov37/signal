@@ -589,4 +589,7 @@ class Parser:
         pre_message = unhexlify(mti) + bitmap + unhexlify(string)
         transaction: Transaction = self.parse_dump(pre_message)
 
+        if self.spec.is_request(transaction):
+            transaction.generate_fields = self.spec.get_fields_to_generate()
+
         return transaction
