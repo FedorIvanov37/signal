@@ -250,7 +250,7 @@ class TabView(QTabWidget):
         self.json_view.parse_fields(fields)
 
     def set_transaction_fields(self, transaction: Transaction, generate_trans_id: bool = True) -> None:
-        self.json_view.parse_transaction(transaction, to_generate_trans_id=generate_trans_id)
+        self.json_view.parse_transaction(transaction, generate_trans_id=generate_trans_id)
         self.json_view.expandAll()
         self.json_view.resize_all()
 

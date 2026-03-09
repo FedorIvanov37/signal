@@ -203,9 +203,6 @@ class SignalCli(Terminal):
         if self.config.fields.send_internal_id:
             transaction: Transaction = self.generator.set_trans_id(transaction)
 
-        if transaction.generate_fields:
-            transaction: Transaction = self.generator.set_generated_fields(transaction)
-
         validation_conditions = (
             self.config.validation.validation_enabled,
             self.config.validation.validate_outgoing,

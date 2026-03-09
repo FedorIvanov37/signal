@@ -11,6 +11,10 @@ class FieldsGenerator:
     def spec(self):
         return self._spec
 
+    @staticmethod
+    def generate_trans_id() -> str:
+        return f"{datetime.now():%Y%m%d_%H%M%S_%f}{randint(1000, 9999)}"
+
     def generate_original_data_elements(self, transaction: Transaction) -> str:
         try:
             mti: str = transaction.message_type
@@ -21,7 +25,7 @@ class FieldsGenerator:
 
         return f"{mti}{stan}{date}"
 
-    def set_trans_id(self, transaction: Transaction) -> Transaction:
+    def set_trans_id(self, transaction: Transaction) -> Transaction:  # TODO
         if not (de047 := transaction.data_fields.get(self.spec.FIELD_SET.FIELD_047_PROPRIETARY_FIELD)):
             return transaction
 
@@ -89,5 +93,3 @@ class FieldsGenerator:
         data = "".join(data)
 
         return data
-
-
