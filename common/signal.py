@@ -24,7 +24,7 @@ from common.lib.data_models.Config import Config
 
 
 __author__ = "Fedor Ivanov"
-__version__ = "v0.19.1"
+__version__ = "v0.20"
 
 error_message = """
 The file common/Signal.py should be imported from the main working directory, the direct run has no effect
