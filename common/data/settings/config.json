@@ -11,7 +11,7 @@
         "process_default_dump": true,
         "connect_on_startup": true,
         "load_remote_spec": false,
-        "show_license_dialog": true,
+        "show_license_dialog": false,
         "run_api": true
     },
     "debug": {

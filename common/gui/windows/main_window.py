@@ -3,7 +3,7 @@ from ctypes import windll
 from itertools import batched
 from PyQt6.QtNetwork import QTcpSocket
 from PyQt6.QtCore import pyqtSignal, Qt
-from PyQt6.QtWidgets import QMainWindow, QMenu, QPushButton
+from PyQt6.QtWidgets import QMainWindow, QMenu, QPushButton, QSizePolicy
 from common.lib.enums.MessageLength import MessageLength
 from common.lib.enums.DataFormats import OutputFilesFormat
 from common.lib.enums import KeepAlive
@@ -128,6 +128,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self.set_connection_status(QTcpSocket.SocketState.UnconnectedState)
         self.ButtonsLayout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.set_buttons_menu()
+        self._tab_view.setMaximumHeight(520)
         self.TabViewLayout.addWidget(self._tab_view)
         self.process_api_mode_change(ApiModes.NOT_RUN)
 
