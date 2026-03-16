@@ -1,5 +1,6 @@
 from sys import stdout
 from loguru import logger
+from functools import wraps
 from warnings import filterwarnings
 from logging import getLogger, NullHandler, CRITICAL
 from common.api.core.ApiLogHandler import ApiLogHandler
@@ -12,6 +13,21 @@ from logfire import (
     log as logfire_log,
     LogfireLoggingHandler
 )
+
+
+def process_notset_log_level(function):
+
+    # Remove all the handlers and stop processing when debug level is NOTSET
+
+    @wraps(function)
+    def wrapper(self, *args, **kwargs):
+
+        if self.config.debug.level != LogDefinition.DebugLevels.NOTSET:
+            return function(self, *args, **kwargs)
+
+        return self.remove()
+
+    return wrapper
 
 
 class Logger:
@@ -32,12 +48,9 @@ class Logger:
         self.config = config
         self.setup()
 
+    @process_notset_log_level
     def setup(self, wireless_handler=None, filename=TermFilesPath.LOG_FILE_NAME):
         self.remove()
-
-        if self.config.debug.level == LogDefinition.DebugLevels.NOTSET:
-            return
-
         self.add_file_handler(filename=filename)
         self.add_logfire_handler()
         self.add_api_handler()
@@ -49,6 +62,7 @@ class Logger:
     def remove():
         logger.remove()
 
+    @process_notset_log_level
     def add_api_handler(self):
         handler = ApiLogHandler()
 
@@ -58,10 +72,8 @@ class Logger:
             log.propagate = False
             log.setLevel(self.config.debug.level)
 
+    @process_notset_log_level
     def add_logfire_handler(self):
-
-        if self.config.debug.level == LogDefinition.DebugLevels.NOTSET:
-            return
 
         if not self.config.debug.logfire_integration:
             return
@@ -94,10 +106,8 @@ class Logger:
             level=self.config.debug.level,
         )
 
+    @process_notset_log_level
     def add_file_handler(self, filename=TermFilesPath.LOG_FILE_NAME):
-
-        if self.config.debug.level == LogDefinition.DebugLevels.NOTSET:
-            return
 
         logger.add(
             filename,
@@ -110,10 +120,8 @@ class Logger:
             retention=self.config.debug.backup_storage_depth if self.config.debug.backup_storage_depth_exists else 0,
         )
 
+    @process_notset_log_level
     def add_stdout_handler(self):
-
-        if self.config.debug.level == LogDefinition.DebugLevels.NOTSET:
-            return
 
         logger.add(
             stdout,
@@ -123,10 +131,8 @@ class Logger:
             diagnose=False,
         )
 
+    @process_notset_log_level
     def add_wireless_handler(self, wireless_handler) -> int:
-
-        if self.config.debug.level == LogDefinition.DebugLevels.NOTSET:
-            return
 
         handler_id = logger.add(
             wireless_handler,

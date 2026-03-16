@@ -15,7 +15,7 @@
         "run_api": true
     },
     "debug": {
-        "level": "DEBUG",
+        "level": "INFO",
         "clear_log": true,
         "parse_subfields": true,
         "backup_storage_depth_exists": true,
