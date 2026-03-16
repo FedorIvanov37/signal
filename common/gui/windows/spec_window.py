@@ -1,6 +1,7 @@
 from loguru import logger
 from copy import deepcopy
 from pydantic import ValidationError
+from contextlib import suppress
 from PyQt6.QtGui import QCloseEvent, QKeyEvent, QKeySequence, QShortcut
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QFileDialog, QMenu, QDialog, QPushButton, QApplication
@@ -377,8 +378,11 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             if isinstance(spec_error, ValidationError):
                 logger.error(spec_error)
 
-            logger.remove(self.handler_id)
+            with suppress(Exception):
+                logger.remove(self.handler_id)
+
             close_event.accept()
+
             return
 
         if current_spec == self._clean_spec:

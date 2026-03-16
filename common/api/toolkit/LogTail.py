@@ -40,7 +40,7 @@ LogTail: str = """
                 }
 
                 #log {
-                    white-space: pre-wrap;
+                    white-space: pre;
                     padding: 12px;
                     margin: 0;
                     line-height: 1.35;

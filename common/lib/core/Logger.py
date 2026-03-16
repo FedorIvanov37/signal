@@ -1,10 +1,17 @@
 from sys import stdout
 from loguru import logger
-from logging import getLogger
+from warnings import filterwarnings
+from logging import getLogger, NullHandler, CRITICAL
 from common.api.core.ApiLogHandler import ApiLogHandler
 from common.lib.enums.TermFilesPath import TermFilesPath
 from common.lib.data_models.Config import Config
 from common.lib.constants import LogDefinition
+
+from logfire import (
+    configure as configure_logfire,
+    log as logfire_log,
+    LogfireLoggingHandler
+)
 
 
 class Logger:
@@ -25,9 +32,18 @@ class Logger:
         self.config = config
         self.setup()
 
-    def setup(self):
+    def setup(self, wireless_handler=None, filename=TermFilesPath.LOG_FILE_NAME):
         self.remove()
-        self.add_file_handler()
+
+        if self.config.debug.level == LogDefinition.DebugLevels.NOTSET:
+            return
+
+        self.add_file_handler(filename=filename)
+        self.add_logfire_handler()
+        self.add_api_handler()
+
+        if wireless_handler:
+            self.add_wireless_handler(wireless_handler)
 
     @staticmethod
     def remove():
@@ -42,7 +58,47 @@ class Logger:
             log.propagate = False
             log.setLevel(self.config.debug.level)
 
+    def add_logfire_handler(self):
+
+        if self.config.debug.level == LogDefinition.DebugLevels.NOTSET:
+            return
+
+        if not self.config.debug.logfire_integration:
+            return
+
+        try:
+            filterwarnings(
+                "ignore",
+                message=r"Logfire API is unreachable, you may have trouble sending data\..*",
+                category=UserWarning,
+            )
+
+            loggers = [
+                "opentelemetry",
+                "opentelemetry.exporter.otlp",
+                "opentelemetry.sdk",
+                "logfire._internal.exporters.wrapper"
+            ]
+
+            for logger_name in loggers:
+                getLogger(logger_name).setLevel(CRITICAL)
+
+            configure_logfire(console=False)
+
+        except Exception:
+            return
+
+        logger.add(
+            LogfireLoggingHandler(fallback=NullHandler()),
+            format=self.format,
+            level=self.config.debug.level,
+        )
+
     def add_file_handler(self, filename=TermFilesPath.LOG_FILE_NAME):
+
+        if self.config.debug.level == LogDefinition.DebugLevels.NOTSET:
+            return
+
         logger.add(
             filename,
             format=self.format,
@@ -55,6 +111,10 @@ class Logger:
         )
 
     def add_stdout_handler(self):
+
+        if self.config.debug.level == LogDefinition.DebugLevels.NOTSET:
+            return
+
         logger.add(
             stdout,
             format=self.format,
@@ -64,6 +124,10 @@ class Logger:
         )
 
     def add_wireless_handler(self, wireless_handler) -> int:
+
+        if self.config.debug.level == LogDefinition.DebugLevels.NOTSET:
+            return
+
         handler_id = logger.add(
             wireless_handler,
             format=LogDefinition.DISPLAY_DATE_FORMAT,

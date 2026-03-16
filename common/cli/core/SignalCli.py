@@ -70,9 +70,7 @@ class SignalCli(Terminal):
         if not self._cli_config.no_print:
             print(f"{TextConstants.HELLO_MESSAGE}\n")
 
-        if self._cli_config.log_file != TermFilesPath.LOG_FILE_NAME:
-            self.logger.remove()
-            self.logger.add_file_handler(filename=self._cli_config.log_file)
+        self.logger.setup(filename=self._cli_config.log_file)
 
         if not self._cli_config.no_print:
             self.logger.add_stdout_handler()

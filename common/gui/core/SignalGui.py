@@ -283,7 +283,8 @@ class SignalGui(Terminal):
         spec_window.open_spec_backup_dir.connect(SignalGui.open_spec_backup_dir)
         spec_window.copy_specification.connect(lambda: self.copy_specification(spec_window))
         spec_window.exec()
-        self.logger.add_wireless_handler(self.wireless_handler)
+
+        self.logger.setup(wireless_handler=self.wireless_handler)
 
         if self.config.fields.hide_secrets:
             self.window.json_view.hide_secrets()
@@ -356,8 +357,7 @@ class SignalGui(Terminal):
         Terminal.process_config_change(self, old_config)
 
         if self.config.debug.level != old_config.debug.level:
-            self.logger.remove()
-            self.logger.add_wireless_handler(self.wireless_handler)
+            self.logger.setup(wireless_handler=self.wireless_handler)
 
         self.window.json_view.enable_json_mode_checkboxes(enable=self.config.validation.validate_window)
 
