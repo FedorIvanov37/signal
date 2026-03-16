@@ -15,13 +15,14 @@
         "run_api": true
     },
     "debug": {
-        "level": "INFO",
+        "level": "DEBUG",
         "clear_log": true,
         "parse_subfields": true,
         "backup_storage_depth_exists": true,
         "backup_storage_depth": 10,
         "reduce_keep_alive": true,
-        "print_description": true
+        "print_description": true,
+        "logfire_integration": true
     },
     "validation": {
         "validation_enabled": true,
