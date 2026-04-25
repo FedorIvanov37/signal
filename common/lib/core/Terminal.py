@@ -57,9 +57,7 @@ class Terminal(QObject):
         self.connect_interfaces()
 
     def run_application(self) -> int:
-        self.pyqt_application.setStyle(QStyleFactory.create("windowsvista"))
-        status: int = self.pyqt_application.exec()
-        return status
+        return self.pyqt_application.exec()
 
     def connect_interfaces(self) -> None:
         self.connector.errorOccurred.connect(self.socket_error)

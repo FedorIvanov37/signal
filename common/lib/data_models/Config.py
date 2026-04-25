@@ -1,6 +1,7 @@
 from pydantic import BaseModel, field_validator
 from common.lib.enums.Validation import ValidationMode
 from common.lib.decorators.json_file_model import json_file_model
+from common.lib.decorators.set_default_config_file import set_default_config_file
 
 
 class Host(BaseModel):
@@ -91,11 +92,12 @@ class ApiModel(BaseModel):
         return val
 
 
+@set_default_config_file
 @json_file_model
 class Config(BaseModel):
-    host: Host
-    terminal: Terminal
-    debug: Debug
+    host: Host = Host()
+    terminal: Terminal = Terminal()
+    debug: Debug = Debug()
     validation: Validation = None
     fields: Fields | None = None
     specification: Specification = Specification()

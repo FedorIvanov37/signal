@@ -7,7 +7,7 @@ from loguru import logger
 from functools import wraps
 from pydantic import ValidationError
 from webbrowser import open as open_url
-from PyQt6.QtWidgets import QApplication, QFileDialog
+from PyQt6.QtWidgets import QApplication, QFileDialog, QStyleFactory
 from PyQt6.QtNetwork import QTcpSocket
 from PyQt6.QtCore import pyqtSignal, QTimer, QDir, QThreadPool
 from common.gui.undo_commands.SetDisabledCommand import SetDisabledCommand
@@ -110,6 +110,7 @@ class SignalGui(Terminal):
         self._run_timer.setSingleShot(True)
         self._run_timer.start(int())
         self.logger.add_wireless_handler(self.wireless_handler)
+        self.pyqt_application.setStyle(QStyleFactory.create("windowsvista"))
 
     def on_startup(self) -> None:  # Runs on startup to make all the preparation activity, then shows MainWindow
         self.show_license_dialog()

@@ -44,17 +44,17 @@ def json_file_model(cls: T):
     original_init = cls.__init__
 
     @wraps(original_init)
-    def __init__(self, json_path: str | Path | None = None, **data: Any) -> None:
+    def __init__(self, json_path: str | Path | None = None, **fields_data: Any) -> None:
 
-        if json_path is not None and data:
+        if json_path is not None and fields_data:
             raise ValueError("Use argument json_path or model fields, not both")
 
         if json_path is not None:
-            json_text = Path(json_path).read_text(encoding="utf-8")
-            parsed = cls.model_validate_json(json_text)
-            data = parsed.model_dump()
+            raw_data = Path(json_path).read_text(encoding="utf-8")
+            parsed_data = cls.model_validate_json(raw_data)
+            fields_data = parsed_data.model_dump()
 
-        original_init(self, **data)
+        original_init(self, **fields_data)
 
     cls.__init__ = __init__
 

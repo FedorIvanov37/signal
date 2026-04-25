@@ -564,29 +564,41 @@ class Parser:
 
         return fields
 
-    def _parse_dump_file(self, filename: str) -> Transaction:
+    def parse_dump_text(self, dump_text: str) -> Transaction:
+        string: str = self.clean_dump(dump_text)
+        transaction: Transaction = self.parse_dump(string)
+        return transaction
+
+    @staticmethod
+    def clean_dump(dump_text: str) -> str:
         string = str()
 
-        with open(filename) as file:
-            for line in file.readlines():
-                if not line.replace(" ", "").replace("\n", ""):
-                    continue
+        for line in dump_text.splitlines():
+            if not line.replace(" ", "").replace("\n", ""):
+                continue
 
-                try:
-                    line = line.split()[0]
-                except IndexError:
-                    raise ValueError("Unexpected result of data parsing - no data")
+            try:
+                line = line.split()[0]
+            except IndexError:
+                raise ValueError("Unexpected result of data parsing - no data")
 
-                line = line.replace(DumpFillers.SEPARATOR, "")
-                string += line
+            line = line.replace(DumpFillers.SEPARATOR, "")
+
+            string += line
 
         mti = string[:MessageLength.MESSAGE_TYPE_LENGTH_HEX]
         string = string[len(mti):]
         bitmap = string[:MessageLength.FIRST_BITMAP_LENGTH_HEX]
         string = string[len(bitmap):]
         bitmap = Bitmap(bitmap, hex).get_bitmap(bytes)
-        pre_message = unhexlify(mti) + bitmap + unhexlify(string)
-        transaction: Transaction = self.parse_dump(pre_message)
+        clean_string = unhexlify(mti) + bitmap + unhexlify(string)
+
+        return clean_string
+
+    def _parse_dump_file(self, filename: str) -> Transaction:
+        raw_data = Path(filename).read_text()
+        string = self.clean_dump(raw_data)
+        transaction: Transaction = self.parse_dump(string)
 
         if self.spec.is_request(transaction):
             transaction.generate_fields = self.spec.get_fields_to_generate()
