@@ -350,8 +350,7 @@ class SignalCli(Terminal):
             return license_info
 
         try:
-            with open(TermFilesPath.LICENSE_INFO) as license_json:
-                license_info = LicenseInfo.model_validate_json(license_json.read())
+            license_info = LicenseInfo(TermFilesPath.LICENSE_INFO)
 
         except Exception:
             return license_info

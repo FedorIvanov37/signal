@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field, field_validator, PositiveInt
 from typing import Literal
+from pydantic import BaseModel, Field, field_validator, PositiveInt
+from common.lib.decorators.json_file_model import json_file_model
 
 
 class Currency(BaseModel):
@@ -27,5 +28,6 @@ class Currency(BaseModel):
         return val
 
 
+@json_file_model
 class Currencies(BaseModel):
     currencies: list[Currency] = list()

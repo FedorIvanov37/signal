@@ -10,8 +10,7 @@ from common.lib.constants import LogDefinition
 
 from logfire import (
     configure as configure_logfire,
-    log as logfire_log,
-    LogfireLoggingHandler
+    LogfireLoggingHandler,
 )
 
 
@@ -73,8 +72,9 @@ class Logger:
             log.setLevel(self.config.debug.level)
 
     @process_notset_log_level
-    def add_logfire_handler(self):
+    def add_logfire_handler(self):  # Experimental feature. See more here: http://logfire.pydantic.dev
 
+        # Manually set value in common/data/settings/config.json file to enable/disable the logfire integration
         if not self.config.debug.logfire_integration:
             return
 

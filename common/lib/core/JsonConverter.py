@@ -18,8 +18,7 @@ class JsonConverter:
 
     @staticmethod
     def convert_json(filename: str):
-        with open(filename) as json_file:
-            old_transaction = OldTransactionModel.model_validate_json(json_file.read())
+        old_transaction: OldTransactionModel = OldTransactionModel(filename)
 
         transaction = Transaction(
             trans_id=old_transaction.transaction.id,
@@ -38,8 +37,7 @@ class JsonConverter:
     def get_transaction_model(filename):  # Gues the file format
 
         try:  # Try to parse in old style
-            with open(filename) as json_file:
-                OldTransactionModel.model_validate_json(json_file.read())
+            OldTransactionModel(filename)
 
             return OldTransactionModel
 

@@ -75,9 +75,7 @@ class SvEmulator:
         self._stop = stop
 
     def __init__(self, iso_config: IsoConfig):
-        with open(TermFilesPath.CONFIG) as json_file:
-            self.config: Config = Config.model_validate_json(json_file.read())
-
+        self.config: Config = Config(TermFilesPath.CONFIG)
         self.parser: Parser = Parser(self.config)
         self.spec: EpaySpecification = EpaySpecification()
         self.iso_config = iso_config

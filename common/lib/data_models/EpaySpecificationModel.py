@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from common.lib.data_models.Types import FieldPath
+from common.lib.decorators.json_file_model import json_file_model
 from typing import ForwardRef
 from enum import Enum
 
@@ -120,6 +121,7 @@ class IsoField(BaseModel):
         return val
 
 
+@json_file_model
 class EpaySpecModel(BaseModel):
     name: str | None = "ISO-8583 E-pay Specification"
     mti: list[Mti] = []

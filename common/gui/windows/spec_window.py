@@ -342,8 +342,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         specification: EpaySpecModel | None = None
 
         try:
-            with open(filename) as json_file:
-                specification: EpaySpecModel = EpaySpecModel.model_validate_json(json_file.read())
+            specification: EpaySpecModel = EpaySpecModel(filename)
 
         except ValidationError as validation_error:
             error_text = str(validation_error)

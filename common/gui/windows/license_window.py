@@ -38,8 +38,7 @@ class LicenseWindow(Ui_LicenseWindow, QDialog):
         self.CheckBoxAgreement.setFocus()
 
         try:
-            with open(TermFilesPath.LICENSE_INFO) as json_file:
-                self._license_info: LicenseInfo = LicenseInfo.model_validate_json(json_file.read())
+            self._license_info: LicenseInfo = LicenseInfo(TermFilesPath.LICENSE_INFO)
 
         except (ValueError, ValidationError, JSONDecodeError, FileNotFoundError):
             self._license_info: LicenseInfo = LicenseInfo()

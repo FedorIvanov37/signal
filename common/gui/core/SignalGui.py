@@ -774,6 +774,7 @@ class SignalGui(Terminal):
     def set_clipboard_text(data: str = str()) -> None:
         QApplication.clipboard().setText(data)
 
+    @set_json_view_focus
     def show_reversal_window(self) -> str | None:
         reversible_transactions_list: list[Transaction] = self.trans_queue.get_reversible_transactions()
         reversible_transactions_list.sort(key=lambda transaction: transaction.trans_id, reverse=True)
@@ -781,15 +782,16 @@ class SignalGui(Terminal):
         reversal_window: ReversalWindow = ReversalWindow(reversible_transactions_list)
         accepted: int = reversal_window.exec()
 
-        if bool(accepted):
-            try:
-                return reversal_window.reversal_id
+        if not bool(accepted):
+            logger.warning("Reversal sending is cancelled")
+            return ""
 
-            except AttributeError:
-                logger.error("Cannot create reversal. Wrong or empty transaction ID")
-                return ""
+        try:
+            return reversal_window.reversal_id
 
-        logger.warning("Reversal sending is cancelled")
+        except AttributeError:
+            logger.error("Cannot create reversal. Wrong or empty transaction ID")
+            return ""
 
     def copy_current_field(self):
         if not (field_data := self.window.tab_view.get_current_field_data()):

@@ -212,9 +212,7 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
             logger.debug(f"Config file dropped {config_file}")
 
             try:
-                with open(config_file) as json_file:
-                    config: Config = Config.model_validate_json(json_file.read())
-
+                config: Config = Config(config_file)
             except Exception as config_parsing_error:
                 logger.error(f"Config parsing_error: {config_parsing_error}")
                 continue
@@ -268,10 +266,9 @@ class SettingsWindow(Ui_SettingsWindow, QDialog):
         self.player.playbackStateChanged.connect(self.record_finished)
 
     def set_default_settings(self) -> None:
-        try:
-            with open(TermFilesPath.DEFAULT_CONFIG) as json_file:
-                default_config: Config = Config.model_validate_json(json_file.read())
 
+        try:
+            default_config: Config = Config(TermFilesPath.DEFAULT_CONFIG)
         except Exception as parsing_error:
             logger.error(parsing_error)
             return

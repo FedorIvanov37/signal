@@ -5,6 +5,7 @@ from pydantic_core import PydanticCustomError
 from common.lib.core.EpaySpecification import EpaySpecification
 from common.lib.data_models.Enums import generated_field
 from common.lib.enums.MessageLength import MessageLength
+from common.lib.decorators.json_file_model import json_file_model
 
 
 spec: EpaySpecification = EpaySpecification()
@@ -15,6 +16,7 @@ def generate_trans_id():
     return f"{datetime.now():%Y%m%d_%H%M%S_%f}{randint(1000, 9999)}"
 
 
+@json_file_model
 class Transaction(BaseModel):
     model_config = ConfigDict(
         use_enum_values=True,
@@ -105,6 +107,7 @@ class Transaction(BaseModel):
         return fields
 
 
+@json_file_model
 class OldTransaction(BaseModel):
     id: str = Field(default_factory=generate_trans_id)
     original_id: str = ""
@@ -112,6 +115,7 @@ class OldTransaction(BaseModel):
     fields: TypeFields = {}
 
 
+@json_file_model
 class OldTransactionConfig(BaseModel):
     model_config = ConfigDict(
         use_enum_values=True
@@ -126,6 +130,7 @@ class OldTransactionConfig(BaseModel):
         return [str(field) for field in val]
 
 
+@json_file_model
 class OldTransactionModel(BaseModel):
     config: OldTransactionConfig
     transaction: OldTransaction

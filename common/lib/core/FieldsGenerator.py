@@ -21,7 +21,7 @@ class FieldsGenerator:
             stan: str = transaction.data_fields[self.spec.FIELD_SET.FIELD_011_SYSTEM_TRACE_AUDIT_NUMBER]
             date: str = transaction.data_fields[self.spec.FIELD_SET.FIELD_007_TRANSMISSION_DATE_AND_TIME]
         except KeyError:
-            raise ValueError("Original data elements generating error!")
+            raise ValueError(f"Cannot build DE90 for reversal. Lost DE7, DE11 or MTI of the original transaction")
 
         return f"{mti}{stan}{date}"
 
@@ -46,12 +46,15 @@ class FieldsGenerator:
 
         return transaction
 
-    def set_generated_fields(self, transaction: Transaction) -> Transaction:
+    @staticmethod
+    def set_generated_fields(transaction: Transaction) -> Transaction:
+        spec: EpaySpecification = EpaySpecification()
+
         for field in transaction.generate_fields:
-            if not self.spec.can_be_generated([field]):
+            if not spec.can_be_generated([field]):
                 continue
 
-            transaction.data_fields[field] = self.generate_field(field, max_amount=transaction.max_amount)
+            transaction.data_fields[field] = FieldsGenerator.generate_field(field, max_amount=transaction.max_amount)
 
         transaction.data_fields = {
             field: transaction.data_fields[field] for field in sorted(transaction.data_fields, key=int)

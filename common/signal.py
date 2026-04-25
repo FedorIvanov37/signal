@@ -49,12 +49,6 @@ class SignalRuntime:
             QLoggingCategory.setFilterRules("qt.multimedia.*=false\nqt.multimedia.ffmpeg.*=false")
 
     @staticmethod
-    def read_config(filepath: str | Path) -> Config:
-        filepath: Path = Path(filepath)
-        config: Config = Config.model_validate_json(filepath.read_text())
-        return config
-
-    @staticmethod
     def cli_mode_requested() -> bool:
         from sys import argv
         from common.cli.enums.CliDefinition import CliDefinition
@@ -67,7 +61,7 @@ class SignalRuntime:
 
         custom_config: CustomConfigFile = CustomConfigFile(add_help=False)
         config_file = custom_config.get_config_filename()
-        config: Config = SignalRuntime.read_config(config_file)
+        config: Config = Config(config_file)
         signal_cli: SignalCli = SignalCli(config)
         status: int = signal_cli.run_application()
 
@@ -78,7 +72,7 @@ class SignalRuntime:
         from common.gui.core.SignalGui import SignalGui
         from common.lib.enums.TermFilesPath import TermFilesPath
 
-        config: Config = SignalRuntime.read_config(TermFilesPath.CONFIG)
+        config: Config = Config(TermFilesPath.CONFIG)
         signal_gui: SignalGui = SignalGui(config)
         status: int = signal_gui.run_application()
 

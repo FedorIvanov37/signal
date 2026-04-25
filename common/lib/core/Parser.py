@@ -5,6 +5,7 @@ from pathlib import Path
 from pydantic import FilePath
 from binascii import hexlify, unhexlify, b2a_hex
 from configparser import ConfigParser, NoSectionError, NoOptionError
+from common.lib.core.FieldsGenerator import FieldsGenerator
 from common.lib.toolkit.toolkit import mask_secret, mask_pan
 from common.lib.core.EpaySpecification import EpaySpecification
 from common.lib.core.Bitmap import Bitmap
@@ -258,11 +259,8 @@ class Parser:
 
     @staticmethod
     def parse_raw_data(raw_data: bytes, flat=False) -> list[Transaction]:
-        with open(TermFilesPath.CONFIG) as json_file:
-            config: Config = Config.model_validate_json(json_file.read())
-
+        config: Config = Config(TermFilesPath.CONFIG)
         header_length = config.host.header_length if config.host.header_length_exists else int()
-
         messages = list()
 
         while raw_data:  # Loop for multi messages processing
@@ -476,14 +474,15 @@ class Parser:
         if not transaction:
             raise TypeError("Can't parse incoming file using known formats")
 
+        transaction: Transaction = FieldsGenerator.set_generated_fields(transaction)
+
         return transaction
 
     @staticmethod
     def _parse_json_file(filename: str) -> Transaction:
         JsonConverter.convert(filename)  # Temporary solution for transfer period
 
-        with open(filename) as json_file:
-            transaction: Transaction = Transaction.model_validate_json(json_file.read())
+        transaction: Transaction = Transaction(filename)
 
         return transaction
 

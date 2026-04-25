@@ -22,7 +22,7 @@
         "backup_storage_depth": 10,
         "reduce_keep_alive": true,
         "print_description": true,
-        "logfire_integration": true
+        "logfire_integration": false
     },
     "validation": {
         "validation_enabled": true,

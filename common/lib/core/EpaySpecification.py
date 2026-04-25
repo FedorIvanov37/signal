@@ -24,10 +24,7 @@ class EpaySpecification(EpaySpecificationData):
             filename: FilePath = TermFilesPath.SPECIFICATION
 
         self.filename: FilePath = filename
-
-        with open(filename) as json_file:
-            self._specification_model: EpaySpecModel = EpaySpecModel.model_validate_json(json_file.read())
-
+        self._specification_model: EpaySpecModel = EpaySpecModel(filename)
         self._dictionary = self.create_dictionary()
 
     @property
@@ -71,14 +68,9 @@ class EpaySpecification(EpaySpecificationData):
     @staticmethod
     def create_dictionary() -> Dictionaries:
         try:
-            with open(TermFilesPath.CURRENCY_DICT) as json_file:
-                currencies_dictionary: Currencies = Currencies.model_validate_json(json_file.read())
-
-            with open(TermFilesPath.COUNTRY_DICT) as json_file:
-                countries_dictionary: Countries = Countries.model_validate_json(json_file.read())
-
-            with open(TermFilesPath.MCC_DICT) as json_file:
-                merch_cat_codes: MerchantCategoryCodes = MerchantCategoryCodes.model_validate_json(json_file.read())
+            currencies_dictionary: Currencies = Currencies(TermFilesPath.CURRENCY_DICT)
+            countries_dictionary: Countries = Countries(TermFilesPath.COUNTRY_DICT)
+            merch_cat_codes: MerchantCategoryCodes = MerchantCategoryCodes(TermFilesPath.MCC_DICT)
 
         except Exception as dictionary_parsing_error:
             logger.warning(f"Cannot load dictionary: {dictionary_parsing_error}")
@@ -106,11 +98,8 @@ class EpaySpecification(EpaySpecificationData):
         )
 
     def parse_file(self, path):
-        with open(path) as json_file:
-            self._specification_model: EpaySpecModel = EpaySpecModel.model_validate_json(json_file.read())
-
+        self._specification_model: EpaySpecModel = EpaySpecModel(path)
         self._dictionary = self.create_dictionary()
-
         self.reload_spec(self._specification_model, commit=False)
 
     def is_secret(self, path: FieldPath) -> bool:

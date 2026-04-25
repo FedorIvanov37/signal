@@ -166,9 +166,8 @@ class Terminal(QObject):
             )
 
         try:
-            with open(TermFilesPath.LICENSE_INFO, "r") as license_json:
-                license_info = LicenseInfo.model_validate_json(license_json.read())
-                license_info.show_agreement = self.config.terminal.show_license_dialog
+            license_info = LicenseInfo(TermFilesPath.LICENSE_INFO)
+            license_info.show_agreement = self.config.terminal.show_license_dialog
 
             if not license_info.accepted:
                 raise ValueError("License is not accepted")
@@ -189,8 +188,7 @@ class Terminal(QObject):
             config_file = TermFilesPath.CONFIG
 
         try:
-            with open(config_file) as json_file:
-                self.config: Config = Config.model_validate_json(json_file.read())
+            self.config: Config = Config(config_file)
                 
         except Exception as parsing_error:
             logger.error(f"Cannot parse configuration file: {parsing_error}")

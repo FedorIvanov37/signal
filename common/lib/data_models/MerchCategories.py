@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
+from common.lib.decorators.json_file_model import json_file_model
 
 
 class MerchantCategoryCode(BaseModel):
@@ -16,5 +17,6 @@ class MerchantCategoryCode(BaseModel):
         return val
 
 
+@json_file_model
 class MerchantCategoryCodes(BaseModel):
     merchant_category_codes: list[MerchantCategoryCode] = list()

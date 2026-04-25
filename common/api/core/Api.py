@@ -1,15 +1,15 @@
-from loguru import logger
-from typing import Union
 from os import getcwd
 from os.path import normpath
 from uuid import uuid4
 from http import HTTPStatus
-from threading import Thread
+from typing import Union
+from loguru import logger
 from warnings import filterwarnings
+from threading import Thread
+from uvicorn import Config as UvicornConfig, Server as UvicornServer
 from fastapi import FastAPI, APIRouter, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.docs import get_swagger_ui_html
-from uvicorn import Config as UvicornConfig, Server as UvicornServer
 from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse, HTMLResponse
 from PyQt6.QtCore import QObject, pyqtSignal
 from common.lib.enums.TermFilesPath import TermFilesPath, TermFiles
@@ -129,7 +129,11 @@ class Api(QObject):
         self._queue = Queue()
 
         config: UvicornConfig = UvicornConfig(
-            self.app, host="0.0.0.0", port=self.backend.config.api.port, log_config=None, access_log=True
+            app=self.app,
+            host="0.0.0.0",
+            port=self.backend.config.api.port,
+            log_config=None,
+            access_log=True,
         )
 
         self._server: UvicornServer = UvicornServer(config)
@@ -219,7 +223,7 @@ class Api(QObject):
 
         @app.exception_handler(TerminalApiError)
         def terminal_api_errors_handler(request, exception: TerminalApiError):
-            return JSONResponse(ExceptionContent(detail=exception.detail).dict(), exception.http_status)
+            return JSONResponse(ExceptionContent(detail=exception.detail).model_dump(), exception.http_status)
 
         @app.get(ApiUrl.SIGNAL, response_class=HTMLResponse, tags=[EndpointTags.DOCS], include_in_schema=False)
         @log_api_call

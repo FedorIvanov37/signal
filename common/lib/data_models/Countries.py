@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-
+from common.lib.decorators.json_file_model import json_file_model
 
 class Country(BaseModel):
     name: str
@@ -26,5 +26,6 @@ class Country(BaseModel):
         return val
 
 
+@json_file_model
 class Countries(BaseModel):
     countries: list[Country] = list()

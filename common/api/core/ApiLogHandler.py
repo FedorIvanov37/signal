@@ -1,6 +1,7 @@
 from loguru import logger
 from logging import Handler, LogRecord
 from re import search
+from contextlib import suppress
 from common.api.enums.ApiUrl import ApiUrl
 
 
@@ -10,10 +11,10 @@ class ApiLogHandler(Handler):
 
     def emit(self, record: LogRecord) -> None:
 
-        try:
+        level: int = record.levelno
+
+        with suppress(Exception):
             level: str = logger.level(record.levelname).name
-        except Exception:
-            level: int = record.levelno
 
         message = record.getMessage()
 

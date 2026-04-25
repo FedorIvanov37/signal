@@ -1,8 +1,10 @@
 from pydantic import BaseModel
 from datetime import datetime
 from uuid import uuid1
+from common.lib.decorators.json_file_model import json_file_model
 
 
+@json_file_model
 class LicenseInfo(BaseModel):
     accepted: bool = False
     last_acceptance_date: datetime | str | None = None
