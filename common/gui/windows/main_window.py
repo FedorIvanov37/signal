@@ -4,12 +4,12 @@ from itertools import batched
 from PyQt6.QtNetwork import QTcpSocket
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtWidgets import QMainWindow, QMenu, QPushButton, QSizePolicy
-from common.lib.enums.MessageLength import MessageLength
-from common.lib.enums.DataFormats import OutputFilesFormat
-from common.lib.enums import KeepAlive
-from common.lib.enums.TextConstants import TextConstants
-from common.lib.core.EpaySpecification import EpaySpecification
-from common.lib.data_models.Config import Config
+from common.core.enums.MessageLength import MessageLength
+from common.core.enums.DataFormats import OutputFilesFormat
+from common.core.enums import KeepAlive
+from common.core.enums.TextConstants import TextConstants
+from common.core.tools.EpaySpecification import EpaySpecification
+from common.core.data_models.Config import Config
 from common.gui.forms.mainwindow import Ui_MainWindow
 from common.gui.decorators.window_settings import set_window_icon
 from common.gui.enums import ButtonActions, MainFieldSpec as FieldsSpec
@@ -19,9 +19,9 @@ from common.gui.enums.ApiMode import ApiModes, ApiModeNames
 from common.gui.enums.Buttons import Buttons
 from common.gui.enums.ConnectionStatus import ConnectionStatus
 from common.gui.enums.ConnectionStatus import ConnectionIcon
-from common.gui.core.tab_view.TabView import TabView
+from common.gui.tools.tab_view.TabView import TabView
 from common.gui.enums.ToolBarElements import ToolBarElements
-from common.gui.tools.create_gui_elements import create_button, create_vertical_line
+from common.gui.toolkit.create_gui_elements import create_button, create_vertical_line
 
 from PyQt6.QtGui import (
     QCloseEvent,

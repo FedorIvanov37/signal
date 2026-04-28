@@ -1,6 +1,6 @@
 from PyQt6.QtNetwork import QTcpSocket
 from common.gui.enums.GuiFilesPath import GuiFilesPath
-from common.lib.enums.ConnectionStatus import ConnectionStatuses
+from common.core.enums.ConnectionStatus import ConnectionStatuses
 from enum import StrEnum
 
 

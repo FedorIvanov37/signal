@@ -1,14 +1,14 @@
 from loguru import logger
 from logging import getLogger, getLevelName
 from common.gui.forms.settings_window import Ui_SettingsWindow
-from common.lib.enums.TextConstants import TextConstants
+from common.core.enums.TextConstants import TextConstants
 from common.gui.enums.KeySequences import KeySequences
-from common.lib.constants import LogDefinition
-from common.lib.data_models.Config import Config
-from common.lib.enums.TermFilesPath import TermFilesPath
+from common.core.constants import LogDefinition
+from common.core.data_models.Config import Config
+from common.core.enums.TermFilesPath import TermFilesPath
 from common.gui.decorators.window_settings import set_window_icon, has_close_button_only
 from common.gui.enums.GuiFilesPath import GuiFilesPath
-from common.lib.enums.ReleaseDefinition import ReleaseDefinition
+from common.core.enums.ReleaseDefinition import ReleaseDefinition
 from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PyQt6.QtCore import Qt, QUrl, QRegularExpression, pyqtSignal
 from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QApplication

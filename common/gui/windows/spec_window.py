@@ -5,24 +5,24 @@ from contextlib import suppress
 from PyQt6.QtGui import QCloseEvent, QKeyEvent, QKeySequence, QShortcut
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QFileDialog, QMenu, QDialog, QPushButton, QApplication
-from common.lib.core.EpaySpecification import EpaySpecification
-from common.lib.core.Logger import Logger
-from common.lib.core.SpecFilesRotator import SpecFilesRotator
-from common.lib.data_models.EpaySpecificationModel import EpaySpecModel, IsoField
-from common.lib.data_models.Config import Config
-from common.gui.core.json_items import SpecItem
+from common.core.tools.EpaySpecification import EpaySpecification
+from common.core.tools.Logger import Logger
+from common.core.tools.SpecFilesRotator import SpecFilesRotator
+from common.core.data_models.EpaySpecificationModel import EpaySpecModel, IsoField
+from common.core.data_models.Config import Config
+from common.gui.tools.json_items import SpecItem
 from common.gui.windows.spec_unsaved import SpecUnsaved
 from common.gui.windows.mti_spec_window import MtiSpecWindow
 from common.gui.windows.field_validator_window import FieldDataSet
 from common.gui.forms.spec import Ui_SpecificationWindow
-from common.gui.core.json_views.SpecView import SpecView
+from common.gui.tools.json_views.SpecView import SpecView
 from common.gui.enums.KeySequences import KeySequences
 from common.gui.decorators.window_settings import set_window_icon, has_close_button_only
 from common.gui.enums import ButtonActions, SpecFieldDef, Buttons
-from common.lib.enums.TermFilesPath import TermFilesPath, TermDirs
-from common.lib.enums.TextConstants import TextConstants
-from common.gui.tools.create_gui_elements import create_button
-from common.gui.core.WirelessHandler import WirelessHandler
+from common.core.enums.TermFilesPath import TermFilesPath, TermDirs
+from common.core.enums.TextConstants import TextConstants
+from common.gui.toolkit.create_gui_elements import create_button
+from common.gui.tools.WirelessHandler import WirelessHandler
 
 
 class SpecWindow(Ui_SpecificationWindow, QDialog):

@@ -20,7 +20,7 @@
 
 from sys import stderr
 from pathlib import Path
-from common.lib.data_models.Config import Config
+from common.core.data_models.Config import Config
 
 
 __author__ = "Fedor Ivanov"
@@ -39,7 +39,7 @@ class SignalRuntime:
     def prepare_runtime():  # General preparation to run the application in any mode
         from os import makedirs
         from contextlib import suppress
-        from common.lib.enums.TermFilesPath import TermDirs
+        from common.core.enums.TermFilesPath import TermDirs
 
         for directory in TermDirs:  # Create important project directories in case when some of them don't exist
             makedirs(directory, exist_ok=True)
@@ -56,8 +56,8 @@ class SignalRuntime:
 
     @staticmethod
     def run_cli_mode() -> int:
-        from common.cli.core.SignalCli import SignalCli
-        from common.lib.core.CustomConfigFile import CustomConfigFile
+        from common.cli.tools.SignalCli import SignalCli
+        from common.core.tools.CustomConfigFile import CustomConfigFile
 
         custom_config: CustomConfigFile = CustomConfigFile(add_help=False)
         config_file = custom_config.get_config_filename()
@@ -69,8 +69,8 @@ class SignalRuntime:
 
     @staticmethod
     def run_gui_mode() -> int:
-        from common.gui.core.SignalGui import SignalGui
-        from common.lib.enums.TermFilesPath import TermFilesPath
+        from common.gui.tools.SignalGui import SignalGui
+        from common.core.enums.TermFilesPath import TermFilesPath
 
         config: Config = Config(TermFilesPath.CONFIG)
         signal_gui: SignalGui = SignalGui(config)

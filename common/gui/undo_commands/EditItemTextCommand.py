@@ -1,8 +1,8 @@
 from PyQt6.QtGui import QUndoCommand
 from PyQt6.QtCore import Qt, pyqtSignal
 from common.gui.undo_commands.SignalsBlocker import SignalsBlocker
-from common.gui.core.json_views.TreeView import TreeView
-from common.gui.core.json_items.Item import Item
+from common.gui.tools.json_views.TreeView import TreeView
+from common.gui.tools.json_items.Item import Item
 
 
 class EditItemTextCommand(QUndoCommand):

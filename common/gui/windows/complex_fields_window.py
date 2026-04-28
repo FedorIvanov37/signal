@@ -6,18 +6,18 @@ from dataclasses import asdict
 from PyQt6.QtGui import QFont, QKeySequence, QShortcut
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMenu, QDialog, QPushButton, QApplication
-from common.lib.data_models.Config import Config
-from common.lib.core.EpaySpecification import EpaySpecification
-from common.lib.core.Parser import Parser
-from common.lib.data_models.Transaction import Transaction
+from common.core.data_models.Config import Config
+from common.core.tools.EpaySpecification import EpaySpecification
+from common.core.tools.Parser import Parser
+from common.core.data_models.Transaction import Transaction
 from common.gui.forms.complex_fields_parser import Ui_ComplexFieldsParser
 from common.gui.decorators.window_settings import set_window_icon, has_close_button_only
-from common.gui.core.json_views.JsonView import JsonView
-from common.gui.tools.create_gui_elements import create_button
+from common.gui.tools.json_views.JsonView import JsonView
+from common.gui.toolkit.create_gui_elements import create_button
 from common.gui.enums import ButtonActions, MainFieldSpec
 from common.gui.enums.KeySequences import KeySequences
 from common.gui.enums.RootItemNames import RootItemNames
-from common.lib.enums.TextConstants import TextConstants
+from common.core.enums.TextConstants import TextConstants
 
 
 class ComplexFieldsParser(Ui_ComplexFieldsParser, QDialog):

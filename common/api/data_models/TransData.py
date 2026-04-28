@@ -1,9 +1,9 @@
 from pydantic import BaseModel, Field, field_validator
 from pydantic_core import PydanticCustomError, ValidationError
-from common.lib.core.EpaySpecification import EpaySpecification
+from common.core.tools.EpaySpecification import EpaySpecification
 from random import randint
-from common.lib.data_models.Dictionaries import Currencies
-from common.lib.enums.TermFilesPath import TermFilesPath
+from common.core.data_models.Dictionaries import Currencies
+from common.core.enums.TermFilesPath import TermFilesPath
 
 
 spec: EpaySpecification = EpaySpecification()

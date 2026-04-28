@@ -654,11 +654,11 @@ The library can be used for its intended purpose, sending the ISO 8583 transacti
  <summary>️Minimal code example - send the single transaction from the default file</summary>
 
 ```python
-from common.lib.data_models.Config import Config
-from common.lib.enums.TermFilesPath import TermFilesPath
-from common.lib.core.Terminal import Terminal
-from common.lib.data_models.Transaction import Transaction
-from common.lib.core.FieldsGenerator import FieldsGenerator
+from common.core.data_models.Config import Config
+from common.core.enums.TermFilesPath import TermFilesPath
+from common.core.tools.Terminal import Terminal
+from common.core.data_models.Transaction import Transaction
+from common.core.tools.FieldsGenerator import FieldsGenerator
 
 """
 The Signal library minimal code example - sends the single transaction from the default file
@@ -674,7 +674,7 @@ config: Config = Config.parse_file(TermFilesPath.CONFIG)
 # After the config is created you can set the parameters as you prefer
 # e.g.: config.host.port = 16677 and so on
 
-# The Terminal - core of the application, which will be used for sending the transaction
+# The Terminal - toolkit of the application, which will be used for sending the transaction
 terminal: Terminal = Terminal(config)
 
 # This object will update transaction fields to avoid transaction duplicates
@@ -699,12 +699,12 @@ terminal.send(transaction)
 
 ```python
 from PyQt6.QtCore import QCoreApplication, QTimer
-from common.lib.data_models.Config import Config
-from common.lib.enums.TermFilesPath import TermFilesPath
-from common.lib.core.Terminal import Terminal
-from common.lib.data_models.Transaction import Transaction
-from common.lib.core.FieldsGenerator import FieldsGenerator
-from common.lib.core.Logger import Logger
+from common.core.data_models.Config import Config
+from common.core.enums.TermFilesPath import TermFilesPath
+from common.core.tools.Terminal import Terminal
+from common.core.data_models.Transaction import Transaction
+from common.core.tools.FieldsGenerator import FieldsGenerator
+from common.core.tools.Logger import Logger
 
 """
 A bit more complex example, with usage PyQt6 features, logging, and so on
@@ -727,7 +727,7 @@ config: Config = Config.parse_file(TermFilesPath.CONFIG)
 # After the config is created you can set the parameters as you prefer
 # e.g.: config.host.port = 16677 and so on
 
-# The Terminal - core of the application, which will be used for sending the transaction
+# The Terminal - toolkit of the application, which will be used for sending the transaction
 terminal: Terminal = Terminal(config=config, application=application)  # Send previously-made QCoreApplication
 
 # Set the default screen logger up
@@ -742,13 +742,11 @@ transaction: Transaction = Transaction.parse_file(TermFilesPath.DEFAULT_FILE)
 # Update fields dynamic values such as ID, date and so on
 transaction: Transaction = data_generator.set_generated_fields(transaction)
 
-
 # Create a delayed start timer. This workaround will help to begin the task after the application is started
 timer = QTimer()  # This timer will be processed in QEventloop right after the application is executed
 timer.setSingleShot(True)  # It signals once the application start
 timer.timeout.connect(lambda: terminal.send(transaction))  # Transaction will be one of the first events
 timer.start(0)  # Signals timeout immediately
-
 
 # Finally run the application, which begin the QEventloop and send the transaction
 # Due to the part below the application proceed to work, processing PyQt events and signals
