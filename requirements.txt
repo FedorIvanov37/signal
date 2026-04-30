@@ -12,4 +12,6 @@ pydantic
 fastapi
 uvicorn
 loguru
+python-box
+pyqt6-sip
 click

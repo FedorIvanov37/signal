@@ -10,7 +10,7 @@ class ApiUrl(StrEnum):
     GET_TRANSACTION = "/transactions/{trans_id}"
     GET_CONFIG = "/config"
     CREATE_TRANSACTION = "/transactions"
-    REVERSE_TRANSACTION = "/transactions/{trans_id}/reversals"
+    REVERSE_TRANSACTION = "/transactions/{trans_id}/reverse"
     UPDATE_SPECIFICATION = "/specification"
     RECONNECT = "/connection/restart"
     DISCONNECT = "/connection/close"

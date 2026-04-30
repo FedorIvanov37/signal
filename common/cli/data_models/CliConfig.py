@@ -1,6 +1,6 @@
 from pydantic import BaseModel, DirectoryPath, IPvAnyAddress
-from common.lib.constants.LogDefinition import DebugLevels
-from common.lib.enums.TermFilesPath import TermFilesPath
+from common.core.constants.LogDefinition import DebugLevels
+from common.core.enums.TermFilesPath import TermFilesPath
 
 
 class CliConfig(BaseModel):

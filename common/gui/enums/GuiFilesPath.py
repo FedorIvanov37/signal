@@ -1,5 +1,5 @@
 from enum import StrEnum
-from common.lib.enums.TermFilesPath import TermDirs
+from common.core.enums.TermFilesPath import TermDirs
 
 
 class GuiDirs(StrEnum):

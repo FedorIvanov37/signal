@@ -1,0 +1,462 @@
+from os import getcwd
+from os.path import normpath
+from uuid import uuid4
+from http import HTTPStatus
+from typing import Union, Annotated
+from loguru import logger
+from warnings import filterwarnings
+from threading import Thread
+from uvicorn import Config as UvicornConfig, Server as UvicornServer
+from fastapi import FastAPI, APIRouter, Response, Depends, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse, HTMLResponse
+from PyQt6.QtCore import QObject, pyqtSignal
+from common.core.enums.TermFilesPath import TermFilesPath, TermFiles
+from common.core.enums.TextConstants import TextConstants
+from common.core.data_models.Config import Config
+from common.core.data_models.Transaction import Transaction
+from common.core.data_models.EpaySpecificationModel import EpaySpecModel
+from common.gui.enums.ApiMode import ApiModes
+from common.api.enums.TransTypes import TransTypes
+from common.api.data_models.TransValidationErrors import TransValidationErrors
+from common.api.data_models.ExceptionContent import ExceptionContent
+from common.api.enums.ApiUrl import ApiUrl
+from common.api.enums.EndpointTags import EndpointTags
+from common.api.data_models.Connection import Connection
+from common.api.data_models.TransactionResp import TransactionResp
+from common.api.enums.ApiRequestType import ApiRequestType
+from common.api.exceptions.TerminalApiError import TerminalApiError
+from common.api.enums.DataCoversionFormats import DataConversionFormats
+from common.gui.enums.GuiFilesPath import GuiFilesPath
+
+from common.api.data_models.ApiRequests import (
+    ApiRequest,
+    ApiTransactionRequest,
+    ConfigAction,
+    ReversalRequest,
+    SpecAction,
+    ConnectionAction,
+)
+
+from asyncio import (
+    AbstractEventLoop,
+    new_event_loop,
+    set_event_loop,
+    get_running_loop,
+    Queue,
+    Future,
+    wait_for,
+)
+
+
+class Api(QObject):
+
+    """
+    Signal Application Program Interface (API)
+
+    This is an API for processing transaction requests, configuration, and a toolkit for working with transactions
+
+    The Signal API is bundled with a Postman collection. Call the API using the GET method using the mapping
+    {{api}}/documentation for more information
+
+    The API must be started through the graphical user interface or the command line interface, not directly
+
+    Command line run command: signal.exe --console --api-mode
+    """
+
+    api_started: pyqtSignal = pyqtSignal(ApiModes)
+    api_stopped: pyqtSignal = pyqtSignal(ApiModes)
+    api_request: pyqtSignal = pyqtSignal(ApiRequest)
+
+    def __init__(self, backend):
+        super().__init__()
+
+        self.backend = backend
+        self._thread = None
+        self._server = None
+        self._loop: AbstractEventLoop | None = None
+        self._queue: Queue | None = None
+        self.app = self._build_app()
+        self.pending_jobs: dict[uuid4, Future] = {}
+        self.backend.terminal_response.connect(self.process_backend_response)
+        filterwarnings("ignore", message=".*Pydantic serializer warnings*", module="pydantic.*")
+
+    def is_api_started(self) -> bool:
+        return self._thread and self._thread.is_alive()
+
+    def restart(self) -> None:
+        logger.debug("Restarting API")
+
+        if not self.is_api_started():
+            self.start()
+            return
+
+        if self.is_api_started():
+            self.stop()
+            self.start()
+
+    def start(self) -> None:
+        if self.is_api_started():
+            logger.warning("Unable to start API mode, because it is already started")
+            return
+
+        self._thread = Thread(target=self._run, daemon=True)
+        self._thread.start()
+
+    def stop(self, timeout=5.0) -> None:
+        if not self.is_api_started():
+            logger.warning("Unable to stop API mode, because it is not started")
+            return
+
+        if self._server and not self._server.should_exit:
+            self._server.should_exit = True
+
+        self._thread.join(timeout=timeout)
+
+        if self._thread.is_alive() and self._server:
+            self._server.force_exit = True
+            self._thread.join(timeout=timeout)
+
+        self._thread = self._server = self._loop = self._queue = None
+
+    def _run(self) -> None:
+        loop = new_event_loop()
+        set_event_loop(loop)
+        self._loop = loop
+        self._queue = Queue()
+
+        config: UvicornConfig = UvicornConfig(
+            app=self.app,
+            host="0.0.0.0",
+            port=self.backend.config.api.port,
+            log_config=None,
+            access_log=True,
+        )
+
+        self._server: UvicornServer = UvicornServer(config)
+
+        self.api_started.emit(ApiModes.START)
+
+        try:
+            loop.run_until_complete(self._server.serve())
+
+        finally:
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            loop.close()
+            self.api_stopped.emit(ApiModes.STOP)
+
+    async def backend_request(self, request: ApiRequest) -> None:  # Use this to create long-time job
+        if not request.request_id:
+            request.request_id = str(uuid4())
+
+        if request.request_id in self.pending_jobs:
+            raise TerminalApiError(
+                http_status=HTTPStatus.BAD_REQUEST,
+                detail=f"duplicated request id {request.request_id}"
+            )
+
+        loop = get_running_loop()
+        future: Future = loop.create_future()
+        self.pending_jobs[request.request_id] = future
+        self.api_request.emit(request)
+
+        try:
+            return await wait_for(future, timeout=self.backend.config.api.waiting_timeout_seconds)
+
+        except TimeoutError:
+            raise TerminalApiError(http_status=HTTPStatus.GATEWAY_TIMEOUT, detail="request processing timeout")
+
+        except LookupError as lost_transaction:
+            raise TerminalApiError(http_status=HTTPStatus.NOT_FOUND, detail=lost_transaction)
+
+        finally:
+            self.pending_jobs.pop(request.request_id)
+
+    def process_backend_response(self, request: ApiRequest):
+        if not self._loop:
+            return
+
+        def _finish():
+            future = self.pending_jobs.get(request.request_id)
+
+            if not future or future.done():
+                return
+
+            if request.http_status is not HTTPStatus.OK:
+                future.set_exception(TerminalApiError(detail=request.error, http_status=request.http_status))
+                return
+
+            future.set_result(request.response_data)
+
+        self._loop.call_soon_threadsafe(_finish)
+
+    @staticmethod
+    def set_request_id(request: Request):
+        request.state.request_id = str(uuid4())
+
+    @staticmethod
+    def set_request_id_header(request: Request, response: Response):
+        response.headers["X-Request-ID"] = request.state.request_id
+
+    @staticmethod
+    def api_call_logger(request: Request):
+        if request.query_params.get("print") == "false":
+            yield
+            return
+
+        logger.info(
+            f'API got an incoming request. '
+            f'Request method: {request.method}; '
+            f'URL: {request.url.path}; '
+            f'Request ID: {request.state.request_id}'
+        )
+
+        try:
+            yield
+        finally:
+            logger.info(f'API request {request.state.request_id} processing finished')
+
+    def _build_app(self) -> FastAPI:
+
+        # The API endpoints builder. Builds HTTP API based on FastAPI
+
+        api_title = f"{TextConstants.SYSTEM_NAME} API Specification"
+
+        api_description = TextConstants.OPENAPI_HELLO_MESSAGE % (
+            f"{ApiUrl.BASE}{ApiUrl.ECHO_TEST}" % self.backend.config.api.port,
+            f"{ApiUrl.BASE}{ApiUrl.ECHO_TEST}" % self.backend.config.api.port,
+            TextConstants.ECHO_TEST_RESPONSE,
+            ApiUrl.DOCUMENT,
+            ApiUrl.POSTMAN,
+            f"{ApiUrl.API}{ApiUrl.LIVE_LOG}",
+        )
+
+        app: FastAPI = FastAPI(
+            title=api_title,
+            description=api_description,
+            docs_url=None,
+            redoc_url=None,
+            dependencies=(
+                Depends(Api.set_request_id),
+                Depends(Api.api_call_logger),
+                Depends(Api.set_request_id_header),
+            ),
+        )
+
+        app.mount("/static", StaticFiles(directory="common/doc/static"), name="static")
+
+        api: APIRouter = APIRouter(prefix=ApiUrl.API)
+
+        @app.get(ApiUrl.SWAGGER, response_class=HTMLResponse, tags=[EndpointTags.DOCS])
+        def get_openapi_documentation(request: Request):
+            html = get_swagger_ui_html(
+                openapi_url="/openapi.json",
+                title="Signal API Specification",
+            )
+
+            body = html.body.decode("utf-8").replace(
+                "</head>",
+                '<link rel="stylesheet" href="/static/swagger-extra.css"></head>'
+            )
+
+            return HTMLResponse(body, headers={"X-Request-ID": request.state.request_id})
+
+        @app.exception_handler(TerminalApiError)
+        def terminal_api_errors_handler(request, exception: TerminalApiError):
+            return JSONResponse(
+                ExceptionContent(detail=exception.detail).model_dump(),
+                exception.http_status,
+                headers={"X-Request-ID": request.state.request_id},
+            )
+
+        @app.get(ApiUrl.SIGNAL, response_class=HTMLResponse, tags=[EndpointTags.DOCS], include_in_schema=False)
+        def get_signal_info(request: Request):
+            return HTMLResponse(
+                self.backend.get_signal_info(),
+                headers={"X-Request-ID": request.state.request_id},
+            )
+
+        """
+        Read-only API endpoints. Read data from PYQt application
+        
+        A simple way to retrieve data from a PyQt application using the API bridge directly, without involving an async 
+        approach. Use for data-read functions only. In case of data modification, signals/slots required
+        """
+
+        @app.get("/favicon.ico", response_class=FileResponse, include_in_schema=False)
+        def favicon():
+            return FileResponse("common/doc/static/triforce_unsigned.png")
+
+        @app.get(ApiUrl.POSTMAN, response_class=FileResponse, tags=[EndpointTags.TOOLS], include_in_schema=False)
+        def get_postman_collection(request: Request):
+            return FileResponse(
+                TermFilesPath.POSTMAN_COLLECTION,
+                filename=TermFiles.POSTMAN,
+                headers={"X-Request-ID": request.state.request_id},
+            )
+
+        @api.get(ApiUrl.RAW_LOG, response_class=PlainTextResponse, tags=[EndpointTags.TOOLS])
+        def get_raw_log(request: Request):
+            return PlainTextResponse(
+                self.backend.get_raw_log(),
+                headers={"X-Request-ID": request.state.request_id},
+            )
+
+        @api.get(ApiUrl.GET_CONNECTION, response_model=Connection, tags=[EndpointTags.CONNECTION])
+        def get_connection():
+            return self.backend.get_connection()
+
+        @api.get(ApiUrl.LIVE_LOG, response_class=HTMLResponse, tags=[EndpointTags.TOOLS])
+        def get_live_log():
+            return self.backend.get_live_log()
+
+        @api.get(ApiUrl.GET_SPECIFICATION, response_model=EpaySpecModel, tags=[EndpointTags.CONFIG])
+        def get_specification():
+            return self.backend.get_spec()
+
+        @api.get(ApiUrl.GET_TRANSACTIONS, response_model=dict[str, Transaction], tags=[EndpointTags.TRANSACTIONS])
+        def get_transactions():
+            return self.backend.get_transactions()
+
+        @api.get(ApiUrl.GET_TRANSACTION, response_model=Transaction, tags=[EndpointTags.TRANSACTIONS])
+        def get_transaction(trans_id: str):
+            try:
+                return self.backend.get_transaction(trans_id)
+            except LookupError as transaction_lookup_error:
+                raise TerminalApiError(http_status=HTTPStatus.NOT_FOUND, detail=transaction_lookup_error)
+
+        @api.get(ApiUrl.GET_CONFIG, response_model=Config, tags=[EndpointTags.CONFIG])
+        def get_config():
+            return self.backend.get_config()
+
+        """
+        Read-write API endpoints. Modify the PyQt application thread members
+        
+        Better, but not required to call asynchronously
+        
+        WARNING: these endpoints must trigger API bridge functions, which emit PyQt signals. Strongly not recommended 
+        to use with the API bridge functions, which call PyQt application directly. The bridge must emit PyQt signal 
+        to cover this endpoint. Otherwise, it can lead to unforeseen consequences such as lost data or the spontaneous 
+        shutdown of the PyQt application
+        """
+
+        @api.post(ApiUrl.CREATE_PREDEFINED_TRANSACTION, response_model=Transaction, tags=[EndpointTags.TRANSACTIONS])
+        async def create_predefined_transaction(request: Request, trans_type: TransTypes):
+            transaction: Transaction = self.backend.get_predefined_transaction(trans_type)
+
+            return await self.backend_request(
+                ApiTransactionRequest(
+                    request_id=request.state.request_id,
+                    transaction=transaction,
+                )
+            )
+
+        @api.post(
+            ApiUrl.CREATE_TRANSACTION,
+            response_model=Union[Transaction, TransactionResp],
+            tags=[EndpointTags.TRANSACTIONS]
+        )
+        async def create_transaction(request: Request, trans_request: Transaction):
+            return await self.backend_request(
+                ApiTransactionRequest(
+                    request_id=request.state.request_id,
+                    transaction=trans_request,
+                )
+            )
+
+        @api.post(ApiUrl.REVERSE_TRANSACTION, response_model=Transaction, tags=[EndpointTags.TRANSACTIONS])
+        async def reverse_transaction(request: Request, trans_id: str):
+            return await self.backend_request(
+                ReversalRequest(
+                    request_id=request.state.request_id,
+                    original_trans_id=trans_id,
+                )
+            )
+
+        @api.put(ApiUrl.UPDATE_SPECIFICATION, response_model=EpaySpecModel, tags=[EndpointTags.CONFIG])
+        async def update_spec(request: Request, spec: EpaySpecModel):
+            return await self.backend_request(
+                SpecAction(
+                    request_id=request.state.request_id,
+                    request_type=ApiRequestType.UPDATE_SPEC,
+                    spec=spec,
+                )
+            )
+
+        @api.post(ApiUrl.RECONNECT, response_model=Connection, tags=[EndpointTags.CONNECTION])
+        async def reconnect(request: Request, connection: Connection | None = None):
+            if connection is None:
+                connection = Connection()
+
+            return await self.backend_request(
+                ConnectionAction(
+                    request_id=request.state.request_id,
+                    request_type=ApiRequestType.RECONNECT,
+                    connection=connection
+                )
+            )
+
+        @api.post(ApiUrl.DISCONNECT, response_model=Connection, tags=[EndpointTags.CONNECTION])
+        async def disconnect(request: Request):
+            return await self.backend_request(
+                ConnectionAction(
+                    request_id=request.state.request_id,
+                    request_type=ApiRequestType.DISCONNECT,
+                )
+            )
+
+        @api.post(ApiUrl.CONNECT, response_model=Connection, tags=[EndpointTags.CONNECTION])
+        async def connect(request: Request, connection: Connection | None = None):
+            if connection is None:
+                connection = Connection()
+
+            return await self.backend_request(
+                ConnectionAction(
+                    request_id=request.state.request_id,
+                    request_type=ApiRequestType.CONNECT,
+                    connection=connection,
+                )
+            )
+
+        @api.put(ApiUrl.UPDATE_CONFIG, response_model=Config, tags=[EndpointTags.CONFIG])
+        async def update_config(request: Request, config: Config):
+            return await self.backend_request(
+                ConfigAction(
+                    request_id=request.state.request_id,
+                    request_type=ApiRequestType.UPDATE_CONFIG,
+                    config=config,
+                )
+            )
+
+        @api.post(
+            ApiUrl.CONVERT,
+            response_model=Transaction,
+            responses={200: {"content": {"text/plain": {}}}},
+            tags=[EndpointTags.TOOLS]
+        )
+        def convert_transaction(
+            request: Request,
+            transaction: Transaction,
+            to_format: DataConversionFormats
+        ) -> Response:
+
+            if to_format == DataConversionFormats.JSON:
+                return self.backend.clean_transaction(transaction)
+
+            return PlainTextResponse(
+                self.backend.convert_to(transaction, to_format),
+                headers={"X-Request-ID": request.state.request_id},
+            )
+
+        @api.post(ApiUrl.VALIDATE_TRANSACTION, response_model=list[str], tags=[EndpointTags.TOOLS])
+        def validate_transaction(transaction: Transaction):
+            return self.backend.validate_transaction(transaction)
+
+        @app.get(ApiUrl.DOCUMENT, response_class=FileResponse, tags=[EndpointTags.DOCS])
+        def get_user_guide():
+            return normpath(f"{getcwd()}/{GuiFilesPath.DOC}")
+
+        app.include_router(api)
+
+        return app

@@ -40,7 +40,7 @@ LogTail: str = """
                 }
 
                 #log {
-                    white-space: pre-wrap;
+                    white-space: pre;
                     padding: 12px;
                     margin: 0;
                     line-height: 1.35;
@@ -116,7 +116,7 @@ LogTail: str = """
                     try {
                         const shouldStick = isNearBottom();
 
-                        const response = await fetch("%s", { cache: "no-store" });
+                        const response = await fetch("%s?print=false", { cache: "no-store" });
                         const text = await response.text();
 
                         if (text !== lastText) {

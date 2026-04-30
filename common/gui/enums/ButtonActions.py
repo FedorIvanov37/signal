@@ -1,5 +1,5 @@
 from enum import StrEnum
-from common.lib.enums.DataFormats import PrintDataFormats
+from common.core.enums.DataFormats import PrintDataFormats
 
 
 class ButtonActionSigns(StrEnum):

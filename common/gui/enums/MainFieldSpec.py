@@ -1,5 +1,5 @@
 from enum import StrEnum, IntEnum
-from common.lib.core.EpaySpecification import EpaySpecification
+from common.core.tools.EpaySpecification import EpaySpecification
 
 
 class Columns(StrEnum):

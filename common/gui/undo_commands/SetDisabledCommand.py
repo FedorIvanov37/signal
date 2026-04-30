@@ -1,7 +1,7 @@
 from contextlib import nullcontext, suppress
 from PyQt6.QtGui import QUndoCommand
 from common.gui.undo_commands.SignalsBlocker import SignalsBlocker
-from common.gui.core.json_items.Item import Item
+from common.gui.tools.json_items.Item import Item
 
 
 class SetDisabledCommand(QUndoCommand):

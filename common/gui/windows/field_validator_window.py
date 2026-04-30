@@ -3,14 +3,14 @@ from contextlib import suppress
 from PyQt6.QtGui import QPalette, QColor
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QDialog, QListWidgetItem, QCheckBox, QLineEdit, QSpinBox
-from common.gui.core.widgets.CheckableComboBox import CheckableComboBox
+from common.gui.tools.widgets.CheckableComboBox import CheckableComboBox
 from common.gui.forms.field_validator_window import Ui_FieldDataSet
 from common.gui.decorators.window_settings import set_window_icon, has_close_button_only
-from common.lib.data_models.EpaySpecificationModel import IsoField, Justification, LogicalValidators
-from common.lib.core.EpaySpecification import EpaySpecification
-from common.lib.enums.ValidationParams import LiteralValidations
+from common.core.data_models.EpaySpecificationModel import IsoField, Justification, LogicalValidators
+from common.core.tools.EpaySpecification import EpaySpecification
+from common.core.enums.ValidationParams import LiteralValidations
 from common.gui.enums.Colors import Colors
-from common.lib.enums.FieldTypeParams import FieldTypeParams
+from common.core.enums.FieldTypeParams import FieldTypeParams
 
 
 class FieldDataSet(Ui_FieldDataSet, QDialog):

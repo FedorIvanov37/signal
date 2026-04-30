@@ -8,12 +8,12 @@ from PyQt6.QtWidgets import QDialog
 from PyQt6.QtGui import QPixmap
 from common.gui.forms.license_window import Ui_LicenseWindow
 from common.gui.decorators.window_settings import set_window_icon, frameless_window
-from common.lib.data_models.License import LicenseInfo
-from common.lib.exceptions.exceptions import LicenseDataLoadingError, LicenceAlreadyAccepted
-from common.lib.enums.TermFilesPath import TermFilesPath
+from common.core.data_models.License import LicenseInfo
+from common.core.exceptions.exceptions import LicenseDataLoadingError, LicenceAlreadyAccepted
+from common.core.enums.TermFilesPath import TermFilesPath
 from common.gui.enums.GuiFilesPath import GuiFilesPath
-from common.lib.enums.TextConstants import TextConstants
-from common.lib.data_models.Config import Config
+from common.core.enums.TextConstants import TextConstants
+from common.core.data_models.Config import Config
 
 
 class LicenseWindow(Ui_LicenseWindow, QDialog):
@@ -38,8 +38,7 @@ class LicenseWindow(Ui_LicenseWindow, QDialog):
         self.CheckBoxAgreement.setFocus()
 
         try:
-            with open(TermFilesPath.LICENSE_INFO) as json_file:
-                self._license_info: LicenseInfo = LicenseInfo.model_validate_json(json_file.read())
+            self._license_info: LicenseInfo = LicenseInfo(TermFilesPath.LICENSE_INFO)
 
         except (ValueError, ValidationError, JSONDecodeError, FileNotFoundError):
             self._license_info: LicenseInfo = LicenseInfo()
