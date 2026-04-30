@@ -28,7 +28,6 @@ from common.core.tools.FieldsGenerator import FieldsGenerator
 from common.api.data_models.TransValidationErrors import TransValidationErrors
 from common.api.data_models.Connection import Connection
 from common.api.enums.ApiModes import ApiModes
-from common.api.data_models.ApiRequests import ApiTransactionRequest, ApiRequest, ConfigAction, ReversalRequest
 from common.api.enums.ApiUrl import ApiUrl
 from common.api.enums.DataCoversionFormats import DataConversionFormats
 from common.api.data_models.ApiRequests import ApiRequestType
@@ -36,6 +35,14 @@ from common.api.exceptions.TerminalApiError import TerminalApiError
 from common.api.data_models.TransactionResp import TransactionResp
 from common.api.enums.TransTypes import TransTypes
 from common.api.tools.Api import Api
+
+from common.api.data_models.ApiRequests import (
+    ApiTransactionRequest,
+    ApiRequest,
+    ConfigAction,
+    ReversalRequest,
+    ConnectionAction,
+)
 
 
 """
@@ -337,7 +344,7 @@ class SignalApi(QObject):
         self.terminal.spec.reload_spec(request.spec, commit=True)
         self.send_response(request, HTTPStatus.OK, message=self.terminal.spec.spec)
 
-    def process_api_connect(self, request: ApiRequest):
+    def process_api_connect(self, request: ConnectionAction):
         if self.terminal.connector.connection_in_progress():
             self.send_response(request, HTTPStatus.SERVICE_UNAVAILABLE, error="Connection is in progress")
             return

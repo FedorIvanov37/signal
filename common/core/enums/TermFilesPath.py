@@ -28,7 +28,7 @@ class TermFiles(StrEnum):
     CURRENCY_DICT = "currencies.json"
     COUNTRY_DICT = "countries.json"
     MCC_DICT = "merch_categories.json"
-    POSTMAN = "Signal_v0.19.1_postman_collection.zip"
+    POSTMAN = "Signal_v0.20_postman_collection.zip"
 
 
 class TermFilesPath(StrEnum):

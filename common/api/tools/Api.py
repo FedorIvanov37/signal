@@ -21,7 +21,6 @@ from common.gui.enums.ApiMode import ApiModes
 from common.api.enums.TransTypes import TransTypes
 from common.api.data_models.TransValidationErrors import TransValidationErrors
 from common.api.data_models.ExceptionContent import ExceptionContent
-from common.api.decorators.log_api_call import log_api_call
 from common.api.enums.ApiUrl import ApiUrl
 from common.api.enums.EndpointTags import EndpointTags
 from common.api.data_models.Connection import Connection
@@ -51,21 +50,20 @@ from asyncio import (
 )
 
 
-"""
-Signal Application Program Interface (API) 
-
-This is an API for processing transaction requests, configuration, and a toolkit for working with transactions 
-
-The Signal API is bundled with a Postman collection. Call the API using the GET method using the mapping 
-{{api}}/documentation for more information
-
-The API must be started through the graphical user interface or the command line interface, not directly
-
-Command line run command: signal.exe --console --api-mode
-"""
-
-
 class Api(QObject):
+
+    """
+    Signal Application Program Interface (API)
+
+    This is an API for processing transaction requests, configuration, and a toolkit for working with transactions
+
+    The Signal API is bundled with a Postman collection. Call the API using the GET method using the mapping
+    {{api}}/documentation for more information
+
+    The API must be started through the graphical user interface or the command line interface, not directly
+
+    Command line run command: signal.exe --console --api-mode
+    """
 
     api_started: pyqtSignal = pyqtSignal(ApiModes)
     api_stopped: pyqtSignal = pyqtSignal(ApiModes)
@@ -203,39 +201,47 @@ class Api(QObject):
 
     @staticmethod
     def api_call_logger(request: Request):
+        if request.query_params.get("print") == "false":
+            yield
+            return
+
         logger.info(
             f'API got an incoming request. '
-            f'Request method: "{request.method}"; '
-            f'URL: "{request.url.path}"; '
-            f'Request ID: "{request.state.request_id}"'
+            f'Request method: {request.method}; '
+            f'URL: {request.url.path}; '
+            f'Request ID: {request.state.request_id}'
         )
 
         try:
             yield
         finally:
-            logger.info(f'API request "{request.state.request_id}" processing finished')
+            logger.info(f'API request {request.state.request_id} processing finished')
 
     def _build_app(self) -> FastAPI:
 
         # The API endpoints builder. Builds HTTP API based on FastAPI
 
+        api_title = f"{TextConstants.SYSTEM_NAME} API Specification"
+
+        api_description = TextConstants.OPENAPI_HELLO_MESSAGE % (
+            f"{ApiUrl.BASE}{ApiUrl.ECHO_TEST}" % self.backend.config.api.port,
+            f"{ApiUrl.BASE}{ApiUrl.ECHO_TEST}" % self.backend.config.api.port,
+            TextConstants.ECHO_TEST_RESPONSE,
+            ApiUrl.DOCUMENT,
+            ApiUrl.POSTMAN,
+            f"{ApiUrl.API}{ApiUrl.LIVE_LOG}",
+        )
+
         app: FastAPI = FastAPI(
-            title=f"{TextConstants.SYSTEM_NAME} API Specification",
-            description=TextConstants.OPENAPI_HELLO_MESSAGE % (
-                f"{ApiUrl.BASE}{ApiUrl.ECHO_TEST}" % self.backend.config.api.port,
-                f"{ApiUrl.BASE}{ApiUrl.ECHO_TEST}" % self.backend.config.api.port,
-                TextConstants.ECHO_TEST_RESPONSE,
-                ApiUrl.DOCUMENT,
-                ApiUrl.POSTMAN,
-                f"{ApiUrl.API}{ApiUrl.LIVE_LOG}",
-            ),
+            title=api_title,
+            description=api_description,
             docs_url=None,
             redoc_url=None,
-            dependencies=[
+            dependencies=(
                 Depends(Api.set_request_id),
                 Depends(Api.api_call_logger),
                 Depends(Api.set_request_id_header),
-            ],
+            ),
         )
 
         app.mount("/static", StaticFiles(directory="common/doc/static"), name="static")
@@ -278,13 +284,9 @@ class Api(QObject):
         approach. Use for data-read functions only. In case of data modification, signals/slots required
         """
 
-        #
-        # Does not work
-        #
-        # @app.get("/favicon.ico", response_class=FileResponse)
-        # def favicon():
-        #     return FileResponse(r"C:\Users\admin\PycharmProjects\_signal\common\doc\static\triforce_unsigned.png")
-        #
+        @app.get("/favicon.ico", response_class=FileResponse, include_in_schema=False)
+        def favicon():
+            return FileResponse("common/doc/static/triforce_unsigned.png")
 
         @app.get(ApiUrl.POSTMAN, response_class=FileResponse, tags=[EndpointTags.TOOLS], include_in_schema=False)
         def get_postman_collection(request: Request):

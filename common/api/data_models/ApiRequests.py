@@ -1,4 +1,3 @@
-from uuid import uuid4
 from http import HTTPStatus
 from typing import Any
 from pydantic import BaseModel

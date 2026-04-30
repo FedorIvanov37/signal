@@ -8,11 +8,6 @@ from common.core.enums.TermFilesPath import TermFilesPath
 from common.core.data_models.Config import Config
 from common.core.constants import LogDefinition
 
-from logfire import (
-    configure as configure_logfire,
-    LogfireLoggingHandler,
-)
-
 
 def process_notset_log_level(function):
 
@@ -51,7 +46,6 @@ class Logger:
     def setup(self, wireless_handler=None, filename=TermFilesPath.LOG_FILE_NAME):
         self.remove()
         self.add_file_handler(filename=filename)
-        self.add_logfire_handler()
         self.add_api_handler()
 
         if wireless_handler:
@@ -70,41 +64,6 @@ class Logger:
             log.handlers = [handler]
             log.propagate = False
             log.setLevel(self.config.debug.level)
-
-    @process_notset_log_level
-    def add_logfire_handler(self):  # Experimental feature. See more here: http://logfire.pydantic.dev
-
-        # Manually set value in common/data/settings/config.json file to enable/disable the logfire integration
-        if not self.config.debug.logfire_integration:
-            return
-
-        try:
-            filterwarnings(
-                "ignore",
-                message=r"Logfire API is unreachable, you may have trouble sending data\..*",
-                category=UserWarning,
-            )
-
-            loggers = [
-                "opentelemetry",
-                "opentelemetry.exporter.otlp",
-                "opentelemetry.sdk",
-                "logfire._internal.exporters.wrapper"
-            ]
-
-            for logger_name in loggers:
-                getLogger(logger_name).setLevel(CRITICAL)
-
-            configure_logfire(console=False)
-
-        except Exception:
-            return
-
-        logger.add(
-            LogfireLoggingHandler(fallback=NullHandler()),
-            format=self.format,
-            level=self.config.debug.level,
-        )
 
     @process_notset_log_level
     def add_file_handler(self, filename=TermFilesPath.LOG_FILE_NAME):

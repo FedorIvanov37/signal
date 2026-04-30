@@ -32,6 +32,9 @@ class ApiLogHandler(Handler):
         if f"GET {ApiUrl.API}{ApiUrl.RAW_LOG}" in message:
             return
 
+        if "GET /favicon.ico HTTP" in message:
+            return
+
         if message.startswith("Waiting for application startup"):
             return
 

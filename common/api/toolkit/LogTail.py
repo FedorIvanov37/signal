@@ -116,7 +116,7 @@ LogTail: str = """
                     try {
                         const shouldStick = isNearBottom();
 
-                        const response = await fetch("%s", { cache: "no-store" });
+                        const response = await fetch("%s?print=false", { cache: "no-store" });
                         const text = await response.text();
 
                         if (text !== lastText) {

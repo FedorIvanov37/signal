@@ -29,7 +29,6 @@ class Debug(BaseModel):
     backup_storage_depth: int = 30
     reduce_keep_alive: bool = True
     print_description: bool = False
-    logfire_integration: bool = False
 
     @field_validator("level", mode="before")
     @classmethod
