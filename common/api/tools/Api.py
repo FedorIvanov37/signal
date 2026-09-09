@@ -19,7 +19,6 @@ from common.core.data_models.Transaction import Transaction
 from common.core.data_models.EpaySpecificationModel import EpaySpecModel
 from common.gui.enums.ApiMode import ApiModes
 from common.api.enums.TransTypes import TransTypes
-from common.api.data_models.TransValidationErrors import TransValidationErrors
 from common.api.data_models.ExceptionContent import ExceptionContent
 from common.api.enums.ApiUrl import ApiUrl
 from common.api.enums.EndpointTags import EndpointTags
@@ -29,6 +28,7 @@ from common.api.enums.ApiRequestType import ApiRequestType
 from common.api.exceptions.TerminalApiError import TerminalApiError
 from common.api.enums.DataCoversionFormats import DataConversionFormats
 from common.gui.enums.GuiFilesPath import GuiFilesPath
+from common.gui.tools.ResourcePath import ResourcePath
 
 from common.api.data_models.ApiRequests import (
     ApiRequest,
@@ -244,7 +244,7 @@ class Api(QObject):
             ),
         )
 
-        app.mount("/static", StaticFiles(directory="common/doc/static"), name="static")
+        app.mount("/static", StaticFiles(directory=ResourcePath.resource_path("common/doc/static")), name="static")
 
         api: APIRouter = APIRouter(prefix=ApiUrl.API)
 

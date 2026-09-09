@@ -1,7 +1,7 @@
 from pathlib import Path
 from loguru import logger
 from typing import Callable
-from PyQt6.QtWidgets import QApplication, QStyleFactory
+from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import pyqtSignal, QObject
 from PyQt6.QtNetwork import QTcpSocket
 from common.core.tools.SpecFilesRotator import SpecFilesRotator

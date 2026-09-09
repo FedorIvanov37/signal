@@ -41,15 +41,15 @@ Run script code example
 
 # Start of code
 
-from common.toolkit.toolkit.sv_emulator import SvEmulator, IsoConfig  # Import the emulator
+from common.core.toolkit.sv_emulator import SvEmulator, IsoConfig
 
-iso_config = IsoConfig()  # Create emulator config
+host = "127.0.0.1"
+port = 16677
 
-iso_config.PORT = 7771  # Change the parameters when needed 
+config = IsoConfig(ADDRESS=host, PORT=port)
+emulator = SvEmulator(config)
 
-sv_emulator = SvEmulator(iso_config)  # Create the SV emulator object
-
-sv_emulator.run()  #  Run the SV emulator
+emulator.run()
 
 # End of code
 
@@ -58,9 +58,9 @@ sv_emulator.run()  #  Run the SV emulator
 
 @dataclass
 class IsoConfig:
-    SERVER = True
-    PORT = 16677
-    ADDRESS = ""
+    PORT: int = 16677
+    SERVER: bool = True
+    ADDRESS: str = ""
 
 
 class SvEmulator:
@@ -86,7 +86,8 @@ class SvEmulator:
 
         date_format = "%Y.%m.%d %H:%M:%S"
 
-        print(f"{TextConstants.HELLO_MESSAGE} | SmartVisa Emulator")
+        print(f"{TextConstants.HELLO_MESSAGE} | SmartVisa Emulator\n\n"
+              f"  {self.iso_config.ADDRESS}:{self.iso_config.PORT}")
 
         connection = self.get_connector(self.iso_config)
 
@@ -175,6 +176,3 @@ class SvEmulator:
         sock.listen(1)
         conn, addr = sock.accept()
         return conn
-
-
-SvEmulator(IsoConfig()).run()

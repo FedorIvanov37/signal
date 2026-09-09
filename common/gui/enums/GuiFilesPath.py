@@ -1,5 +1,6 @@
 from enum import StrEnum
 from common.core.enums.TermFilesPath import TermDirs
+from common.gui.tools.ResourcePath import ResourcePath
 
 
 class GuiDirs(StrEnum):
@@ -22,8 +23,6 @@ class GuiFiles(StrEnum):
 
 
 class GuiFilesPath(StrEnum):
-    M_LOGO = f"{GuiDirs.STYLE_DIR.name}:{GuiFiles.MAIN_LOGO}"
-    G_CIRCLE = ":".join([GuiDirs.STYLE_DIR.name, GuiFiles.GREEN_CIRCLE])
     MAIN_LOGO = f"{GuiDirs.STYLE_DIR}/{GuiFiles.MAIN_LOGO}"
     SIGNED_LOGO = f"{GuiDirs.STYLE_DIR}/{GuiFiles.SIGNED_LOGO}"
     MUSIC_ON = f"{GuiDirs.STYLE_DIR}/{GuiFiles.MUSIC_ON}"
@@ -35,3 +34,6 @@ class GuiFilesPath(StrEnum):
     YELLOW_CIRCLE = f"{GuiDirs.STYLE_DIR}/{GuiFiles.YELLOW_CIRCLE}"
     NEW_TAB = f"{GuiDirs.STYLE_DIR}/{GuiFiles.NEW_TAB}"
     DOC = f"{GuiDirs.DOC_DIR}/{GuiFiles.HTML_DOCUMENT}"
+
+
+GuiFilesPath = ResourcePath.prepare(GuiFilesPath)

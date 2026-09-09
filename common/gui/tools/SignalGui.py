@@ -52,26 +52,26 @@ from common.core.exceptions.exceptions import (
 )
 
 
-"""
-The toolkit of the GUI backend
- 
-Performs all the management and control. The main purpose is to receive a validated data-processing request from 
-MainWindow or TransactionQueue and manage this using the other low-level modules such as Parser for data transformation
-TransactionQueue for interaction with the target system, Connector for TCP integration, and so on. 
- 
-Always tries not to do the work itself, managing corresponding modules instead
-
-SignalGui is a basic executor for all user requests. Inherited from Terminal class, which does not interact 
-with GUI anyhow. Low-level data processing performs using the basic Terminal class.
-
-Usually get data in the Transaction format. In any other case targeting to transform data into the Transaction and 
-proceed to work with this. The Transaction is a common I/O format for SignalGui. 
- 
-Starts MainWindow when starting its work, being a kind of low-level adapter between the GUI and the system's toolkit
-"""
-
-
 class SignalGui(Terminal):
+
+    """
+    The toolkit of the GUI backend
+
+    Performs all the management and control. The main purpose is to receive a validated data-processing request from
+    MainWindow or TransactionQueue and manage this using the other low-level modules such as Parser for data transformation
+    TransactionQueue for interaction with the target system, Connector for TCP integration, and so on
+
+    Always tries not to do the work itself, managing corresponding modules instead
+
+    SignalGui is a basic executor for all user requests. Inherited from Terminal class, which does not interact
+    with GUI anyhow. Low-level data processing performs using the basic Terminal class.
+
+    Usually get data in the Transaction format. In any other case targeting to transform data into the Transaction and
+    proceed to work with this. The Transaction is a common I/O format for SignalGui.
+
+    Starts MainWindow when starting its work, being a kind of low-level adapter between the GUI and the system's toolkit
+    """
+
     connector: ConnectionThread
     trans_timer: TransactionTimer
     set_remote_spec: pyqtSignal = pyqtSignal()
@@ -239,8 +239,7 @@ class SignalGui(Terminal):
 
     @staticmethod
     def show_document():  # Open the User guide in a default browser
-        doc_path = normpath(f"{getcwd()}/{GuiFilesPath.DOC}")
-        open_url(doc_path)
+        open_url(GuiFilesPath.DOC)
 
     def show_openapi_doc(self):
         if not self.api.is_started():

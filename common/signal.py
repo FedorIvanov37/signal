@@ -18,19 +18,22 @@
 # Example of the script run command: "from common import signal"
 #
 
+
 from sys import stderr
-from pathlib import Path
-from common.core.data_models.Config import Config
 
 
 __author__ = "Fedor Ivanov"
-__version__ = "v0.20"
+__version__ = "v0.20.1"
 
-error_message = """
-The file common/Signal.py should be imported from the main working directory, the direct run has no effect
-The GUI runs once the file is imported, no additional actions are required
-Please, refer to the Signal documentation to read more about how to run the application
-"""
+
+if __name__ == "__main__":  # Do not run directly, runs only by import command
+    raise RuntimeError("The common/signal.py file should be imported from the main working directory. "
+                       "Running it directly has no effect\n"
+                       "The GUI starts automatically once the file is imported, so no additional actions are required\n"
+                       "Please refer to the Signal documentation for more information on how to run the application")
+
+
+from common.core.data_models.Config import Config
 
 
 class SignalRuntime:
@@ -42,6 +45,9 @@ class SignalRuntime:
         from common.core.enums.TermFilesPath import TermDirs
 
         for directory in TermDirs:  # Create important project directories in case when some of them don't exist
+            if directory is TermDirs.DOC_DIR:
+                continue
+
             makedirs(directory, exist_ok=True)
 
         with suppress(Exception):  # Remove redundant log entries from PyQt media player
@@ -92,10 +98,6 @@ class SignalRuntime:
             print(f"Signal starting error: {run_error}", file=stderr)
             return 100
 
-
-# Incorrect way to run
-if __name__ == "__main__":  # Do not run directly, runs only by import command
-    raise RuntimeError(error_message)
 
 # The script starts here
 raise SystemExit(SignalRuntime.run_signal())  # Correct way to run using import

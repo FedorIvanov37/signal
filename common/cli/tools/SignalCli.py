@@ -20,7 +20,6 @@ from common.core.exceptions.exceptions import LicenseRejected
 from common.core.exceptions.exceptions import DataValidationWarning
 from common.api.tools.SignalApi import SignalApi
 from common.cli.enums.LogMarks import LogMarks
-from common.api.enums.ApiModes import ApiModes
 
 
 """
@@ -41,11 +40,11 @@ class SignalCli(Terminal):
     _job_id: str = str(uuid4())
 
     def __init__(self, config: Config):
-        super(SignalCli, self).__init__(config)
+        super(SignalCli, self).__init__(config, application=QCoreApplication([]))
         self.config: Config = config
         self.api = SignalApi(self.config, terminal=self)
-        self.application = QCoreApplication([])
         self.run_timer = QTimer()
+        self.api_timer = QTimer()
         self.connect_all()
         self.setup()
 
@@ -100,13 +99,15 @@ class SignalCli(Terminal):
             logger.info("Custom specification successfully applied")
 
     def connect_all(self):
+        self._finished.connect(self.pyqt_application.quit)
         self.run_timer.timeout.connect(self.main)
-        self._finished.connect(self.application.quit)
+        self.api_timer.timeout.connect(lambda: None)
 
     def run_application(self):
         self.run_timer.setSingleShot(True)
         self.run_timer.start(0)
-        self.application.exec()
+
+        return self.pyqt_application.exec()
 
     def main(self):
 
@@ -140,11 +141,12 @@ class SignalCli(Terminal):
                 logger.error(print_error)
 
         if self._cli_config.api_mode:
+            self.api_timer.start(100)
 
             if files := self.get_files_to_process():
                 logger.warning(f"Signal started in API mode, files processing ignored: {', '.join(files)}")
 
-            self.api.process_change_api_mode(ApiModes.START)  # Run API
+            self.api.start()
 
             return
 
@@ -172,7 +174,7 @@ class SignalCli(Terminal):
 
                 for _ in range(self._cli_config.interval * 10):
                     self.wait(0.1)
-                    self.application.processEvents()
+                    self.pyqt_application.processEvents()
 
             if not self._cli_config.repeat:
                 break
@@ -338,7 +340,7 @@ class SignalCli(Terminal):
 
     def wait(self, sec):
         sleep(sec)
-        self.application.processEvents()
+        self.pyqt_application.processEvents()
 
     @staticmethod
     def get_license_info():

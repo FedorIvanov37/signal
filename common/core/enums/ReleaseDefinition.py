@@ -4,8 +4,8 @@ from enum import StrEnum
 class ReleaseDefinition(StrEnum):
     EMAIL = "fedornivanov@gmail.com"
     AUTHOR = "Fedor Ivanov"
-    VERSION = "v0.20"
-    VERSION_NUMBER = "20"
+    VERSION = "v0.20.1"
+    VERSION_NUMBER = "20.1"
     NAME = "signal"
     RELEASE = "March 2026"
     CONTACT = (f"<a href=\"mailto:{EMAIL}?subject=Signal's user request&body=Dear Fedor,\n\n\n"

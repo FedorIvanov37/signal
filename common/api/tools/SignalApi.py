@@ -77,12 +77,10 @@ class SignalApi(QObject):
 
         # Connect all
 
-        api = self.api
-
         connection_map = {
-            api.api_request: self.process_api_call,
-            api.api_started: self.api_started,
-            api.api_stopped: self.api_stopped,
+            self.api.api_request: self.process_api_call,
+            self.api.api_started: self.api_started,
+            self.api.api_stopped: self.api_stopped,
             self.terminal.trans_queue.incoming_transaction: self.process_incoming_transaction,
             self.terminal.trans_queue.socket_error: self.process_sending_error,
         }
