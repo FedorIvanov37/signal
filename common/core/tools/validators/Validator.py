@@ -1,8 +1,10 @@
+from common.core.tools.DebugTrace import trace_operation
 from typing import Callable
 from datetime import datetime
 from string import digits, ascii_letters, punctuation, whitespace
 from pydantic import AnyHttpUrl, ValidationError
 from copy import deepcopy
+from loguru import logger
 from common.core.exceptions.exceptions import DataValidationError, DataValidationWarning
 from common.core.tools.EpaySpecification import EpaySpecification
 from common.core.data_models.Types import FieldPath
@@ -16,6 +18,11 @@ from common.core.tools.Parser import Parser
 
 
 class Validator:
+    @staticmethod
+    def validate_ascii_printable(value):
+        if any(letter not in ascii_letters + digits + punctuation + whitespace for letter in value):
+            raise ValueError("non-printable characters; check the encoding")
+
     _spec: EpaySpecification = EpaySpecification()
     _config: Config
 
@@ -85,7 +92,7 @@ class Validator:
         errors = validation_result.errors[ValidationTypes.FIELD_NUMBER_VALIDATION]
 
         if not field_number:  # Field number should be not empty
-            errors.add("Lost field number")
+            errors.add("Missing field number")
 
         if not str(field_number).isdigit():  # Field number should be a number
             errors.add(f'Non-digit field number "{field_number}"')
@@ -99,7 +106,7 @@ class Validator:
         max_field = int(self.spec.FIELD_SET.FIELD_128_SECONDARY_MAC_DATA)
 
         if int(field_number) not in range(min_field, max_field + 1):
-            err = f"Incorrect field number {field_number}. Top level field must be in range {min_field} - {max_field}"
+            err = f"Incorrect field number {field_number}. Top-level field number must be in the range {min_field} - {max_field}"
             errors.add(err)
 
         return validation_result
@@ -112,7 +119,7 @@ class Validator:
         if spec is not None:
             return validation_result
 
-        errors.add(f"Field {self.field_path_to_str(field_path)} - lost field specification")
+        errors.add(f"Field {self.field_path_to_str(field_path)} - missing field specification")
 
         return validation_result
 
@@ -134,6 +141,7 @@ class Validator:
 
         return validation_result
 
+    @trace_operation
     def validate_field_data(self, field_path: FieldPath, field_value: str, validation_result: ValidationResult):
         """
         The general validation method validates field data by all possible check
@@ -149,16 +157,16 @@ class Validator:
             length = len(field_value)
 
             if not field_value:  # Field should contain the data
-                errors.add(f"Field {path} - lost field value for field")
+                errors.add(f"Field {path} - missing field value")
 
             if not all(field.isdigit() for field in field_path):  # Field number should be digit
-                errors.add(f"Field numbers can be digits only. {path} is wrong value")
+                errors.add(f"Field numbers must contain digits only. Invalid value: {path}")
 
             if length > field_spec.max_length:  # Max length validation
-                errors.add(f"Field {path} - Over MaxLength. Max length: {field_spec.max_length}, got: {length}")
+                errors.add(f"Field {path} - Exceeds maximum length. Maximum: {field_spec.max_length}, got: {length}")
 
             if length < field_spec.min_length:  # Min length validation
-                errors.add(f"Field {path} - Less MinLength. Min length: {field_spec.min_length}, got: {length}")
+                errors.add(f"Field {path} - Below minimum length. Minimum: {field_spec.min_length}, got: {length}")
 
             return errors
 
@@ -167,12 +175,12 @@ class Validator:
             alphabetic: str = ascii_letters
             numeric: str = digits
             specials: str = punctuation + whitespace
-            valid_values: str = alphabetic + numeric + specials
+            try:
+                self.validate_ascii_printable(field_value)
+            except ValueError as error:
+                errors.add(f"Field {path} - {error}")
 
             for letter in field_value:
-                if letter not in valid_values:  # Only ascii-printable allowed
-                    errors.add(f"Field {path} - non-printable letters in field. Seems like a problem with encoding")
-
                 if letter in ascii_letters and not field_spec.alpha:  # Validation charset - alphabetic
                     errors.add(f"Field {path_desc} - alphabetic values not allowed")
 
@@ -285,7 +293,7 @@ class Validator:
                 if field_value in allowed_country_codes:
                     continue
 
-                errors.add(f"Field {path_desc} must contain valid ISO country code")
+                errors.add(f"Field {path_desc} must contain a valid ISO country code")
 
             return errors
 
@@ -332,11 +340,11 @@ class Validator:
 
                     case ExtendedValidations.ONLY_UPPER:  # Only UPPER case allowed
                         if not field_value.isupper():
-                            errors.add(f"Field {path_desc} - allowed UPPER case only")
+                            errors.add(f"Field {path_desc} - only uppercase letters are allowed")
 
                     case ExtendedValidations.ONLY_LOWER:  # Only lower case allowed
                         if not field_value.islower():
-                            errors.add(f"Field {path_desc} - allowed lower case only")
+                            errors.add(f"Field {path_desc} - only lowercase letters are allowed")
 
                     case ExtendedValidations.DATE_FORMAT:  # Date format and timeframes
                         date: datetime | None = None
@@ -396,6 +404,7 @@ class Validator:
 
         return validation_result
 
+    @trace_operation
     def process_validation_result(self, validation_result: ValidationResult):
         errors: set[str] = set()
 
@@ -405,6 +414,7 @@ class Validator:
 
             errors.update(error_set)
 
+        logger.debug("Validation completed: violations={} mode={}", len(errors), self.config.validation.validation_mode)
         if not errors:
             return
 
@@ -427,6 +437,7 @@ class Validator:
 
                     raise DataValidationWarning(errors_string)
 
+    @trace_operation
     def validate_fields(self, fields: TypeFields, validation_result: ValidationResult,
                         field_path: FieldPath | None = None):
         if field_path is None:

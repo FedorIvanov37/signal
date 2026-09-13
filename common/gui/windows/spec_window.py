@@ -1,10 +1,15 @@
+from common.gui.toolkit.clipboard import copy_text
+from common.core.tools.DebugTrace import trace_operation
 from loguru import logger
 from copy import deepcopy
+from pathlib import Path
+from common.gui.tools.spec_document import parse_spec_document
+from common.core.tools.ErrorReporting import report_error
 from pydantic import ValidationError
 from contextlib import suppress
 from PyQt6.QtGui import QCloseEvent, QKeyEvent, QKeySequence, QShortcut
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QFileDialog, QMenu, QDialog, QPushButton, QApplication
+from PyQt6.QtCore import Qt, pyqtSignal, QPersistentModelIndex, QModelIndex, QEvent
+from PyQt6.QtWidgets import QFileDialog, QMenu, QDialog, QPushButton, QApplication, QSizePolicy
 from common.core.tools.EpaySpecification import EpaySpecification
 from common.core.tools.Logger import Logger
 from common.core.tools.SpecFilesRotator import SpecFilesRotator
@@ -27,7 +32,7 @@ from common.gui.tools.WirelessHandler import WirelessHandler
 
 class SpecWindow(Ui_SpecificationWindow, QDialog):
     _read_only: bool = True
-    _clean_spec: EpaySpecModel = None
+    _clean_spec: tuple | None = None
     _spec: EpaySpecification = EpaySpecification()
     spec_accepted: pyqtSignal = pyqtSignal(str)
     spec_rejected: pyqtSignal = pyqtSignal()
@@ -48,20 +53,37 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
     def read_only(self, checked):
         self._read_only = checked
 
-    def __init__(self, connector, config: Config):
+    def __init__(self, connector, config: Config, recover=True):
         super(SpecWindow, self).__init__()
         self.connector = connector
         self.config = config
+        self._recover = recover
         self.wireless_handler = WirelessHandler()
         self.setupUi(self)
+        self._read_only_return_index = QPersistentModelIndex()
         self._setup()
+        from common.gui.toolkit.panel_splitter import PanelSplitter
+        self.main_splitter = PanelSplitter(self, self.SpecTreeLayout, self.horizontalLayout,
+                                           self.LogArea, self.horizontalLayout_2, 2, 'specification')
+        QApplication.instance().focusChanged.connect(self._remember_read_only_focus)
+
+    def _remember_read_only_focus(self, previous, current):
+        view = self.SpecView
+        if current is self.CheckBoxReadOnly and (
+            previous is view or (previous is not None and view.isAncestorOf(previous))
+        ):
+            self._read_only_return_index = QPersistentModelIndex(view.currentIndex())
+        else:
+            self._read_only_return_index = QPersistentModelIndex()
 
     @set_window_icon
     @has_close_button_only
     def _setup(self):
 
         self.SpecView: SpecView = SpecView(self)
-        self._clean_spec = deepcopy(self.SpecView.generate_spec())
+        from common.gui.toolkit.document_drop import route_document_drops
+        route_document_drops(self, self.SpecView)
+        self._clean_spec = self.SpecView.draft_snapshot()
         self.PlusButton: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_PLUS_SIGN)
         self.MinusButton: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_MINUS_SIGN)
         self.NextLevelButton: QPushButton = create_button(ButtonActions.ButtonActionSigns.BUTTON_NEXT_LEVEL_SIGN)
@@ -102,6 +124,8 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
 
         for widget, layout in widgets_layouts_map.items():
             layout.addWidget(widget, alignment=Qt.AlignmentFlag.AlignLeft)
+            widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+            widget.installEventFilter(self)
 
         for box in (self.CheckBoxHideReverved, self.CheckBoxReadOnly):
             box.setChecked(bool(Qt.CheckState.Checked))
@@ -112,7 +136,21 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         self.connect_all()
         self.set_read_only(self.CheckBoxReadOnly.isChecked())
         self.set_hello_message()
+        if self._recover and self.spec.recovery_error is not None:
+            logger.error('Specification is unavailable. Open a valid specification file or a backup, then Apply.'
+                         if self.spec.recovery_text is None else
+                         'Specification is unavailable. Correct the highlighted fields or open a valid specification file, then Apply.')
+            if self.spec.recovery_text is not None:
+                self._load_spec_document(self.spec.recovery_text, f'file "{self.spec.filename}"')
         self.setAcceptDrops(True)
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.LeftButton:
+            if watched in (self.PlusButton, self.MinusButton, self.NextLevelButton,
+                           self.UndoButton, self.RedoButton) and self.read_only:
+                self.SpecView.warn_blocked(watched)
+                return True
+        return super().eventFilter(watched, event)
 
     def connect_all(self):
 
@@ -126,7 +164,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             self.reset_spec: self.reload_spec,
             self.connector.got_remote_spec: self.process_remote_spec,
             self.load_remote_spec: self.connector.get_remote_spec,
-            self.wireless_handler.new_record_appeared: self.LogArea.append,
+            self.wireless_handler.formatted_record_appeared: self.LogArea.append,
         }
 
         buttons_connection_map = {
@@ -169,6 +207,11 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         for combination, function in keys_connection_map.items():  # Key sequences
             QShortcut(QKeySequence(combination), self).activated.connect(function)
 
+        from common.gui.toolkit.create_gui_elements import set_button_hints, set_shortcut_hints
+        set_button_hints(self)
+        set_shortcut_hints(buttons_connection_map, keys_connection_map)
+        self.ParseFile.setToolTip("Open specification file (Ctrl+O)")
+
         for button, function in buttons_connection_map.items():
             button.clicked.connect(function)
 
@@ -177,30 +220,36 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             font.setPointSize(font.pointSize() + 1)
             button.setFont(font)
 
+    @trace_operation
     def backup(self):
         if not (backup_filename := SpecFilesRotator(self.config).backup_spec()):
             return
 
-        logger.info(f"Specification backup is done. Filename: {backup_filename}")
+        logger.info(f"Specification backup completed. Filename: {backup_filename}")
 
     def set_hello_message(self):
         self.LogArea.setText(f"{TextConstants.HELLO_MESSAGE}\n")
 
     def dragEnterEvent(self, event):
-        if not event.mimeData().hasUrls():
+        if not (event.mimeData().hasUrls() or event.mimeData().hasText()):
             event.ignore()
             return
 
         event.acceptProposedAction()
 
     def dragMoveEvent(self, event):
-        if not event.mimeData().hasUrls():
+        if not (event.mimeData().hasUrls() or event.mimeData().hasText()):
             event.ignore()
             return
 
         event.acceptProposedAction()
 
+    @trace_operation
     def dropEvent(self, event):
+        if not event.mimeData().hasUrls() and event.mimeData().hasText():
+            self._load_spec_document(event.mimeData().text(), 'dropped text')
+            event.acceptProposedAction()
+            return
         files: list[str] = list()
 
         for url in event.mimeData().urls():
@@ -221,22 +270,49 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
 
         event.acceptProposedAction()
 
+    @trace_operation
     def process_remote_spec(self, spec_data: str):
-        spec: EpaySpecification = EpaySpecification()
+        self._load_spec_document(spec_data, 'HTTP response')
 
-        if self.config.specification.backup_storage:
-            if backup_filename := SpecFilesRotator(self.config).backup_spec():
-                logger.debug(f"Backup local specification file name: {backup_filename}")
-
+    def _load_spec_document(self, spec_data, source):
         try:
-            spec_model_data: EpaySpecModel = EpaySpecModel.model_validate_json(spec_data)
-            spec.reload_spec(spec=spec_model_data, commit=False)
+            document = parse_spec_document(spec_data)
+            self.SpecView.parse_spec(document)
+        except Exception as error:
+            report_error(error, gui=True, parent=self,
+                         action=f'Cannot load specification from {source}. Open a corrected file or a backup',
+                         recovery_action=self.open_backup if self.has_backups() else None)
 
-        except Exception as loading_error:
-            logger.error(f"Cannot load remote specification: {loading_error}")
-            logger.warning("Local specification will be used instead")
+    @staticmethod
+    def has_backups():
+        return bool(SpecWindow.valid_backups())
 
-        self.SpecView.parse_spec(self.spec.spec)
+    @staticmethod
+    def valid_backups():
+        backups = []
+        for path in sorted(Path(TermDirs.SPEC_BACKUP_DIR).glob('spec_backup_*.json'), reverse=True):
+            try:
+                EpaySpecModel(str(path)).validate_for_use()
+            except (ValueError, OSError):
+                continue
+            backups.append(path)
+        return backups
+
+    def open_backup(self):
+        backups = self.valid_backups()
+        if not backups:
+            logger.warning('No valid specification backups are available. Open a corrected specification file.')
+            return
+        filename, _ = QFileDialog.getOpenFileName(self, 'Open specification backup',
+                                                 str(TermDirs.SPEC_BACKUP_DIR),
+                                                 'Valid specification backups (' + ' '.join(path.name for path in backups) + ')')
+        if filename:
+            try:
+                EpaySpecModel(filename).validate_for_use()
+            except (ValueError, OSError) as error:
+                report_error(error, gui=True, parent=self, action='Cannot restore an invalid specification backup')
+                return
+            self.parse_file(filename, log=True)
 
     def copy_log(self):
         self.set_clipboard_text(self.LogArea.toPlainText())
@@ -248,9 +324,13 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             button.setDisabled(readonly)
 
         self.SpecView.set_read_only(readonly)
+        index = self._read_only_return_index
+        if not readonly and self.CheckBoxReadOnly.hasFocus() and index.isValid():
+            item = self.SpecView.itemFromIndex(QModelIndex(index))
+            self.SpecView._focus_cell(item, index.column())
 
     def clean(self):
-        self.SpecView.clean()
+        self.SpecView.clear_with_history()
 
     def clear_log(self):
         self.LogArea.setText(str())
@@ -272,7 +352,7 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         self.reload()
 
     def set_mti_list(self, mti_list):
-        self.spec.spec.mti = mti_list
+        self.SpecView._draft_spec.mti = mti_list
 
     def set_mti(self):
         mti_window = MtiSpecWindow()
@@ -298,35 +378,40 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
 
     def process_field_spec_acceptance(self, field_spec: IsoField):
         try:
-            self.spec.set_field_spec(field_spec)
             self.SpecView.parse_field_spec(field_spec)
 
         except (ValidationError, ValueError) as validation_error:
             logger.error(validation_error)
 
     @staticmethod
-    def set_clipboard_text(data: str = str()) -> None:
-        QApplication.clipboard().setText(data)
+    def set_clipboard_text(data: str = str()) -> bool:
+        return copy_text(data)
 
+    @trace_operation
     def apply(self, commit: bool | str):
         if isinstance(commit, str):
             commit: bool = True if commit == ButtonActions.ApplySpecMenuActions.PERMANENTLY else False
 
         try:
+            self.SpecView.finish_editing()
             self.SpecView.reload_spec(commit)
 
         except Exception as apply_error:
-            logger.error(f"Specification apply error: {apply_error}")
+            for line in str(apply_error).splitlines():
+                if line.strip():
+                    logger.error(f"Cannot apply specification: {line}")
             self.spec_rejected.emit()
-            return
+            return False
 
-        self._clean_spec = deepcopy(self.SpecView.generate_spec())
+        self._clean_spec = self.SpecView.draft_snapshot()
         self.spec_accepted.emit(self.spec.name)
         self.accepted.emit()
+        return True
 
     def closeEvent(self, a0: QCloseEvent) -> None:
         self.process_close(a0)
 
+    @trace_operation
     def parse_file(self, filename: str | None = None, log: bool = False) -> None:
         if filename is None:
             file_dialog = QFileDialog()
@@ -336,20 +421,19 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
             filename, _ = file_dialog.getOpenFileName(filter="JSON (*.json);;Any(*.*)")
 
         if not filename:
-            logger.info("No input filename recognized")
+            logger.info("No input file selected")
             return
 
         specification: EpaySpecModel | None = None
 
         try:
-            specification: EpaySpecModel = EpaySpecModel(filename)
+            specification = parse_spec_document(Path(filename).read_text(encoding='utf-8'))
 
         except ValidationError as validation_error:
-            error_text = str(validation_error)
-            logger.error(f"File validation error: {error_text}")
+            report_error(validation_error, gui=True, parent=self, action=f'Cannot load specification file "{filename}". Open a corrected file or a backup')
 
         except Exception as parsing_error:
-            logger.error(f"File parsing error: {parsing_error}")
+            report_error(parsing_error, gui=True, parent=self, action=f'Cannot load specification file "{filename}". Open a corrected file or a backup')
 
         if not specification:
             return
@@ -364,39 +448,35 @@ class SpecWindow(Ui_SpecificationWindow, QDialog):
         if log:
             logger.info(f"Specification file parsed: {filename}")
 
+    @trace_operation
     def reload(self):
         self.SpecView.reload()
         self.CheckBoxHideReverved.setCheckState(Qt.CheckState.Checked)
         self.SpecView.hide_reserved()
 
+    @trace_operation
     def process_close(self, close_event):
-        try:
-            current_spec = self.SpecView.generate_spec()
-
-        except (ValidationError, ValueError) as spec_error:
-            if isinstance(spec_error, ValidationError):
-                logger.error(spec_error)
-
+        self.SpecView.finish_editing()
+        if self.SpecView.draft_snapshot() == self._clean_spec:
             with suppress(Exception):
                 logger.remove(self.handler_id)
-
-            close_event.accept()
-
-            return
-
-        if current_spec == self._clean_spec:
-            logger.remove(self.handler_id)
             close_event.accept()
             return
-
+        close_event.ignore()
         window = SpecUnsaved()
-        window.return_to_spec.connect(close_event.ignore)
+        saved = False
+
+        def save(commit):
+            nonlocal saved
+            saved = self.apply(commit)
+
         window.return_to_spec.connect(window.accept)
-        window.save.connect(self.apply)
-
-        self.spec_rejected.connect(close_event.ignore)
-
-        window.exec()
+        window.save.connect(save)
+        result = window.exec()
+        if saved or result == QDialog.DialogCode.Rejected:
+            with suppress(Exception):
+                logger.remove(self.handler_id)
+            close_event.accept()
 
     def keyPressEvent(self, a0: QKeyEvent) -> None:
         if a0.key() == Qt.Key.Key_Escape:

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from common.gui.enums.ConnectionStatus import ConnectionStatus
+from common.core.enums.ConnectionStatus import ConnectionStatus
 from PyQt6.QtNetwork import QTcpSocket
 
 

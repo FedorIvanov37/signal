@@ -1,4 +1,6 @@
+from common.core.tools.DebugTrace import trace_operation
 from datetime import datetime
+from loguru import logger
 from random import randint, choice
 from common.core.data_models.Transaction import Transaction
 from common.core.tools.EpaySpecification import EpaySpecification
@@ -15,13 +17,14 @@ class FieldsGenerator:
     def generate_trans_id() -> str:
         return f"{datetime.now():%Y%m%d_%H%M%S_%f}{randint(1000, 9999)}"
 
+    @trace_operation
     def generate_original_data_elements(self, transaction: Transaction) -> str:
         try:
             mti: str = transaction.message_type
             stan: str = transaction.data_fields[self.spec.FIELD_SET.FIELD_011_SYSTEM_TRACE_AUDIT_NUMBER]
             date: str = transaction.data_fields[self.spec.FIELD_SET.FIELD_007_TRANSMISSION_DATE_AND_TIME]
         except KeyError:
-            raise ValueError(f"Cannot build DE90 for reversal. Lost DE7, DE11 or MTI of the original transaction")
+            raise ValueError(f"Cannot build DE90 for reversal. DE7, DE11 or MTI is missing from the original transaction")
 
         return f"{mti}{stan}{date}"
 
@@ -47,14 +50,17 @@ class FieldsGenerator:
         return transaction
 
     @staticmethod
+    @trace_operation
     def set_generated_fields(transaction: Transaction) -> Transaction:
         spec: EpaySpecification = EpaySpecification()
 
         for field in transaction.generate_fields:
             if not spec.can_be_generated([field]):
+                logger.debug("Field generation skipped: trans_id={} field={} reason=not_configured", transaction.trans_id, field)
                 continue
 
             transaction.data_fields[field] = FieldsGenerator.generate_field(field, max_amount=transaction.max_amount)
+            logger.debug("Field generated: trans_id={} field={}", transaction.trans_id, field)
 
         transaction.data_fields = {
             field: transaction.data_fields[field] for field in sorted(transaction.data_fields, key=int)
@@ -74,7 +80,7 @@ class FieldsGenerator:
 
             match max_amount:
                 case max_amount if max_amount < int():
-                    raise ValueError(f"Wrong max amount value. Expected be positive integer, got: {max_amount}")
+                    raise ValueError(f"Wrong max amount value. Expected a positive integer, got: {max_amount}")
 
                 case max_amount if max_amount > int():
                     amount: str = str(randint(1, max_amount * 100))
@@ -83,7 +89,7 @@ class FieldsGenerator:
                     amount: str = str()
 
             if not (field_length := spec.get_field_length(spec.FIELD_SET.FIELD_004_TRANSACTION_AMOUNT)):
-                raise LookupError("Lost amount field length")
+                raise LookupError("Missing amount field length")
 
             return str(amount).zfill(field_length)
 

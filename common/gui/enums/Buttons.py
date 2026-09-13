@@ -4,6 +4,7 @@ from enum import StrEnum
 class Buttons(StrEnum):
     FILE = 'Open file'
     TOOLS = 'Tools'
+    SETTINGS = 'Settings'
     ACTIONS = 'Actions'
     HELP = 'Help'
     SEND = 'Send'

@@ -1,3 +1,4 @@
+from common.core.tools.DebugTrace import trace_operation
 from loguru import logger
 from json import loads
 from io import StringIO
@@ -12,13 +13,13 @@ from common.core.tools.Bitmap import Bitmap
 from common.core.data_models.Config import Config
 from common.core.data_models.EpaySpecificationModel import IsoField, FieldSet, RawFieldSet
 from common.core.data_models.Transaction import TypeFields, Transaction
-from common.core.tools.JsonConverter import JsonConverter
 from common.core.enums.DataFormats import DataFormats
 from common.core.enums.DumpDefinition import DumpLength, DumpFillers
 from common.core.enums.IniMessageDefinition import IniMessageDefinition
 from common.core.enums.MessageLength import MessageLength
 from common.core.enums.TermFilesPath import TermFilesPath
 from common.core.data_models.Types import FieldPath
+from common.core.exceptions.exceptions import MessageParseError
 
 
 class Parser:
@@ -41,6 +42,7 @@ class Parser:
         self.config: Config = config
 
     @staticmethod
+    @trace_operation
     def parse_complex_fields(transaction: Transaction, split: bool = False) -> Transaction:
         spec: EpaySpecification = EpaySpecification()
 
@@ -93,7 +95,11 @@ class Parser:
         return transaction
 
     @staticmethod
+    @trace_operation
     def create_dump(transaction: Transaction, body: bool = False) -> bytes | str:
+        EpaySpecification().require_ready()
+        logger.debug("ISO encoding: trans_id={} mti={} fields={} body_only={}",
+                     transaction.trans_id, transaction.message_type, len(transaction.data_fields), body)
         spec: EpaySpecification = EpaySpecification()
         msg_type: bytes = transaction.message_type.encode()
         bitmap: Bitmap = Bitmap(transaction.data_fields)
@@ -103,7 +109,7 @@ class Parser:
 
         for field in sorted(transaction.data_fields.keys(), key=int):
             if not (text := transaction.data_fields.get(field)):
-                logger.warning(f"No value for field {field}. IsoField was ignored")
+                logger.warning(f"No value for field {field}. Field skipped")
                 continue
 
             if isinstance(text, dict):
@@ -121,7 +127,10 @@ class Parser:
         if body:
             return msg_body.decode()
 
-        return msg_type + bitmap + msg_body
+        result = msg_type + bitmap + msg_body
+        logger.debug("ISO encoding completed: trans_id={} bitmap_bytes={} body_bytes={} total_bytes={}",
+                     transaction.trans_id, len(bitmap), len(msg_body), len(result))
+        return result
 
     @staticmethod
     def create_sv_dump(transaction: Transaction) -> str | None:
@@ -157,6 +166,7 @@ class Parser:
         return dump
 
     @staticmethod
+    @trace_operation
     def join_complex_field(field, field_data, path=None, hide_secrets: bool = False) -> str:
         spec: EpaySpecification = EpaySpecification()
 
@@ -177,7 +187,7 @@ class Parser:
             subfield_spec = spec.get_field_spec(path)
 
             if not subfield_spec:
-                raise ValueError(f"Lost specification for field {'.'.join(path)}")
+                raise ValueError(f"Missing specification for field {'.'.join(path)}")
 
             if subfield_spec.fields:
                 result += Parser.join_complex_field(subfield, subfield_data, path, hide_secrets=hide_secrets)
@@ -200,7 +210,7 @@ class Parser:
 
     def join_complex_item(self, parent):
         if not parent.field_number:
-            raise ValueError(f"Lost field number for field {parent.get_field_path(string=True)}")
+            raise ValueError(f"Missing field number for field {parent.get_field_path(string=True)}")
 
         result: str = str()
 
@@ -213,10 +223,10 @@ class Parser:
                 continue
 
             if not child_item.field_data:
-                raise ValueError(f"Lost field value for field {child_item.get_field_path(string=True)}")
+                raise ValueError(f"Missing field value for field {child_item.get_field_path(string=True)}")
 
             if not child_item.field_number:
-                raise ValueError(f"Lost field number for field {child_item.get_field_path(string=True)}")
+                raise ValueError(f"Missing field number for field {child_item.get_field_path(string=True)}")
 
             length = str(int(child_item.field_length))
 
@@ -258,9 +268,18 @@ class Parser:
         return result
 
     @staticmethod
-    def parse_raw_data(raw_data: bytes, flat=False) -> list[Transaction]:
-        config: Config = Config(TermFilesPath.CONFIG)
+    @trace_operation
+    def parse_raw_data(raw_data: bytes, flat=False, config=None) -> list[Transaction]:
+        EpaySpecification().require_ready()
+        logger.debug("ISO framed input: total_bytes={} flat={} supplied_config={}", len(raw_data), flat, config is not None)
+        if config is None:  # Standalone library use; the running queue supplies its live settings.
+            config = Config(TermFilesPath.CONFIG)
         header_length = config.host.header_length if config.host.header_length_exists else int()
+        logger.debug("ISO framing selected: header_bytes={}", header_length)
+
+        if header_length <= 0:
+            raise ValueError("A positive message header length is required")
+
         messages = list()
 
         while raw_data:  # Loop for multi messages processing
@@ -270,6 +289,10 @@ class Parser:
 
                 message_length: bytes = raw_data[:header_length]
                 message_length: int = int(b2a_hex(message_length).decode(), 16)
+
+                if message_length == 0:
+                    raise ValueError("Empty transaction frame")
+
                 raw_data = raw_data[header_length:]
 
                 if len(raw_data) < message_length:
@@ -293,17 +316,19 @@ class Parser:
             try:
                 transaction: Transaction = Parser.parse_dump(message_data, flat=flat)
 
-            except ValueError:
-                message = "Cannot parse incoming message due to format error."
-                message = f"{message} Change log level to DEBUG to see raw message"
-                raise ValueError(message)
+            except ValueError as error:
+                raise MessageParseError(f"Cannot parse incoming message: {error}") from error
 
             messages.append(transaction)
 
+        logger.debug("ISO framed input completed: messages={}", len(messages))
         return messages
 
     @staticmethod
+    @trace_operation
     def parse_dump(data, flat: bool = False) -> Transaction:
+        EpaySpecification().require_ready()
+        logger.debug("ISO decoding: total_bytes={} flat={}", len(data), flat)
         spec: EpaySpecification = EpaySpecification()
         fields: RawFieldSet = {}
         position = int()
@@ -312,9 +337,14 @@ class Parser:
         bitmap: str = data[position: position + MessageLength.BITMAP_LENGTH]
         position += len(bitmap)
         second_bitmap_exists = Bitmap(bitmap, bytes).second_bitmap_exists()
+        logger.debug("ISO bitmap decoded: secondary_present={}", second_bitmap_exists)
 
         if second_bitmap_exists:
             length = len(bitmap)
+
+            if len(data) < position + length:
+                raise ValueError("Incomplete secondary bitmap")
+
             bitmap += data[position: position + length]
             position += length
 
@@ -333,12 +363,23 @@ class Parser:
             length_var = spec.get_field_length_var(field)
 
             if length_var > 0:
+
+                if len(data) < position + length_var:
+                    raise ValueError(f"Incomplete length prefix for field {field}")
+
                 length = int(data[position:position + length_var])
                 position += length_var
-                fields[field] = data[position:position + length]
             else:
                 length = spec.get_field_length(field)
-                fields[field] = data[position:position + length]
+
+            if length < 0 or len(data) < position + length:
+                logger.debug("ISO field truncated: field={} expected_chars={} available_chars={} offset={}",
+                             field, length, len(data) - position, position)
+                raise ValueError(f"Incomplete data for field {field}")
+
+            fields[field] = data[position:position + length]
+            logger.debug("ISO field decoded: field={} length_prefix_chars={} value_chars={} offset={}",
+                         field, length_var, length, position)
 
             position += length
 
@@ -346,6 +387,8 @@ class Parser:
             message_type=message_type_indicator,
             data_fields=fields
         )
+        logger.debug("ISO decoding completed: trans_id={} mti={} fields={} remaining_chars={}",
+                     transaction.trans_id, transaction.message_type, len(fields), len(data) - position)
 
         if flat:
             return transaction
@@ -363,6 +406,7 @@ class Parser:
         return transaction
 
     @staticmethod
+    @trace_operation
     def split_complex_field(field: str, field_data: str, spec: dict | None = None) -> RawFieldSet | None:
         complex_field_data: RawFieldSet = dict()
 
@@ -382,10 +426,10 @@ class Parser:
                 var_length = spec.tag_length
 
                 if not var_length:
-                    raise ValueError("Lost variable length")
+                    raise ValueError("Missing variable length")
 
             except (AttributeError, ValueError):
-                logger.error(f"Lost specification for field {field}")
+                logger.error(f"Missing specification for field {field}")
                 logger.error("The field and corresponding sub fields were absent")
                 return {}
 
@@ -433,7 +477,23 @@ class Parser:
 
         return ini_data
 
+    @trace_operation
+    def parse_text(self, text: str) -> Transaction:
+        """Parse a transaction without a filename or temporary files."""
+        self.spec.require_ready()
+        text = text.lstrip('\ufeff').strip()
+        if not text:
+            raise ValueError('Empty transaction text')
+        if text.startswith('{'):
+            transaction = self._parse_json_text(text)
+        elif text.startswith('['):
+            transaction = self.parse_ini_string(text)
+        else:
+            transaction = self.parse_dump_text(text)
+        return FieldsGenerator.set_generated_fields(transaction)
+
     def parse_file(self, filename: FilePath | str) -> Transaction:
+        self.spec.require_ready()
         file_extension = Path(filename).suffix
         file_extension = file_extension.replace(".", "")
         file_extension = file_extension.upper()
@@ -480,11 +540,22 @@ class Parser:
 
     @staticmethod
     def _parse_json_file(filename: str) -> Transaction:
-        JsonConverter.convert(filename)  # Temporary solution for transfer period
+        return Parser._parse_json_text(Path(filename).read_text(encoding='utf-8-sig'))
 
-        transaction: Transaction = Transaction(filename)
-
-        return transaction
+    @staticmethod
+    def _parse_json_text(text: str) -> Transaction:
+        data = loads(text)
+        if not isinstance(data, dict):
+            raise ValueError('Transaction JSON must be an object')
+        if 'transaction' in data:
+            from common.core.data_models.Transaction import OldTransactionModel
+            old = OldTransactionModel(**data)
+            return Transaction(trans_id=old.transaction.id,
+                message_type=old.transaction.message_type, data_fields=old.transaction.fields,
+                max_amount=(old.config.max_amount if old.config.max_amount is not None
+                            else Transaction.model_fields['max_amount'].default),
+                generate_fields=old.config.generate_fields)
+        return Transaction(**data)
 
     @staticmethod
     def get_field_data(fields: FieldSet, field_path: FieldPath):
@@ -501,7 +572,9 @@ class Parser:
 
         return field_data
 
+    @trace_operation
     def parse_ini_string(self, ini_data: str) -> Transaction:
+        self.spec.require_ready()
         ini: ConfigParser = ConfigParser()
         ini.read_file(StringIO(ini_data))
 
@@ -512,13 +585,7 @@ class Parser:
         return data.removeprefix('[').removesuffix(']')
 
     def _parse_ini_file(self, filename) -> Transaction:
-        if not Path(filename).is_file():
-            raise FileNotFoundError(f"No such file or directory: '{filename}'")
-
-        ini = ConfigParser()
-        ini.read(filename)
-
-        return self._parse_ini(ini)
+        return self.parse_ini_string(Path(filename).read_text(encoding='utf-8-sig'))
 
     def _parse_ini(self, ini: ConfigParser) -> Transaction:
         fields: TypeFields = self._parse_ini_fields(ini)
@@ -564,9 +631,15 @@ class Parser:
 
         return fields
 
+    @trace_operation
     def parse_dump_text(self, dump_text: str) -> Transaction:
         string: str = self.clean_dump(dump_text)
         transaction: Transaction = self.parse_dump(string)
+        if self.spec.is_request(transaction):
+            # DUMP has no generation settings. Infer them only for fields
+            # actually present, using the same rule for files and dropped text.
+            transaction.generate_fields = [field for field in self.spec.get_fields_to_generate()
+                                           if field in transaction.data_fields]
         return transaction
 
     @staticmethod
@@ -596,11 +669,5 @@ class Parser:
         return clean_string
 
     def _parse_dump_file(self, filename: str) -> Transaction:
-        raw_data = Path(filename).read_text()
-        string = self.clean_dump(raw_data)
-        transaction: Transaction = self.parse_dump(string)
-
-        if self.spec.is_request(transaction):
-            transaction.generate_fields = self.spec.get_fields_to_generate()
-
-        return transaction
+        raw_data = Path(filename).read_text(encoding='utf-8-sig')
+        return self.parse_dump_text(raw_data)

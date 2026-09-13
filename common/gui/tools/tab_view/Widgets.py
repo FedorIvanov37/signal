@@ -1,6 +1,6 @@
-from PyQt6.QtGui import QFont
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QTabBar, QComboBox, QWidget, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout
+from PyQt6.QtGui import QFont, QPalette
+from PyQt6.QtCore import pyqtSignal, QSignalBlocker, Qt
+from PyQt6.QtWidgets import QTabBar, QComboBox, QWidget, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QApplication, QStyle, QStyleOptionTab, QStylePainter
 from common.core.tools.EpaySpecification import EpaySpecification
 from common.gui.tools.json_views import JsonView
 
@@ -25,12 +25,51 @@ class ComboBox(QComboBox):
 
     def __init__(self, parent: QWidget | None = None):
         super(ComboBox, self).__init__(parent=parent)
+        self._history_tree = getattr(parent, 'json_view', None)
         self._setup()
+        self._before_selection = self.currentText()
+        self.activated.connect(self._record_selection)
+
+    def _record_selection(self, index):
+        after = self.currentText()
+        if self._history_tree is not None and after != self._before_selection:
+            from common.gui.undo_commands.ChangeMtiCommand import ChangeMtiCommand
+            self._history_tree.undo_stack.push(ChangeMtiCommand(self, self._before_selection, after))
+        self._before_selection = after
+
+    def keyPressEvent(self, event):
+        self._before_selection = self.currentText()
+        super().keyPressEvent(event)
+
+    def wheelEvent(self, event):
+        self._before_selection = self.currentText()
+        super().wheelEvent(event)
 
     def _setup(self):
         self.setFont(CALIBRI_12)
         self.setEditable(False)
         self.addItems(self.spec.get_mti_list())
+
+    def refresh_specification(self):
+        previous = self.currentText().split(' ', 1)[0]
+        with QSignalBlocker(self):
+            self.clear()
+            self.addItems(self.spec.get_mti_list())
+            index = self.findText(previous, Qt.MatchFlag.MatchStartsWith) if previous else -1
+            if index >= 0:
+                self.setCurrentIndex(index)
+
+    def showPopup(self):
+        self._before_selection = self.currentText()
+        # Show the MTI list in its final geometry without Qt's roll-down animation.
+        effect = Qt.UIEffect.UI_AnimateCombo
+        animated = QApplication.isEffectEnabled(effect)
+        QApplication.setEffectEnabled(effect, False)
+        try:
+            super().showPopup()
+        finally:
+            QApplication.setEffectEnabled(effect, animated)
+
 
 
 class LineEdit(QLineEdit):
@@ -59,6 +98,24 @@ class TabBar(QTabBar):
         super().__init__(parent)
         self.setMovable(False)
 
+    def paintEvent(self, event):
+        if QApplication.instance().property("signalWindowColor") not in ('#F0F0F0', '#8996A3', '#FFFBEB', '#EFF1F5'):
+            super().paintEvent(event)
+            return
+        # Native inactive-tab frames leave a dark top edge on the light base.
+        # Paint flat backgrounds while keeping Qt's label and button geometry.
+        painter = QStylePainter(self)
+        painter.fillRect(self.rect(), self.palette().brush(QPalette.ColorRole.Window))
+        for index in range(self.count()):
+            if not self.isTabVisible(index):
+                continue
+            option = QStyleOptionTab()
+            self.initStyleOption(option, index)
+            is_action = not self.tabText(index) and not self.tabIcon(index).isNull()
+            if index == self.currentIndex() and not is_action:
+                painter.fillRect(option.rect, self.palette().brush(QPalette.ColorRole.Base))
+            painter.drawControl(QStyle.ControlElement.CE_TabBarTabLabel, option)
+
     def mouseDoubleClickEvent(self, event):
         tab_index = self.tabAt(event.pos())
 
@@ -67,6 +124,14 @@ class TabBar(QTabBar):
 
         self.tabBarDoubleClicked.emit(tab_index)
         self.start_rename(tab_index)
+
+    def tabSizeHint(self, index):
+        size = super().tabSizeHint(index)
+        # Close-button presence must not change the transaction area's origin.
+        size.setHeight(max(self.fontMetrics().height(), self.iconSize().height()) + 8)
+        if not self.tabText(index) and not self.tabIcon(index).isNull():
+            size.setWidth(self.iconSize().width() + 20)
+        return size
 
     def start_rename(self, tab_index):
         if tab_index == self.parent().count() - 1:
@@ -108,6 +173,23 @@ class TabWidget(QWidget):
         bitmap_layout.addWidget(self.button)
 
         self.setLayout(QVBoxLayout())
-        self.layout().addWidget(ComboBox(parent=self))
-        self.layout().insertLayout(1, bitmap_layout)
+        self.layout().setContentsMargins(0, 9, 0, 0)
+        if QApplication.instance().property("signalDarkTheme"):
+            margins = self.layout().contentsMargins()
+            self.layout().setContentsMargins(margins.left(), margins.top(), 0, margins.bottom())
+        self.header = QWidget(self)
+        self.header_layout = QVBoxLayout(self.header)
+        self.header_layout.setContentsMargins(0, 0, 0, 0)
+        self.header_layout.addWidget(ComboBox(parent=self))
+        self.header_layout.addLayout(bitmap_layout)
+        self.layout().addWidget(self.header)
         self.layout().addWidget(self.json_view)
+        self.json_view.viewport().installEventFilter(self)
+
+    def eventFilter(self, watched, event):
+        from PyQt6.QtCore import QEvent
+        if watched is self.json_view.viewport() and event.type() in (QEvent.Type.Resize, QEvent.Type.Show):
+            viewport = self.json_view.viewport().geometry()
+            right = max(0, self.json_view.width() - viewport.right() - 1)
+            self.header_layout.setContentsMargins(0, 0, right, 0)
+        return super().eventFilter(watched, event)

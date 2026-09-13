@@ -1,9 +1,9 @@
 from copy import deepcopy
 from contextlib import suppress
 from loguru import logger
-from PyQt6.QtGui import QUndoStack
-from PyQt6.QtCore import pyqtSignal, QModelIndex, Qt
-from PyQt6.QtWidgets import QTreeWidgetItem, QItemDelegate, QLineEdit
+from PyQt6.QtGui import QUndoStack, QPalette, QColor
+from PyQt6.QtCore import pyqtSignal, QModelIndex, Qt, QEvent
+from PyQt6.QtWidgets import QTreeWidgetItem, QItemDelegate, QLineEdit, QStyleOptionViewItem, QApplication, QCheckBox, QStyle
 from common.core.tools.EpaySpecification import EpaySpecification
 from common.core.tools.FieldsGenerator import FieldsGenerator
 from common.core.tools.Parser import Parser
@@ -31,6 +31,29 @@ from common.gui.undo_commands.SignalsBlocker import SignalsBlocker
 class JsonView(TreeView):
 
     class Delegate(QItemDelegate):
+        def paint(self, painter, option, index):
+            option = QStyleOptionViewItem(option)
+            option.state &= ~QStyle.StateFlag.State_MouseOver
+            super().paint(painter, option, index)
+
+        def drawDisplay(self, painter, option, rect, text):
+            if QApplication.instance().property("signalTreeColor") not in ('#F0F0F0', '#8996A3', '#FFFBEB', '#EFF1F5'):
+                option = QStyleOptionViewItem(option)
+                source = option.palette.color(QPalette.ColorRole.Text).name().lower()
+                color = {
+                    "#000000": "#CDD5DF", "#ffffff": "#CDD5DF",
+                    "#ff0000": "#FF8D96", "#800000": "#FF8D96",
+                    "#0000ff": "#91C5FF",
+                }.get(source, source)
+                option.palette.setColor(QPalette.ColorRole.Text, QColor(color))
+                if source in ("#ff0000", "#800000", "#0000ff"):
+                    option.palette.setColor(QPalette.ColorRole.HighlightedText, QColor(color))
+            super().drawDisplay(painter, option, rect, text)
+
+        def drawFocus(self, painter, option, rect):
+            # Keep keyboard focus and selection; omit only its painted outline.
+            pass
+
         def __init__(self, tree: TreeView, stack: QUndoStack):
             super().__init__()
 
@@ -44,8 +67,24 @@ class JsonView(TreeView):
             return self._text_edited
 
         def setEditorData(self, editor: QLineEdit, index: QModelIndex):
-            editor.textEdited.connect(lambda text: self.text_edited.emit(text, index.column()))
             QItemDelegate.setEditorData(self, editor, index)
+
+        def createEditor(self, parent, option, index):
+            editor = super().createEditor(parent, option, index)
+            item = self.tree.itemFromIndex(index)
+            column = index.column()
+            if column == FieldsSpec.ColumnsOrder.FIELD:
+                self.tree._field_number_editing = True
+            editor.textEdited.connect(lambda text: self.tree.set_item_length(text, column, item=item))
+            return editor
+
+        def destroyEditor(self, editor, index):
+            if index.column() == FieldsSpec.ColumnsOrder.FIELD:
+                self.tree._field_number_editing = False
+            item = self.tree.itemFromIndex(index)
+            if item is not None:
+                item.set_length(fill_length=self.tree.len_fill)
+            super().destroyEditor(editor, index)
 
         def setModelData(self, editor, model, idx):
             role = Qt.ItemDataRole.EditRole
@@ -60,12 +99,38 @@ class JsonView(TreeView):
             if new != old:
                 item = self.tree.itemFromIndex(idx)
                 self.stack.push(EditItemTextCommand(self.tree, item, idx.column(), old, new, self.text_edited))
+            if idx.column() == FieldsSpec.ColumnsOrder.FIELD:
+                self.tree._field_number_editing = False
+                if new != old:
+                    self.tree.schedule_auto_sort()
 
     _root: FieldItem = None
+
+    def viewportEvent(self, event):
+        if (event.type() == QEvent.Type.MouseMove
+                and event.buttons() == Qt.MouseButton.NoButton):
+            # An embedded checkbox propagates mouse movement to the viewport.
+            # Qt may then focus that persistent editor and select its row.
+            # Pointer motion without a pressed button is not a selection action.
+            event.accept()
+            return True
+        if event.type() in (QEvent.Type.Enter, QEvent.Type.HoverEnter):
+            # QAbstractItemView checks persistent editor focus on hover entry.
+            # Embedded checkboxes must not select their row just because the
+            # pointer first enters the viewport.
+            return True
+        return super().viewportEvent(event)
+
+    def drawRow(self, painter, option, index):
+        option = QStyleOptionViewItem(option)
+        option.state &= ~QStyle.StateFlag.State_MouseOver
+        super().drawRow(painter, option, index)
+
     need_disable_next_level: pyqtSignal = pyqtSignal()
     need_enable_next_level: pyqtSignal = pyqtSignal()
     trans_id_set: pyqtSignal = pyqtSignal()
     files_dropped: pyqtSignal = pyqtSignal(list)
+    text_dropped: pyqtSignal = pyqtSignal(str)
     spec: EpaySpecification = EpaySpecification()
     _config: Config
 
@@ -102,6 +167,9 @@ class JsonView(TreeView):
         self._setup()
 
     def _setup(self):
+        # Let the delegate handle focus painting instead of the tree's
+        # separate full-row focus primitive.
+        self.setAllColumnsShowFocus(False)
         self.setAcceptDrops(True)
         self.setTabKeyNavigation(True)
         self.setAnimated(True)
@@ -112,13 +180,24 @@ class JsonView(TreeView):
         self.delegate.closeEditor.connect(lambda: self.set_all_items_length())
         self.delegate.text_edited.connect(self.set_item_length)
         self.currentItemChanged.connect(self.disable_next_level)
+        self.itemSelectionChanged.connect(self._update_checkbox_text_colors)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setItemDelegate(self.delegate)
         self.setHeaderLabels(FieldsSpec.Columns)
         self.addTopLevelItem(self.root)
         self.header().setMaximumSectionSize(700)
         self.header().resizeSection(FieldsSpec.ColumnsOrder.DESCRIPTION, 470)
+        self.setup_field_sorting(FieldsSpec.ColumnsOrder.FIELD)
+
         self.make_order()
+
+    def _update_checkbox_text_colors(self):
+        def visit(item):
+            if isinstance(item, FieldItem):
+                item.update_checkbox_text_color()
+            for index in range(item.childCount()):
+                visit(item.child(index))
+        visit(self.invisibleRootItem())
 
     def check_validation_config(function: callable):
 
@@ -143,18 +222,22 @@ class JsonView(TreeView):
         return wrapper
 
     def dragEnterEvent(self, event):
-        if not event.mimeData().hasUrls():
+        if not (event.mimeData().hasUrls() or event.mimeData().hasText()):
             return
 
         event.acceptProposedAction()
 
     def dragMoveEvent(self, event):
-        if not event.mimeData().hasUrls():
+        if not (event.mimeData().hasUrls() or event.mimeData().hasText()):
             return
 
         event.acceptProposedAction()
 
     def dropEvent(self, event):
+        if not event.mimeData().hasUrls() and event.mimeData().hasText():
+            self.text_dropped.emit(event.mimeData().text())
+            event.acceptProposedAction()
+            return
         files: list[str] = list()
 
         for url in event.mimeData().urls():
@@ -173,10 +256,12 @@ class JsonView(TreeView):
             self.resize_all()
 
     @void_qt_signals
-    def set_item_length(self, text, column):
+    def set_item_length(self, text, column, item=None):
         item: QTreeWidgetItem | FieldItem
 
-        if not (item := self.currentItem()):
+        if item is None:
+            item = self.currentItem()
+        if item is None:
             return
 
         if item.childCount():
@@ -188,7 +273,8 @@ class JsonView(TreeView):
         if column == FieldsSpec.ColumnsOrder.LENGTH and not self.config.specification.manual_input_mode:
             return
 
-        item.set_length(len(text), fill_length=self.len_fill)
+        preview = (item, len(text)) if column == FieldsSpec.ColumnsOrder.VALUE else None
+        item.set_length(len(text), fill_length=self.len_fill, preview=preview)
 
     def set_all_items_length(self, parent: FieldItem | None = None):
         if parent is None:
@@ -302,16 +388,23 @@ class JsonView(TreeView):
     def process_change_property(self, item: FieldItem) -> None:
         try:
             checkbox_type: str = self.itemWidget(item, FieldsSpec.ColumnsOrder.PROPERTY).text()
-        except AttributeError | ValueError:
+        except (AttributeError, ValueError):
             return
 
         match checkbox_type:
             case CheckBoxesDefinition.JSON_MODE:
-                if item.checkbox_checked(checkbox_type):
-                    self.set_json_mode(item)
-                    return
-
-                self.set_flat_mode(item)
+                vertical = self.verticalScrollBar().value()
+                horizontal = self.horizontalScrollBar().value()
+                try:
+                    self.setCurrentItem(item)
+                    if item.checkbox_checked(checkbox_type):
+                        self.set_json_mode(item)
+                    else:
+                        self.set_flat_mode(item)
+                finally:
+                    self.doItemsLayout()
+                    self.verticalScrollBar().setValue(vertical)
+                    self.horizontalScrollBar().setValue(horizontal)
 
             case CheckBoxesDefinition.GENERATE:
                 item.set_length(fill_length=self.len_fill)
@@ -342,7 +435,7 @@ class JsonView(TreeView):
 
         if spec := field_item.get_field_spec():
             if len(trans_id) > spec.max_length or len(trans_id) < spec.min_length:
-                logger.error(f"Invalid trans ID {trans_id}")
+                logger.error(f"Invalid transaction ID {trans_id}")
                 return
 
         field_item.field_data = trans_id
@@ -596,7 +689,7 @@ class JsonView(TreeView):
         if current_item is None:
             return
 
-        if current_item.get_field_depth() == 1:
+        if current_item.get_field_depth() == 1 and self.root.text(FieldsSpec.ColumnsOrder.FIELD) != RootItemNames.FIELD_CONSTRUCTOR_ROOT_NAME:
             is_field_complex = self.spec.is_field_complex(current_item.get_field_path())
 
             if is_field_complex and not current_item.checkbox_checked(CheckBoxesDefinition.JSON_MODE):
@@ -827,9 +920,6 @@ class JsonView(TreeView):
         if specification is None:
             specification = self.spec.spec
 
-        if parent is self.root:
-            input_json = {key: input_json[key] for key in sorted(input_json.keys(), key=int)}
-
         for field, field_data in input_json.items():
 
             try:
@@ -860,7 +950,11 @@ class JsonView(TreeView):
 
         self.set_all_items_length()
         self.hide_secrets()
-        self.make_order()
+        if parent is self.root:
+            self.make_order()
+            self.schedule_auto_sort()
+        else:
+            self.expand_all(parent)
 
     def modify_all_fields_data(self):
         self.validator.modify_all_fields_data(self.root)

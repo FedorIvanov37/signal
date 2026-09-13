@@ -6,6 +6,13 @@ from common.gui.enums.RootItemNames import RootItemNames
 
 
 class SpecItem(Item):
+    def __lt__(self, other):
+        tree = self.treeWidget()
+        if tree is not None and tree.sortColumn() == 0:
+            if not self.field_number or not other.text(0):
+                return not self.field_number and bool(other.text(0))
+        return super().__lt__(other)
+
     _spec: IsoField = None
     _field_number: str = None
 

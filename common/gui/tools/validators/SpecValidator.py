@@ -1,93 +1,93 @@
-from common.core.tools.EpaySpecification import EpaySpecification
+from common.core.data_models.Validation import ValidationResult, ValidationTypes
+from common.core.tools.validators.Validator import Validator
 from common.gui.tools.json_items.SpecItem import SpecItem
 from common.gui.enums import SpecFieldDef
 
 
 class SpecValidator:
-    spec: EpaySpecification = EpaySpecification()
+    def location(self, item: SpecItem):
+        if item.parent() is None:
+            return 'Specification'
+        ancestors = []
+        current = item
+        while current.parent() is not None:
+            ancestors.append(current)
+            current = current.parent()
+        try:
+            for ancestor in ancestors:
+                self.validate_field_number(ancestor)
+        except ValueError:
+            position = '.'.join(str(ancestor.parent().indexOfChild(ancestor) + 1)
+                                for ancestor in reversed(ancestors))
+            return f'Row {position}'
+        return f'Field {item.get_field_path(string=True)}'
 
     def validate_spec_row(self, row: SpecItem):
+        result = ValidationResult()
+        errors = result.errors[ValidationTypes.FIELD_SPEC_VALIDATION]
+        valid_columns = set()
         for column in SpecFieldDef.ColumnsOrder:
-            self.validate_column(row, column)
+            try:
+                self.validate_column(row, column)
+                valid_columns.add(column)
+            except ValueError as error:
+                errors.add(str(error))
+        if row.parent() is None:
+            return result
+        order = SpecFieldDef.ColumnsOrder
+        location = self.location(row)
+        if {order.MIN_LENGTH, order.MAX_LENGTH} <= valid_columns:
+            try:
+                self.validate_length_relation(row)
+            except ValueError as error:
+                errors.add(str(error))
+        if order.TAG_LENGTH in valid_columns and int(row.tag_length) > 0 and not row.childCount():
+            errors.add(f'{location} - Non-zero Tag Len, but field does not contain subfields')
+        if not any((row.alpha, row.numeric, row.special)):
+            errors.add(f'{location}, Alpha/Numeric/Special - Missing field data type, no datatype checkboxes active')
+        return result
+
+    def validate_length_relation(self, item):
+        try:
+            self.validate_number(item.min_length)
+            self.validate_number(item.max_length)
+        except ValueError:
+            return
+        if int(item.min_length) > int(item.max_length):
+            raise ValueError(f'{self.location(item)}, Min Len/Max Len - Min Length over Max Length')
 
     def validate_column(self, item: SpecItem, column):
-        validation_map = {
-            SpecFieldDef.ColumnsOrder.FIELD: lambda: self.validate_field_number(item),
-            SpecFieldDef.ColumnsOrder.MIN_LENGTH: lambda: self.validate_field_length(item),
-            SpecFieldDef.ColumnsOrder.MAX_LENGTH: lambda: self.validate_field_length(item),
-            SpecFieldDef.ColumnsOrder.VARIABLE_LENGTH: lambda: self.validate_number(item.var_length, True),
-            SpecFieldDef.ColumnsOrder.TAG_LENGTH: lambda: self.validate_number(item.tag_length, True),
-            SpecFieldDef.ColumnsOrder.ALPHA: lambda: self.validate_datatype_checkboxes(item),
-            SpecFieldDef.ColumnsOrder.NUMERIC: lambda: self.validate_datatype_checkboxes(item),
-            SpecFieldDef.ColumnsOrder.SPECIAL: lambda: self.validate_datatype_checkboxes(item),
-        }
-
-        if not (validator := validation_map.get(column)):
-            return
-
-        validator()
+        order = SpecFieldDef.ColumnsOrder
+        try:
+            if item.parent() is not None and column == order.FIELD:
+                self.validate_field_number(item)
+                return
+            Validator.validate_ascii_printable(item.text(column))
+            if item.parent() is not None and column in (
+                order.MIN_LENGTH, order.MAX_LENGTH, order.VARIABLE_LENGTH, order.TAG_LENGTH
+            ):
+                self.validate_number(item.text(column), column in (order.VARIABLE_LENGTH, order.TAG_LENGTH))
+        except ValueError as error:
+            label = SpecFieldDef.Columns[order(column).name]
+            raise ValueError(f'{self.location(item)}, {label} - {error}') from error
 
     @staticmethod
     def validate_number(number: str, allow_zero=False):
-        try:
-            number = int(number)
-        except ValueError:
-            raise ValueError("only numeric values allowed")
-
-        if number < 1:
-            if allow_zero and number == 0:
-                return
-
-            raise ValueError("only positive digits allowed")
+        if not number or any(character not in '0123456789' for character in number):
+            raise ValueError('only numeric values allowed')
+        if int(number) < (0 if allow_zero else 1):
+            raise ValueError('only positive digits allowed')
 
     def validate_field_number(self, item):
-        field_path = item.get_field_path(string=True)
-
+        number = item.field_number
         try:
-            self.validate_number(item.field_number)
-        except ValueError as value_error:
-            raise ValueError(f"Invalid field number {field_path} - {value_error}")
-
-        current_field_numbers = [field.get_field_path(string=True) for field in item.parent().get_children()]
-
-        if current_field_numbers.count(field_path) > 1:
-            raise ValueError(f"Field {field_path} - Duplicated field number")
-
-        if item.get_field_depth() == 1:
-            if int(item.field_number) < int(self.spec.FIELD_SET.FIELD_001_BITMAP_SECONDARY):
-                raise ValueError(f"Field {field_path}, column {SpecFieldDef.ColumnsOrder.FIELD} - Cannot set "
-                                 f"field number less than {self.spec.FIELD_SET.FIELD_001_BITMAP_SECONDARY}")
-
-            if int(item.field_number) > int(self.spec.FIELD_SET.FIELD_128_SECONDARY_MAC_DATA):
-                raise ValueError(f"Field {field_path}, column {SpecFieldDef.ColumnsOrder.FIELD} - Cannot set top "
-                                 f"level field number greater than {self.spec.FIELD_SET.FIELD_128_SECONDARY_MAC_DATA}")
-
-    def validate_field_length(self, item):
-        field_path = item.get_field_path(string=True)
-
-        for length in item.min_length, item.max_length:
-            try:
-                self.validate_number(length)
-            except ValueError as validation_error:
-                raise ValueError(f"Field {field_path} length validation error {validation_error}")
-
-        for length in item.tag_length, item.var_length:
-            try:
-                self.validate_number(length, allow_zero=True)
-            except ValueError as validation_error:
-                raise ValueError(f"Field {field_path} length validation error {validation_error}")
-
-        if int(item.min_length) > int(item.max_length):
-            raise ValueError(f"Field {field_path} - Min Length over Max Length")
-
-        if int(item.tag_length) > 0 and not item.childCount():
-            raise ValueError(f"Non-zero Tag Len, but field {field_path} doesn't contain subfields")
-
-    @staticmethod
-    def validate_datatype_checkboxes(item: SpecItem):
-        if any([item.alpha, item.numeric, item.special]):
-            return
-
-        field_path = item.get_field_path(string=True)
-
-        raise ValueError(f"Field {field_path} - Lost field data type, no datatype checkboxes active")
+            self.validate_number(number)
+        except ValueError as error:
+            raise ValueError(f'Invalid field number {number!r} - {error}') from error
+        if item.get_field_depth() == 1 and not 2 <= int(number) <= 128:
+            raise ValueError(f'Invalid field number {number!r} - top level field number must be in range 2-128')
+        matches = [sibling for sibling in item.parent().get_children() if sibling.field_number
+                   and all(character in '0123456789' for character in sibling.field_number)
+                   and int(sibling.field_number) == int(number)]
+        if len(matches) > 1:
+            raise ValueError(f'Duplicated field number {number!r}')

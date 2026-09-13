@@ -1,0 +1,32 @@
+# Python and test caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Local IDE and code-analysis state
+.idea/
+.claude/
+.understand-anything/
+
+# Build output
+/build/
+/dist/
+/signal.exe
+/common/bin/
+
+# User settings, acceptance records and runtime history
+/common/data/settings/config.json
+/common/data/license/license_info.json
+/common/data/spec_backup/
+/common/log/
+/common/data/style/appearance.json
+/common/data/style/panel_layout.ini
+/data/style/appearance.json
+
+# Local transaction samples (the maintained examples live under common/data)
+/dd.json
+/dump.dump

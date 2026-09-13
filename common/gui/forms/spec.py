@@ -56,6 +56,7 @@ class Ui_SpecificationWindow(object):
         self.SearchLine.setReadOnly(False)
         self.SearchLine.setClearButtonEnabled(True)
         self.SearchLine.setObjectName("SearchLine")
+        self.SearchLine.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Preferred)
         self.horizontalLayout.addWidget(self.SearchLine)
         spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
         self.horizontalLayout.addItem(spacerItem)

@@ -70,7 +70,7 @@ class ItemsValidator:
         if field_path := item.get_field_path():
             validation_result: ValidationResult = self.validator.validate_field_spec(field_path, validation_result)
         else:
-            validation_result.errors[ValidationTypes.FIELD_PATH_VALIDATION].add("Lost field path")
+            validation_result.errors[ValidationTypes.FIELD_PATH_VALIDATION].add("Missing field path")
 
         self.validator.process_validation_result(validation_result)
 

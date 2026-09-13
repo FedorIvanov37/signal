@@ -200,7 +200,7 @@
            </font>
           </property>
           <property name="text">
-           <string>I am agree with the terms and conditions</string>
+           <string>I agree to the terms and conditions</string>
           </property>
          </widget>
         </item>

@@ -33,6 +33,9 @@ class MtiSpecWindow(Ui_MtiSpecWindow, QDialog):
     def setup(self):
         self.ButtonPlus.setText(ButtonActions.ButtonActionSigns.BUTTON_PLUS_SIGN)
         self.ButtonMinus.setText(ButtonActions.ButtonActionSigns.BUTTON_MINUS_SIGN)
+        from common.gui.tools.widgets.FieldActionIcon import set_field_action_icon
+        set_field_action_icon(self.ButtonPlus, 'add', 'Add MTI')
+        set_field_action_icon(self.ButtonMinus, 'remove', 'Remove selected MTI')
         self.ButtonPlus.clicked.connect(self.plus)
         self.ButtonMinus.clicked.connect(self.minus)
         self.ButtonSave.clicked.connect(self.ok)

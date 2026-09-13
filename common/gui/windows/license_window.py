@@ -1,13 +1,13 @@
-from sys import exit
+from common.core.tools.DebugTrace import trace_operation
 from json.decoder import JSONDecodeError
 from loguru import logger
 from pydantic import ValidationError
 from datetime import datetime, UTC
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QDialog
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import QDialog, QFrame
+from PyQt6.QtGui import QPixmap, QPalette
 from common.gui.forms.license_window import Ui_LicenseWindow
-from common.gui.decorators.window_settings import set_window_icon, frameless_window
+from common.gui.decorators.window_settings import set_window_icon, frameless_window, themed_logo
 from common.core.data_models.License import LicenseInfo
 from common.core.exceptions.exceptions import LicenseDataLoadingError, LicenceAlreadyAccepted
 from common.core.enums.TermFilesPath import TermFilesPath
@@ -25,15 +25,22 @@ class LicenseWindow(Ui_LicenseWindow, QDialog):
 
     def __init__(self, config: Config, force: bool = False):
         super().__init__()
-        self.config = config
+        self.config = config.model_copy(deep=True)
         self.force = force
+        self.rejected_by_user = False
         self.setupUi(self)
+        self.frame.setStyleSheet("")
+        self.frame.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame.setPalette(QPalette())
+        self.InfoBoard.setPalette(QPalette())
         self._setup()
 
     @set_window_icon
     @frameless_window
     def _setup(self):
-        self.LogoLabel.setPixmap(QPixmap(GuiFilesPath.SIGNED_LOGO))
+        self.LogoLabel.setPixmap(themed_logo(GuiFilesPath.SIGNED_LOGO))
+        from common.gui.decorators.window_settings import enable_logo_click
+        enable_logo_click(self.LogoLabel)
         self.InfoBoard.setText(TextConstants.LICENSE_AGREEMENT)
         self.CheckBoxAgreement.setFocus()
 
@@ -61,19 +68,17 @@ class LicenseWindow(Ui_LicenseWindow, QDialog):
 
             return
         
-        if self._license_info.accepted and not self._license_info.show_agreement:
-            self.config.terminal.show_license_dialog = self._license_info.show_agreement
+        if self._license_info.accepted and not self.config.terminal.show_license_dialog:
+            raise LicenceAlreadyAccepted
 
-            if not self.force:
-                raise LicenceAlreadyAccepted
-
-        self.CheckBoxAgreement.setChecked(self._license_info.show_agreement)
+        self.CheckBoxDontShowAgain.setChecked(not self.config.terminal.show_license_dialog)
         self.CheckBoxAgreement.setChecked(self._license_info.accepted)
         self.CheckBoxAgreement.stateChanged.connect(self.block_acceptance)
         self.rejected.connect(self.reject_license)
         self.accepted.connect(self.accept_license)
         self.block_acceptance()
 
+    @trace_operation
     def accept_license(self):
         self._license_info.accepted = bool(self.CheckBoxAgreement.checkState().value)
 
@@ -92,6 +97,7 @@ class LicenseWindow(Ui_LicenseWindow, QDialog):
         self.print_acceptance_info()
         self.close()
 
+    @trace_operation
     def reject_license(self):
         if self.force:
             return
@@ -104,10 +110,12 @@ class LicenseWindow(Ui_LicenseWindow, QDialog):
         self.config.terminal.show_license_dialog = license_data.show_agreement
 
         self.save_license_file(license_data)
-        logger.warning("License agreement rejected, exit")
-        exit(100)
+        logger.warning("License agreement rejected. Exiting")
+        self.rejected_by_user = True
+        self.done(100)
 
     @staticmethod
+    @trace_operation
     def save_license_file(license_data: LicenseInfo):
         with open(TermFilesPath.LICENSE_INFO, 'w') as license_file:
             license_file.write(license_data.model_dump_json(indent=4))

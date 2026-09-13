@@ -54,5 +54,10 @@
         "waiting_timeout_seconds": 10,
         "hide_secrets": true,
         "parse_subfields": true
+    },
+    "theme": {
+        "treeColor": "#F0F0F0",
+        "windowColor": "#F0F0F0",
+        "consoleColor": "#012E4F"
     }
 }

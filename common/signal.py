@@ -19,11 +19,8 @@
 #
 
 
-from sys import stderr
-
-
 __author__ = "Fedor Ivanov"
-__version__ = "v0.20.1"
+__version__ = "v0.21"
 
 
 if __name__ == "__main__":  # Do not run directly, runs only by import command
@@ -33,10 +30,13 @@ if __name__ == "__main__":  # Do not run directly, runs only by import command
                        "Please refer to the Signal documentation for more information on how to run the application")
 
 
-from common.core.data_models.Config import Config
-
-
 class SignalRuntime:
+
+    @staticmethod
+    def prepare_logging():
+        from loguru import logger
+        # Console output is configured by CLI only after its banner and arguments.
+        logger.remove()
 
     @staticmethod
     def prepare_runtime():  # General preparation to run the application in any mode
@@ -62,12 +62,16 @@ class SignalRuntime:
 
     @staticmethod
     def run_cli_mode() -> int:
-        from common.cli.tools.SignalCli import SignalCli
+        from common.core.data_models.Config import Config
         from common.core.tools.CustomConfigFile import CustomConfigFile
 
         custom_config: CustomConfigFile = CustomConfigFile(add_help=False)
+        custom_config.set_defaults(config_file=None)
         config_file = custom_config.get_config_filename()
-        config: Config = Config(config_file)
+        from common.core.tools.StartupConfig import load_startup_config
+        config = Config(config_file) if config_file is not None else load_startup_config()[0]
+        SignalRuntime.prepare_logging()
+        from common.cli.tools.SignalCli import SignalCli
         signal_cli: SignalCli = SignalCli(config)
         status: int = signal_cli.run_application()
 
@@ -75,28 +79,43 @@ class SignalRuntime:
 
     @staticmethod
     def run_gui_mode() -> int:
-        from common.gui.tools.SignalGui import SignalGui
+        from common.core.data_models.Config import Config
         from common.core.enums.TermFilesPath import TermFilesPath
 
-        config: Config = Config(TermFilesPath.CONFIG)
+        from common.core.tools.StartupConfig import load_startup_config
+        config, warning = load_startup_config()
+        SignalRuntime.prepare_logging()
+        from common.gui.tools.SignalGui import SignalGui
         signal_gui: SignalGui = SignalGui(config)
+        signal_gui._startup_config_warning = warning
         status: int = signal_gui.run_application()
 
         return status
 
     @staticmethod
     def run_signal() -> int:
+        from common.core.tools.ErrorReporting import report_error, install_exception_hook
+        cli_mode = SignalRuntime.cli_mode_requested()
+        previous_hook = install_exception_hook(gui=not cli_mode)
+
         try:
+            if not cli_mode:
+                from common.gui.tools.ErrorPresentation import install
+                install()
             SignalRuntime.prepare_runtime()
 
-            if SignalRuntime.cli_mode_requested():
+            if cli_mode:
                 return SignalRuntime.run_cli_mode()
 
             return SignalRuntime.run_gui_mode()
 
         except Exception as run_error:
-            print(f"Signal starting error: {run_error}", file=stderr)
+            report_error(run_error, gui=not cli_mode, title="Signal could not start")
             return 100
+
+        finally:
+            import sys
+            sys.excepthook = previous_hook
 
 
 # The script starts here

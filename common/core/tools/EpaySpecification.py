@@ -1,4 +1,8 @@
+from common.core.tools.DebugTrace import trace_operation
 from copy import deepcopy
+import os
+import tempfile
+from pathlib import Path
 from loguru import logger
 from contextlib import suppress
 from dataclasses import asdict
@@ -24,8 +28,23 @@ class EpaySpecification(EpaySpecificationData):
             filename: FilePath = TermFilesPath.SPECIFICATION
 
         self.filename: FilePath = filename
-        self._specification_model: EpaySpecModel = EpaySpecModel(filename)
+        self.recovery_error = None
+        self.recovery_exception = None
+        self.recovery_text = None
+        try:
+            self._specification_model = EpaySpecModel(filename)
+            self._specification_model.validate_for_use()
+        except Exception as error:
+            self.recovery_exception = error
+            self.recovery_error = str(error)
+            with suppress(OSError, UnicodeError):
+                self.recovery_text = Path(filename).read_text(encoding='utf-8')
+            self._specification_model = EpaySpecModel()
         self._dictionary = self.create_dictionary()
+
+    def require_ready(self):
+        if self.recovery_error is not None:
+            raise ValueError('Specification is unavailable. Open Tools > Specification and fix or replace it before processing messages.')
 
     @property
     def utrnno_path(self):
@@ -97,10 +116,11 @@ class EpaySpecification(EpaySpecificationData):
             self.MESSAGE_TYPE_INDICATORS.REVERSAL_ADVICE_RESPONSE
         )
 
-    def parse_file(self, path):
-        self._specification_model: EpaySpecModel = EpaySpecModel(path)
+    @trace_operation
+    def parse_file(self, path, *, config=None):
+        candidate = EpaySpecModel(path)
         self._dictionary = self.create_dictionary()
-        self.reload_spec(self._specification_model, commit=False)
+        self.reload_spec(candidate, commit=False, config=config)
 
     def is_secret(self, path: FieldPath) -> bool:
         spec = self.spec
@@ -177,18 +197,36 @@ class EpaySpecification(EpaySpecificationData):
 
         return message_type_desc
 
-    def reload_spec(self, spec: EpaySpecModel, commit: bool):
-        self.spec.fields = spec.fields
-        self.spec.name = spec.name
-
+    @trace_operation
+    def reload_spec(self, spec: EpaySpecModel, commit: bool, *, config=None):
+        candidate = EpaySpecModel.model_validate(spec.model_dump())
+        candidate.validate_for_use()
         with suppress(KeyError, AttributeError):
-            self.spec.fields[self.FIELD_SET.FIELD_002_PRIMARY_ACCOUNT_NUMBER].is_secret = True
-
-        if not commit:
-            return
-
-        with open(self.filename, "w") as spec_file:
-            spec_file.write(self.spec.model_dump_json(indent=4))
+            candidate.fields[self.FIELD_SET.FIELD_002_PRIMARY_ACCOUNT_NUMBER].is_secret = True
+        from common.core.tools.SpecFilesRotator import SpecFilesRotator
+        from common.core.data_models.Config import Config
+        backup_options = {'specification': candidate} if self.recovery_error is not None else {}
+        # Standalone callers use model defaults; application callers supply their live settings.
+        backup_config = config if config is not None else Config(specification={})
+        if not SpecFilesRotator(backup_config).backup_spec(required=True, **backup_options):
+            raise ValueError('Cannot back up active specification')
+        if commit:
+            temporary = None
+            try:
+                with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=os.path.dirname(os.path.abspath(self.filename)),
+                                                 prefix='.spec-', suffix='.tmp', delete=False) as file:
+                    temporary = file.name
+                    file.write(candidate.model_dump_json(indent=4))
+                    file.flush()
+                    os.fsync(file.fileno())
+                os.replace(temporary, self.filename)
+            finally:
+                if temporary and os.path.exists(temporary):
+                    os.remove(temporary)
+        self._specification_model = candidate
+        self.recovery_error = None
+        self.recovery_text = None
+        self.recovery_exception = None
 
     def get_reversal_fields(self):
         return (field for field, value in self.fields.items() if value.reversal)
@@ -209,6 +247,7 @@ class EpaySpecification(EpaySpecificationData):
 
         return False
 
+    @trace_operation
     def set_field_spec(self, field_spec: IsoField, parent: FieldSet | None = None) -> bool | None:
         if parent is None:
             parent = self.fields
@@ -295,7 +334,7 @@ class EpaySpecification(EpaySpecificationData):
         field_spec: IsoField
 
         if not (field_spec := self.get_field_spec(field_path)):
-            raise ValueError("Lost field spec for field %s" % ".".join(field_path))
+            raise ValueError("Missing specification for field %s" % ".".join(field_path))
 
         data_map: dict[str, bool] = {
             self.DATA_TYPES.FIELD_TYPE_ALPHA: field_spec.alpha,

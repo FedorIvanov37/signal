@@ -1,5 +1,4 @@
 from pydantic import BaseModel, DirectoryPath, IPvAnyAddress
-from common.core.constants.LogDefinition import DebugLevels
 from common.core.enums.TermFilesPath import TermFilesPath
 
 
@@ -10,7 +9,7 @@ class CliConfig(BaseModel):
     address: IPvAnyAddress
     port: int
     repeat: bool = False
-    log_level: str = DebugLevels.INFO
+    log_level: str | None = None
     interval: int = 1
     parallel: bool = False
     timeout: int = 60

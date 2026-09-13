@@ -1,3 +1,4 @@
+from common.core.tools.DebugTrace import trace_operation
 from common.core.tools.validators.Validator import Validator
 from common.core.data_models.Config import Config
 from common.core.data_models.Transaction import Transaction
@@ -24,16 +25,19 @@ class TransValidator:
         self._config = config
         self.validator = Validator(self.config)
 
+    @trace_operation
     def validate_transaction(self, transaction: Transaction) -> None:
         validation_result: ValidationResult = ValidationResult()
         validation_result = self.validator.validate_mti(transaction.message_type, validation_result)
         validation_result = self.validator.validate_fields(transaction.data_fields, validation_result)
         self.validator.process_validation_result(validation_result)
 
+    @trace_operation
     def validate_fields(self, fields) -> None:
         validation_result: ValidationResult = self.validator.validate_fields(fields, ValidationResult())
         self.validator.process_validation_result(validation_result)
 
+    @trace_operation
     def validate_field_spec(self, field_path: FieldPath) -> None:
         validation_result: ValidationResult = self.validator.validate_field_spec(field_path, ValidationResult())
         self.validator.process_validation_result(validation_result)

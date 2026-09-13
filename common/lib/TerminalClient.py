@@ -1,3 +1,4 @@
+from common.core.tools.DebugTrace import trace_operation
 from contextlib import suppress
 from PyQt6.QtCore import QEventLoop, QTimer, QCoreApplication
 from common.lib.data_models.TransStatus import TransStatus
@@ -55,16 +56,18 @@ class TerminalClient:
 
     def __init__(self):
         self.app = QCoreApplication.instance() or QCoreApplication(list())
-        self._config = Config(TermFilesPath.CONFIG)
+        self._terminal = Terminal(Config(TermFilesPath.CONFIG), application=self.app)
+        self._config = self._terminal.config
         self._parser = Parser(self.config)
-        self._terminal = Terminal(self.config)
         self._fields_generator = FieldsGenerator()
         self._specification: EpaySpecification = EpaySpecification()
         self.console_log_handler_id = None
 
+    @trace_operation
     def connect(self):
         self.connector.connect_sv()
 
+    @trace_operation
     def disconnect(self):
         self.connector.disconnect_sv()
 
@@ -78,12 +81,14 @@ class TerminalClient:
         if enable:
             self.console_log_handler_id = self.terminal.logger.add_stdout_handler()
 
+    @trace_operation
     def parse_file(self, file_path: str) -> Transaction:
         return self.parser.parse_file(file_path)
 
     def get_sv_dump(self, transaction: Transaction) -> str:
         return self.parser.create_sv_dump(transaction)
 
+    @trace_operation
     def reverse_transaction(self, original_trans_id: str) -> Transaction:
         original_transaction: Transaction = self.transaction_queue.get_transaction(original_trans_id)
 
@@ -112,12 +117,15 @@ class TerminalClient:
     def parse_dump(self, dump: str) -> Transaction:
         return self.parser.parse_dump(dump)
 
+    @trace_operation
     def validate_transaction(self, transaction: Transaction):
         return self.terminal.trans_validator.validate_transaction(transaction)
 
+    @trace_operation
     def save_transaction(self, transaction: Transaction, data_format: OutputFilesFormat, file_name: str = None):
         self.terminal.save_transaction(transaction, data_format, file_name)
 
+    @trace_operation
     def send_transaction(self, transaction: Transaction, wait_for_response: bool = True, timeout_ms: int = 60_000) -> Transaction | None:
         if not wait_for_response:
             self.terminal.send(transaction)
@@ -125,6 +133,7 @@ class TerminalClient:
 
         return self._send_and_wait(transaction, timeout_ms)
 
+    @trace_operation
     def _send_and_wait(self, transaction: Transaction, timeout_ms: int = 60_000) -> Transaction:
         loop = QEventLoop()
         timer = QTimer()

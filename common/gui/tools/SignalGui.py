@@ -1,5 +1,6 @@
-from sys import exit as sys_exit
-from os import getcwd, kill, getpid, startfile
+from common.gui.toolkit.clipboard import copy_text
+from common.core.tools.DebugTrace import trace_operation
+from os import getcwd, startfile
 from os.path import basename, normpath, abspath
 from json import loads, dumps
 from typing import Callable
@@ -7,7 +8,12 @@ from loguru import logger
 from functools import wraps
 from pydantic import ValidationError
 from webbrowser import open as open_url
+from pathlib import Path
+import sys
+from common.core.enums.ApplicationResources import ResourceNames
 from PyQt6.QtWidgets import QApplication, QFileDialog, QStyleFactory
+from PyQt6 import sip
+from PyQt6.QtGui import QPalette, QColor
 from PyQt6.QtNetwork import QTcpSocket
 from PyQt6.QtCore import pyqtSignal, QTimer, QDir, QThreadPool
 from common.gui.undo_commands.SetDisabledCommand import SetDisabledCommand
@@ -20,10 +26,12 @@ from common.gui.windows.hotkeys_hint_window import HotKeysHintWindow
 from common.gui.windows.complex_fields_window import ComplexFieldsParser
 from common.gui.windows.license_window import LicenseWindow
 from common.gui.tools.ConnectionThread import ConnectionThread
+from common.gui.tools.json_views.JsonView import JsonView
 from common.gui.enums import ButtonActions
 from common.gui.enums.Colors import Colors
 from common.gui.enums.GuiFilesPath import GuiDirs
 from common.gui.tools.WirelessHandler import WirelessHandler
+from common.gui.tools.ShortcutLogging import ShortcutLogging
 from common.core.enums import KeepAlive
 from common.core.enums.TermFilesPath import TermFilesPath, TermDirs
 from common.core.enums.MessageLength import MessageLength
@@ -31,6 +39,8 @@ from common.core.enums.TextConstants import TextConstants
 from common.core.tools.TransTimer import TransactionTimer
 from common.core.tools.SpecFilesRotator import SpecFilesRotator
 from common.core.tools.Terminal import Terminal
+from common.core.tools.ConfigManager import ConfigManager
+from common.core.tools.ErrorReporting import report_error
 from common.core.data_models.Config import Config
 from common.core.data_models.Transaction import Transaction, TypeFields
 from common.core.data_models.EpaySpecificationModel import EpaySpecModel
@@ -88,15 +98,35 @@ class SignalGui(Terminal):
                 return function(self, *args, **kwargs)
 
             finally:
+                restore = getattr(self, "_json_view_restore_state", None)
                 self.window.set_focus()
+                if restore is not None:
+                    view, item, vertical, horizontal = restore
+                    self._json_view_restore_state = None
+                    if item is not None and item.treeWidget() is view:
+                        view.setCurrentItem(item)
+                    view.verticalScrollBar().setValue(vertical)
+                    view.horizontalScrollBar().setValue(horizontal)
 
         return wrapper
 
     def __init__(self, config: Config):
-        self.connector: ConnectionThread = ConnectionThread(config)
-        super(SignalGui, self).__init__(config=config, connector=self.connector)
+        from common.gui.tools.ErrorPresentation import install
+        install()
+        self._shutting_down = False
+        application = QApplication.instance() or QApplication([])
+        from common.gui.tools.GuiWatchdog import GuiWatchdog
+        GuiWatchdog.install(application)
+        manager = ConfigManager(config)
+        self.connector: ConnectionThread = ConnectionThread(manager.view)
+        super(SignalGui, self).__init__(config=manager.view, connector=self.connector, application=application)
+        self._shortcut_logging = ShortcutLogging.install(application)
         self.api = SignalApi(self.config, terminal=self)
         self.window: MainWindow = MainWindow(self.config)
+        self.window.destroyed.connect(self._begin_shutdown)
+        self.pyqt_application.aboutToQuit.connect(self._begin_shutdown)
+        self.trans_queue.parsing_error.connect(
+            lambda message: self.window.statusBar().showMessage(f"Incoming message rejected: {message}", 15000))
         self.thread_pool: QThreadPool = QThreadPool()
         self.wireless_handler = WirelessHandler()
         self.trans_timer = TransactionTimer(KeepAlive.TransTypes.TRANS_TYPE_TRANSACTION)
@@ -111,16 +141,91 @@ class SignalGui(Terminal):
         self._run_timer.start(int())
         self.logger.add_wireless_handler(self.wireless_handler)
         self.pyqt_application.setStyle(QStyleFactory.create("windowsvista"))
+        palette = self.pyqt_application.palette()
+        palette.setColor(QPalette.ColorRole.Accent, QColor(Colors.SELECTION_BLUE))
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(Colors.SELECTION_BLUE))
+        palette.setColor(QPalette.ColorRole.HighlightedText, QColor(Colors.WHITE))
+        self.pyqt_application.setPalette(palette)
+        self.pyqt_application.setStyleSheet(
+            self.pyqt_application.styleSheet()
+            + f"\nQTextEdit, QPlainTextEdit, QLineEdit {{ "
+            f"selection-background-color: {Colors.SELECTION_BLUE}; "
+            f"selection-color: {Colors.WHITE}; }}"
 
-    def on_startup(self) -> None:  # Runs on startup to make all the preparation activity, then shows MainWindow
-        self.show_license_dialog()
+        )
 
-        self.log_printer.print_startup_info()
+        self.window._set_console_color(self.pyqt_application.property("signalConsoleColor"))
 
-        self.print_data(DataFormats.TERM)
+    @trace_operation
+    def run_application(self) -> int:
+        """Run the GUI and release background resources when it exits."""
+        try:
+            return self.pyqt_application.exec()
+        finally:
+            self._shutting_down = True
+            self._run_timer.stop()
+            self.keep_alive_timer._trans_loop_timer.stop()
+            self.trans_timer._trans_loop_timer.stop()
+            for timer in self.trans_queue.timers.values():
+                timer.stop()
+            if self.api.is_started():
+                self.api.stop()
+            self.connector.stop_thread()
+            self.thread_pool.waitForDone()
+            from PyQt6.QtCore import QCoreApplication, QEvent
+            for widget in self.pyqt_application.topLevelWidgets():
+                widget.deleteLater()
+            QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
+    @trace_operation
+    def on_startup(self, resuming=False) -> None:  # Runs on startup to make all the preparation activity, then shows MainWindow
+        if not resuming and not self.show_license_dialog():
+            self.pyqt_application.exit(0)
+            return
+
+        if self.spec.recovery_error is not None:
+            self._startup_waiting_for_spec = True
+            self.window.show()
+            from common.core.tools.ErrorReporting import report_error, specification_recovery_message
+            has_backups = SpecWindow.has_backups()
+            draft = None
+            if self.spec.recovery_text is not None:
+                from common.gui.tools.spec_document import parse_spec_document
+                try:
+                    draft = parse_spec_document(self.spec.recovery_text)
+                except ValueError:
+                    pass
+            message = specification_recovery_message(self.spec.filename, self.spec.recovery_text)
+            recovery_action = self.restore_specification_backup if has_backups else None
+            fix_action = None
+            action = ('Click Restore to select a backup.'
+                      if has_backups else
+                      'The file cannot be repaired here and no valid backups are available. A corrected specification file is required.')
+            if draft is not None:
+                message = f'Specification contains fields that need correction.\nFile: {abspath(self.spec.filename)}'
+                action = ('Click Fix specification to correct this file, or Restore to select a backup.' if has_backups else
+                          'Click Fix specification to correct this file.')
+                fix_action = lambda: self.run_specification_window(draft=draft)
+            report_error(self.spec.recovery_exception or ValueError(self.spec.recovery_error), gui=True, parent=self.window,
+                         user_message=message,
+                         action=action,
+                         recovery_action=recovery_action, fix_action=fix_action,
+                         exit_action=lambda: self.stop_signal())
+            return
+
+        self._startup_waiting_for_spec = False
+
+        if not resuming:
+            self.log_printer.print_startup_info()
+            self.print_data(DataFormats.TERM)
+
+        if warning := getattr(self, '_startup_config_warning', None):
+            logger.warning(warning)
+            self._startup_config_warning = None
+
+        parsed = False
         if self.config.terminal.process_default_dump:
-            self.set_default_values()
+            parsed = self.set_default_values(log=not resuming)
 
         if self.config.host.keep_alive_mode:
             interval: int = self.config.host.keep_alive_interval
@@ -144,6 +249,7 @@ class SignalGui(Terminal):
         self.window.json_view.enable_json_mode_checkboxes(enable=not self.config.specification.manual_input_mode)
 
         self.window.show()
+        return parsed
 
     def connect_widgets(self) -> None:
         window: MainWindow = self.window
@@ -171,23 +277,24 @@ class SignalGui(Terminal):
             window.settings: self.settings,
             window.hotkeys: self.show_hotkeys,
             window.specification: self.run_specification_window,
-            window.about: lambda: self.settings(about=True),
+            window.about: self.about,
             window.keep_alive: self.keep_alive_timer.set_trans_loop_interval,
             window.repeat: self.trans_timer.set_trans_loop_interval,
             window.validate_message: lambda force: self.validate_main_window(force=force),
             window.parse_complex_field: self.parse_complex_field,
             window.api_mode_changed: self.api.process_change_api_mode,
-            window.exit: sys_exit,
+            window.exit: self.pyqt_application.quit,
             window.show_document: self.show_document,
             window.show_license: lambda: self.show_license_dialog(force=True),
             window.disable_item: lambda: self.disable_item(disable=True),
             window.enable_item: lambda: self.disable_item(disable=False),
             window.enable_all_items: lambda: self.disable_item(False, self.window.json_view.root, go_next=False),
             window.files_dropped: self.process_files_drop,
+            window.text_dropped: self.process_text_drop,
             window.undo: window.undo_changes,
             window.redo: window.redo_changes,
             window.show_openapi_doc: self.show_openapi_doc,
-            self.wireless_handler.new_record_appeared: window.log_browser.append,
+            self.wireless_handler.formatted_record_appeared: window.log_browser.append,
             self.api.open_connection: lambda: self.reconnect(self.config.host.host, str(self.config.host.port)),
             self.connector.stateChanged: self.set_connection_status,
             self.set_remote_spec: self.connector.get_remote_spec,
@@ -208,10 +315,7 @@ class SignalGui(Terminal):
         self.window.reconnect.connect(lambda: logger.info("[Re]connecting..."))
 
     def read_config(self, config_file: str | None = None):
-        Terminal.read_config(self, config_file)
-
-        for tool in self.window, self.connector:
-            tool.config = self.config
+        return Terminal.read_config(self, config_file)
 
     def disable_item(self, disable: bool, item=None, go_next=True) -> None:
         if item is None and not (item := self.window.json_view.currentItem()):
@@ -239,34 +343,49 @@ class SignalGui(Terminal):
 
     @staticmethod
     def show_document():  # Open the User guide in a default browser
-        open_url(GuiFilesPath.DOC)
+        root = (Path(sys.executable).resolve().parent if getattr(sys, "frozen", False)
+                else Path(__file__).resolve().parents[3])
+        guide = root / "common" / "doc" / ResourceNames.USER_GUIDE
+        if not guide.is_file():
+            logger.error("User guide not found: {}", guide)
+            return
+        open_url(guide.as_uri())
 
     def show_openapi_doc(self):
         if not self.api.is_started():
-            logger.error("Signal API is not started. Cannot open the API Specification page")
+            logger.error("Signal API is not running. Cannot open the API Specification page")
             return
 
         self.api.show_openapi_doc()
 
     @set_json_view_focus
-    def show_license_dialog(self, force: bool = False) -> None:
+    def show_license_dialog(self, force: bool = False) -> bool:
         try:
             license_window: LicenseWindow = LicenseWindow(self.config, force=force)
             license_window.exec()
-            self.config.terminal.show_license_dialog = license_window.license_info.show_agreement
+            if license_window.rejected_by_user:
+                return False
+            if force:
+                return True
+            candidate = self.config.model_copy(deep=True)
+            candidate.terminal.show_license_dialog = license_window.license_info.show_agreement
+            self.update_config(candidate, persist=True)
+            return True
 
         except LicenseDataLoadingError as license_data_loading_error:
             logger.error(license_data_loading_error)
-            exit(100)
+            self.pyqt_application.exit(100)
+            return False
 
         except LicenceAlreadyAccepted:
-            return
+            return True
     
     @staticmethod
     def open_spec_backup_dir():
         startfile(abspath(TermDirs.SPEC_BACKUP_DIR))
 
     @set_json_view_focus
+    @trace_operation
     def parse_complex_field(self):
         ComplexFieldsParser(self.config, self).exec()
 
@@ -275,16 +394,67 @@ class SignalGui(Terminal):
         HotKeysHintWindow().exec()
 
     @set_json_view_focus
-    def run_specification_window(self) -> None:
+    @trace_operation
+    def restore_specification_backup(self):
+        backups = SpecWindow.valid_backups()
+        if not backups:
+            logger.warning('No valid specification backups are available.')
+            return
+        filename, _ = QFileDialog.getOpenFileName(self.window, 'Restore specification backup',
+                                                 str(TermDirs.SPEC_BACKUP_DIR),
+                                                 'Specification backups (' + ' '.join(path.name for path in backups) + ')')
+        if not filename:
+            return
+        from pathlib import Path
+        from common.gui.tools.spec_document import parse_spec_document
+        try:
+            draft = parse_spec_document(Path(filename).read_text(encoding='utf-8'))
+        except (ValueError, OSError) as error:
+            report_error(error, gui=True, parent=self.window, action='Cannot read this backup. Choose another backup.')
+            return
+        try:
+            candidate = EpaySpecModel.model_validate(draft.model_dump(warnings=False))
+            candidate.validate_for_use()
+        except ValueError:
+            self.run_specification_window(draft=draft)
+            return
+        try:
+            self.spec.reload_spec(candidate, commit=True, config=self.config)
+        except (ValueError, OSError) as error:
+            report_error(error, gui=True, parent=self.window, action='Cannot save the restored specification')
+            return
+        self._resume_after_spec_recovery()
+
+    @set_json_view_focus
+    @trace_operation
+    def run_specification_window(self, open_backup=False, draft=None) -> None:
         old_spec = self.spec.spec.json()
 
         self.logger.remove()
-        spec_window = SpecWindow(self.connector, self.config)
+        spec_window = SpecWindow(self.connector, self.config, recover=not open_backup and draft is None)
+        if draft is not None:
+            spec_window.SpecView.parse_spec(draft)
+            logger.warning('Correct the highlighted fields, then press Apply.')
+            QTimer.singleShot(0, lambda: spec_window.LogArea.verticalScrollBar().setValue(
+                spec_window.LogArea.verticalScrollBar().maximum()))
+        if open_backup:
+            QTimer.singleShot(0, spec_window.open_backup)
         spec_window.open_spec_backup_dir.connect(SignalGui.open_spec_backup_dir)
         spec_window.copy_specification.connect(lambda: self.copy_specification(spec_window))
-        spec_window.exec()
+        spec_window.spec_accepted.connect(
+            lambda *args: spec_window.accept() if getattr(self, '_startup_waiting_for_spec', False)
+            else self._resume_after_spec_recovery())
+        self._spec_editor_open = True
+        try:
+            spec_window.exec()
+        finally:
+            self._spec_editor_open = False
 
         self.logger.setup(wireless_handler=self.wireless_handler)
+
+        if getattr(self, '_startup_waiting_for_spec', False) and self.spec.recovery_error is None:
+            self._resume_after_spec_recovery()
+            return
 
         if self.config.fields.hide_secrets:
             self.window.json_view.hide_secrets()
@@ -293,17 +463,34 @@ class SignalGui(Terminal):
 
         if specification_changed and self.config.validation.validation_enabled:
             if self.config.validation.validate_window:
-                logger.info("Validate message after spec settings")
+                logger.info("Validating message after specification changes")
                 self.validate_main_window()
 
             if self.config.specification.manual_input_mode:
                 self.modify_fields_data()
                 self.window.json_view.refresh_fields(Colors.BLACK)
 
+    def _resume_after_spec_recovery(self, *args):
+        from common.gui.tools.tab_view.Widgets import ComboBox
+        for selector in self.window.tab_view.findChildren(ComboBox):
+            selector.refresh_specification()
+        if getattr(self, '_startup_waiting_for_spec', False) and self.spec.recovery_error is None:
+            logger.info('Specification recovery started.')
+            parsed = self.on_startup(resuming=True)
+            if not self.config.terminal.process_default_dump:
+                logger.bind(recovery_success=True).info('Specification recovery completed successfully. Resuming normal operation.')
+            elif parsed:
+                logger.bind(recovery_success=True).info('Specification recovery completed successfully. Resuming normal operation.')
+            else:
+                logger.warning('Specification restored and valid, but the default transaction could not be loaded. Open a valid transaction file to continue.')
+
     def modify_fields_data(self):  # Set extended data modifications, set in field params
         self.window.json_view.modify_all_fields_data()
 
+    @trace_operation
     def load_remote_spec(self, spec_data: str) -> None:
+        if getattr(self, '_spec_editor_open', False):
+            return  # The editor receives this response as a draft through the same connector.
         try:
             epay_spec: EpaySpecModel = EpaySpecModel.model_validate_json(spec_data)
         except (ValidationError, ValueError) as spec_parsing_error:
@@ -313,7 +500,7 @@ class SignalGui(Terminal):
 
         try:
             self.backup_spec()
-            self.spec.reload_spec(spec=epay_spec, commit=self.config.specification.rewrite_local_spec)
+            self.spec.reload_spec(spec=epay_spec, commit=self.config.specification.rewrite_local_spec, config=self.config)
         except Exception as spec_reload_error:
             logger.error(spec_reload_error)
             logger.warning("Local specification will be used instead")
@@ -327,6 +514,7 @@ class SignalGui(Terminal):
 
         logger.info("Transaction data validated")
 
+    @trace_operation
     def echo_test(self) -> None:
         try:
             echo_test: Transaction = self.parser.parse_file(TermFilesPath.ECHO_TEST)
@@ -340,53 +528,76 @@ class SignalGui(Terminal):
             logger.error(sending_error)
 
     @set_json_view_focus
-    def settings(self, about=False) -> None:
-        try:
-            old_config: Config = self.config.model_copy(deep=True)
+    def about(self):
+        from common.gui.windows.about_window import AboutWindow
+        window = AboutWindow(self.window)
+        window.open_user_guide.connect(self.show_document)
+        window.exec()
 
-            settings_window: SettingsWindow = SettingsWindow(self.config, about=about)
-            settings_window.accepted.connect(lambda: self.process_config_change(old_config))
+    @set_json_view_focus
+    @trace_operation
+    def settings(self) -> None:
+        try:
+            snapshot, revision = self.config_manager.read()
+            def commit_settings(candidate, theme_only=False):
+                nonlocal revision
+                previous = getattr(self, '_applying_theme_only', False)
+                self._applying_theme_only = theme_only
+                try:
+                    self.update_config(candidate, expected_revision=revision)
+                    _, revision = self.config_manager.read()
+                finally:
+                    self._applying_theme_only = previous
+            settings_window = SettingsWindow(snapshot,
+                commit=commit_settings,
+                commit_theme=lambda candidate: commit_settings(candidate, theme_only=True),
+                change_colors=self.window.apply_theme_colors)
             settings_window.open_api_spec.connect(self.show_openapi_doc)
-            settings_window.open_user_guide.connect(self.show_document)
             settings_window.exec()
             
         except Exception as settings_error:
-            logger.error(settings_error)
+            report_error(settings_error, gui=True, parent=self.window)
 
+    @trace_operation
     def process_config_change(self, old_config: Config) -> None:
+        if old_config.fields.auto_sort != self.config.fields.auto_sort:
+            from common.gui.tools.json_views.TreeView import TreeView
+            for widget in QApplication.instance().allWidgets():
+                if isinstance(widget, TreeView) and hasattr(widget, '_auto_sort_timer'):
+                    widget.set_auto_sort(self.config.fields.auto_sort)
+        if old_config.theme != self.config.theme.model_copy(deep=True):
+            self.window.apply_theme_colors(self.config.theme.model_copy(deep=True).colors())
         Terminal.process_config_change(self, old_config)
-
-        if self.config.debug.level != old_config.debug.level:
-            self.logger.setup(wireless_handler=self.wireless_handler)
-
-        self.window.json_view.enable_json_mode_checkboxes(enable=self.config.validation.validate_window)
 
         validation_conditions = [
             old_config.validation.validate_window != self.config.validation.validate_window,
             old_config.validation.validation_mode != self.config.validation.validation_mode,
+            old_config.validation.validation_enabled != self.config.validation.validation_enabled,
         ]
 
-        if self.config.validation.validation_enabled and any(validation_conditions):
+        # Refresh presentation in all tabs; their parsers/validators already share the view.
+        for view in self.window.tab_view.findChildren(JsonView):
 
-            if self.config.validation.validate_window:
-                self.modify_fields_data()
-                self.validate_main_window()
+            view.enable_json_mode_checkboxes(enable=self.config.validation.validate_window)
 
-            if not self.config.validation.validate_window:
-                self.window.json_view.refresh_fields(color=Colors.BLACK)
+            if any(validation_conditions) or old_config.specification.manual_input_mode != self.config.specification.manual_input_mode:
+                view.refresh_fields(color=Colors.BLACK)
 
-        if old_config.specification.manual_input_mode != self.config.specification.manual_input_mode:
-            self.window.json_view.refresh_fields(color=Colors.BLACK)
+            if old_config.fields.json_mode != self.config.fields.json_mode:
+                view.switch_json_mode(self.config.fields.json_mode)
 
-        if old_config.fields.json_mode != self.config.fields.json_mode:
-            self.window.json_view.switch_json_mode(self.config.fields.json_mode)
+            if old_config.fields.hide_secrets != self.config.fields.hide_secrets:
+                view.hide_secrets()
 
-        if old_config.fields.hide_secrets != self.config.fields.hide_secrets:
-            self.window.json_view.hide_secrets()
+        if self.config.validation.validation_enabled and self.config.validation.validate_window and any(validation_conditions):
+            self.modify_fields_data()
+            self.validate_main_window()
 
         spec_loading_conditions: list[bool] = [
             self.config.specification.remote_spec_url,
             self.config.terminal.load_remote_spec,
+            (old_config.specification.remote_spec_url, old_config.terminal.load_remote_spec) !=
+            (self.config.specification.remote_spec_url, self.config.terminal.load_remote_spec),
         ]
 
         if all(spec_loading_conditions):
@@ -400,38 +611,40 @@ class SignalGui(Terminal):
             else:
                 self.set_remote_spec.emit()
 
-        keep_alive_change_conditions: list[bool] = [
-            old_config.host.keep_alive_mode != self.config.host.keep_alive_mode,
-            old_config.host.keep_alive_interval != self.config.host.keep_alive_interval
-        ]
+        if not getattr(self, '_applying_theme_only', False):
+            logger.info("Settings applied")
 
-        if any(keep_alive_change_conditions):
-            interval_name: str = KeepAlive.IntervalNames.KEEP_ALIVE_STOP
-
-            if self.config.host.keep_alive_mode:
-                interval_name: str = KeepAlive.IntervalNames.KEEP_ALIVE_DEFAULT % self.config.host.keep_alive_interval
-
-            self.keep_alive_timer.set_trans_loop_interval(interval_name)
-
-        logger.info("Settings applied")
+    def _begin_shutdown(self):
+        self._shutting_down = True
 
     def stop_signal(self) -> None:
+        self._shutting_down = True
         if self.config.specification.backup_on_shutdown:
             self.backup_spec()
 
         self.connector.stop_thread()
 
-        kill(getpid(), 3)
+        self.pyqt_application.quit()
 
-    def set_connection_status(self) -> None:
-        self.window.set_connection_status(self.connector.state())
+    def set_connection_status(self, state: QTcpSocket.SocketState) -> None:
+        if self._shutting_down:
+            return
+        if isinstance(self.window, MainWindow) and (
+            sip.isdeleted(self.window)
+            or sip.isdeleted(self.window.ConnectionStatus)
+            or sip.isdeleted(self.window.ConnectionStatusLabel)
+        ):
+            self._shutting_down = True
+            return
+        self.window.set_connection_status(state)
 
-        if self.connector.state() is QTcpSocket.SocketState.ConnectingState:
+        if state == QTcpSocket.SocketState.ConnectingState:
             self.window.block_connection_buttons()
             return
 
         self.window.unblock_connection_buttons()
 
+    @trace_operation
     def make_reversal(self, command: str) -> None:
         transaction_source_map: dict[str, Callable] = {
             ButtonActions.ReversalMenuActions.LAST: self.trans_queue.get_last_reversible_transaction_id,
@@ -538,7 +751,13 @@ class SignalGui(Terminal):
 
         return transactions
 
+    @trace_operation
     def send(self, transaction: Transaction | None = None, is_api_call=False) -> None:
+        try:
+            self.spec.require_ready()
+        except ValueError as error:
+            logger.error(error)
+            return
         if transaction is None:
             try:
                 transaction: Transaction = self.parse_main_window_tab()
@@ -671,6 +890,7 @@ class SignalGui(Terminal):
 
         return file_name
 
+    @trace_operation
     def save_transaction_to_file(
             self, mode: ButtonActions.SaveMenuActions | None = None, file_format: OutputFilesFormat | None = None
     ) -> None:
@@ -683,14 +903,14 @@ class SignalGui(Terminal):
         transactions: dict[str, Transaction] = dict()
 
         if not (file_data := self.get_output_filename(mode == ButtonActions.SaveMenuActions.ALL_TABS)):
-            logger.warning("No output filename or directory recognized")
+            logger.warning("No output file or directory selected")
             return
 
         if mode == ButtonActions.SaveMenuActions.CURRENT_TAB:
             file_name, file_format = file_data
 
             if not all([file_name, file_format]):
-                logger.warning("No output filename or directory recognized")
+                logger.warning("No output file or directory selected")
                 return
 
         try:
@@ -746,15 +966,15 @@ class SignalGui(Terminal):
         }
 
         if not (function := data_processing_map.get(data_format)):
-            logger.error(f"Wrong data format for printing: {data_format}")
+            logger.error(f"Unsupported print format: {data_format}")
             return
 
         try:
-            self.window.set_log_data(function())
+            self.window.set_log_data(function(), data_format=data_format)
 
         except AttributeError:
-            logger.error("Cannot construct message: lost field specification."
-                         " Correct spec or turn field validation off")
+            logger.error("Cannot construct message: missing field specification."
+                         " Correct the specification or turn off field validation")
 
         except Exception as validation_error:
             logger.error(f"Cannot construct message: {validation_error}")
@@ -763,16 +983,16 @@ class SignalGui(Terminal):
         self.set_clipboard_text(self.window.get_log_data())
 
     def copy_bitmap(self) -> None:
-        self.set_clipboard_text(self.window.get_bitmap_data())
-        logger.info("The bitmap was copied")
+        if self.set_clipboard_text(self.window.get_bitmap_data()):
+            logger.info("The bitmap was copied")
 
     def copy_specification(self, spec_window: SpecWindow):
         self.set_clipboard_text(dumps(loads(spec_window.spec.spec.json()), indent=2))
-        logger.info("The Specification JSON was copied to clipboard")
+        logger.info("Specification JSON copied to clipboard")
 
     @staticmethod
-    def set_clipboard_text(data: str = str()) -> None:
-        QApplication.clipboard().setText(data)
+    def set_clipboard_text(data: str = str()) -> bool:
+        return copy_text(data)
 
     @set_json_view_focus
     def show_reversal_window(self) -> str | None:
@@ -783,14 +1003,14 @@ class SignalGui(Terminal):
         accepted: int = reversal_window.exec()
 
         if not bool(accepted):
-            logger.warning("Reversal sending is cancelled")
+            logger.warning("Reversal canceled")
             return ""
 
         try:
             return reversal_window.reversal_id
 
         except AttributeError:
-            logger.error("Cannot create reversal. Wrong or empty transaction ID")
+            logger.error("Cannot create reversal: invalid or missing transaction ID")
             return ""
 
     def copy_current_field(self):
@@ -800,30 +1020,46 @@ class SignalGui(Terminal):
         self.set_clipboard_text(field_data)
 
     @set_json_view_focus
-    def set_default_values(self, log=True) -> None:
+    def set_default_values(self, log=True) -> bool:
         try:
-            self.parse_file(str(TermFilesPath.DEFAULT_FILE), log=False, new_tab=False)
+            parsed = self.parse_file(str(TermFilesPath.DEFAULT_FILE), log=False, new_tab=False)
 
         except Exception as parsing_error:
-            logger.error(f"Default file parsing error! Exception: {parsing_error}")
+            logger.error(f"Cannot parse default file: {parsing_error}")
+            return False
 
         else:
-            logger.info("Default file parsed") if log else ...
+            if parsed and log:
+                logger.debug('Default transaction successfully parsed using specification: {}', self.spec.name)
+            return parsed
 
+    @trace_operation
     def process_files_drop(self, incoming_files: list[str]):
         for incoming_file in incoming_files:
             self.parse_file(incoming_file, new_tab=True)
 
+    def process_text_drop(self, text):
+        try:
+            transaction = self.parser.parse_text(text)
+        except Exception as error:
+            logger.error(f'Text parsing error: {error}')
+            return
+        self.window.tab_view.add_tab()
+        self.window.set_tab_name('Dropped text')
+        self.parse_transaction(transaction)
+
     @set_json_view_focus
-    def parse_file(self, incoming_filename: str | None = None, log=True, new_tab: bool = False) -> None:
+    @trace_operation
+    def parse_file(self, incoming_filename: str | None = None, log=True, new_tab: bool = False) -> bool:
         filenames: list[str] = []
+        parsed_count = 0
 
         if incoming_filename:
             filenames.append(incoming_filename)
 
         if not filenames and not (filenames := self.get_input_filename(multiple_files=True)):
-            logger.warning("No input filename(s) recognized")
-            return
+            logger.warning("No input files selected")
+            return False
 
         for filename in filenames:
 
@@ -843,16 +1079,20 @@ class SignalGui(Terminal):
                 self.window.set_tab_name(basename(filename))
 
             try:
-                self.parse_transaction(transaction)
+                if not self.parse_transaction(transaction):
+                    continue
             except Exception as fields_setting_error:
                 logger.error(fields_setting_error)
                 continue
 
+            parsed_count += 1
             if log:
                 logger.info(f"File parsed: {filename}")
+        return parsed_count == len(filenames)
 
     @set_json_view_focus
-    def parse_transaction(self, transaction: Transaction, generate_trans_id=True) -> None:
+    @trace_operation
+    def parse_transaction(self, transaction: Transaction, generate_trans_id=True) -> bool:
         try:
             self.window.tab_view.set_mti_value(transaction.message_type)
             self.window.tab_view.set_transaction_fields(transaction, generate_trans_id=generate_trans_id)
@@ -863,10 +1103,11 @@ class SignalGui(Terminal):
 
         except Exception as transaction_parsing_error:
             logger.error(f"Cannot set transaction fields: {transaction_parsing_error}")
-            return
+            return False
 
         if self.config.validation.validation_enabled and self.config.validation.validate_window:
             self.modify_fields_data()
+        return True
 
     def set_bitmap(self) -> None:
         bitmap: set[str] = set()

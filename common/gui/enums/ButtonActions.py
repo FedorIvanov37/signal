@@ -42,14 +42,14 @@ class ClearMenuActions(StrEnum):
 
 
 class DataMenuActions(StrEnum):
-    GET_DATA = f"{ButtonActionSigns.BUTTON_RIGHT_SIGN} Get from MainWindow"
-    SET_DATA = f"{ButtonActionSigns.BUTTON_LEFT_SIGN} Set to MainWindow"
+    GET_DATA = f"{ButtonActionSigns.BUTTON_RIGHT_SIGN} Get from main window"
+    SET_DATA = f"{ButtonActionSigns.BUTTON_LEFT_SIGN} Apply to main window"
 
 
 class ReversalMenuActions(StrEnum):
     LAST = "Reverse last"
     OTHER = "Reverse other"
-    SET_REVERSAL = "Set Reversal fields"
+    SET_REVERSAL = "Set reversal fields"
 
 
 class ApplySpecMenuActions(StrEnum):

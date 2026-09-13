@@ -13,7 +13,7 @@ class Currency(BaseModel):
     @classmethod
     def non_digits_only(cls, val):
         if not str(val).isalpha():
-            raise ValueError("Only alphabetic allowed")
+            raise ValueError("Only letters are allowed")
 
         return val
 
@@ -23,7 +23,7 @@ class Currency(BaseModel):
         val = str(val).zfill(3)
 
         if not val.isdigit():
-            raise ValueError("Only numeric codes allowed")
+            raise ValueError("Only numeric codes are allowed")
 
         return val
 

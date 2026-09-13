@@ -14,5 +14,9 @@ class HotKeysHintWindow(Ui_HotKeysHint, QDialog):
     @has_close_button_only
     def setup(self) -> None:
         header = self.HintTable.horizontalHeader()
-        header.setSectionResizeMode(header.ResizeMode.Fixed)
+        header.setSectionResizeMode(header.ResizeMode.Stretch)
         header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft)
+        rows = self.HintTable.verticalHeader()
+        rows.setMinimumSectionSize(20)
+        rows.setSectionResizeMode(rows.ResizeMode.Stretch)
+        self.HintTable.setStyleSheet("QHeaderView::section { padding: 0 4px; }")

@@ -21,6 +21,7 @@ class RemoveItemCommand(QUndoCommand):
             return
 
         with SignalsBlocker(self.tree):
+            self.index = self.parent.indexOfChild(self.item)
             self.removed_item = self.parent.takeChild(self.index)
 
         if self.callback is not None:

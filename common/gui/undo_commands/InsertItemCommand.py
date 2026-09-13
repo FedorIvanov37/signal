@@ -24,4 +24,5 @@ class InsertItemCommand(QUndoCommand):
 
     def undo(self):
         with SignalsBlocker(self.tree):
-            self.item = self.parent.takeChild(self.index)
+            self.index = self.parent.indexOfChild(self.item)
+            self.parent.takeChild(self.index)
