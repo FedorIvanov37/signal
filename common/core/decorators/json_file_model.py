@@ -1,7 +1,8 @@
 from pathlib import Path
 from functools import wraps
 from typing import Any, TypeVar
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
+from common.core.exceptions.exceptions import DataFileError
 
 
 """
@@ -50,11 +51,31 @@ def json_file_model(cls: T):
             raise ValueError("Use argument json_path or model fields, not both")
 
         if json_path is not None:
-            raw_data = Path(json_path).read_text(encoding="utf-8")
-            parsed_data = cls.model_validate_json(raw_data)
+            try:
+                raw_data = Path(json_path).read_text(encoding="utf-8")
+            except OSError as error:
+                if not getattr(cls, "describe_file_errors", False):
+                    raise
+                reason = "access denied; check file permissions" if isinstance(error, PermissionError) else error.strerror or str(error)
+                raise DataFileError(json_path, "read", reason) from error
+            except UnicodeError as error:
+                if not getattr(cls, "describe_file_errors", False):
+                    raise
+                raise DataFileError(json_path, "read", "expected UTF-8 text") from error
+            try:
+                parsed_data = cls.model_validate_json(raw_data)
+            except ValidationError as error:
+                error.source_file = str(json_path)
+                if not getattr(cls, "describe_file_errors", False):
+                    raise
+                locations = [".".join(map(str, item["loc"])) or "JSON document"
+                             for item in error.errors(include_input=False)]
+                raise DataFileError(json_path, "load", "invalid JSON or values at " + ", ".join(locations)) from error
             fields_data = parsed_data.model_dump()
 
         original_init(self, **fields_data)
+        if json_path is not None and getattr(cls, "describe_file_errors", False):
+            self._source_file = str(Path(json_path).resolve())
 
     cls.__init__ = __init__
 

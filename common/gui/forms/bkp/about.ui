@@ -204,7 +204,7 @@
    </palette>
   </property>
   <property name="windowTitle">
-   <string>SIGNAL | About</string>
+   <string>Signal | About</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
    <item row="0" column="0">

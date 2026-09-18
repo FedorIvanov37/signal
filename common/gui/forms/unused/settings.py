@@ -335,7 +335,7 @@ class Ui_SettingsWindow(object):
         self.ShowLicense.setText(_translate("SettingsWindow", "Show license dialog"))
         self.LogBox.setTitle(_translate("SettingsWindow", "Log"))
         self.label_4.setText(_translate("SettingsWindow", "Debug level"))
-        self.ClearLog.setText(_translate("SettingsWindow", "Clear log before sent message"))
+        self.ClearLog.setText(_translate("SettingsWindow", "Clear log before sending a message"))
         self.LogBackupLabel.setText(_translate("SettingsWindow", "Logfile backup storage depth"))
         self.ParseSubfields.setText(_translate("SettingsWindow", "Parse subfields"))
         self.groupBox.setTitle(_translate("SettingsWindow", "Validation"))

@@ -1,8 +1,8 @@
 from common.gui.forms.spec_unsaved import Ui_SpecUnsaved
-from PyQt6.QtWidgets import QDialog, QMenu
-from PyQt6.QtGui import QCloseEvent, QKeyEvent, QPixmap
+from PyQt6.QtWidgets import QDialog, QMenu, QLayout
+from PyQt6.QtGui import QCloseEvent, QKeyEvent
 from PyQt6.QtCore import Qt, pyqtSignal
-from common.gui.decorators.window_settings import set_window_icon, has_close_button_only
+from common.gui.decorators.window_settings import set_window_icon, has_close_button_only, themed_logo
 from common.gui.enums.GuiFilesPath import GuiFilesPath
 from common.gui.enums import ButtonActions
 
@@ -27,7 +27,15 @@ class SpecUnsaved(Ui_SpecUnsaved, QDialog):
     @set_window_icon
     @has_close_button_only
     def setup(self) -> None:
-        self.LogoLabel.setPixmap(QPixmap(GuiFilesPath.MAIN_LOGO))
+        self.setMinimumSize(0, 0)
+        self.setMaximumSize(16777215, 16777215)
+        self.layout().setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
+        self.LogoLabel.setFixedSize(30, 30)
+        self.LogoLabel.setProperty('signalLogoSize', self.LogoLabel.size())
+        from common.gui.decorators.window_settings import enable_logo_click
+        enable_logo_click(self.LogoLabel)
+        self.LogoLabel.setProperty("signalLogoPath", GuiFilesPath.MAIN_LOGO)
+        self.LogoLabel.setPixmap(themed_logo(GuiFilesPath.MAIN_LOGO))
         self.ButtonSave.setMenu(QMenu())
         self.ButtonSave.menu().addAction(
             ButtonActions.ApplySpecMenuActions.ONE_SESSION,

@@ -1,6 +1,7 @@
 from contextlib import suppress
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QTreeWidgetItem, QCheckBox, QWidget
+from PyQt6.QtGui import QFont, QPalette
+from PyQt6.QtWidgets import QTreeWidgetItem, QCheckBox, QWidget, QApplication
 from common.core.data_models.EpaySpecificationModel import IsoField
 from common.core.toolkit.toolkit import mask_pan, mask_secret
 from common.core.tools.EpaySpecification import EpaySpecification
@@ -10,6 +11,7 @@ from common.gui.enums.CheckBoxesDefinition import CheckBoxesDefinition
 from common.gui.enums import MainFieldSpec as FieldsSpec
 from common.gui.enums.MainFieldSpec import ColumnsOrder
 from common.gui.enums.Colors import Colors
+from common.gui.tools.widgets.FieldCheckBox import FieldCheckBox
 
 
 class FieldItem(Item):
@@ -177,7 +179,7 @@ class FieldItem(Item):
                 return False
 
         if checkbox_type == CheckBoxesDefinition.GENERATE:
-            if self.field_number not in list(FieldsSpec.GeneratedFields) and not self.is_trans_id:
+            if self.field_number not in self.epay_spec.get_fields_to_generate() and not self.is_trans_id:
                 return False
 
         if not (tree := self.treeWidget()):
@@ -196,7 +198,8 @@ class FieldItem(Item):
             return
 
         column_number = FieldsSpec.ColumnsOrder.PROPERTY
-        checkbox = QCheckBox()
+        checkbox = FieldCheckBox()
+        checkbox.setFont(QFont("Calibri", 12))
         checkbox.setChecked(checked)
 
         if not (tree := self.treeWidget()):
@@ -204,7 +207,7 @@ class FieldItem(Item):
 
         tree.removeItemWidget(self, FieldsSpec.ColumnsOrder.PROPERTY)
 
-        if self.field_number in list(FieldsSpec.GeneratedFields) or self.is_trans_id:
+        if self.field_number in self.epay_spec.get_fields_to_generate() or self.is_trans_id:
             checkbox.setText(CheckBoxesDefinition.GENERATE)
             tree.setItemWidget(self, column_number, checkbox)
 
@@ -212,7 +215,25 @@ class FieldItem(Item):
             checkbox.setText(CheckBoxesDefinition.JSON_MODE)
             tree.setItemWidget(self, column_number, checkbox)
 
+        # This is a persistent control, not a cell editor. Do not let Qt's
+        # editor focus tracking move the current row when the control is entered.
+        checkbox.removeEventFilter(tree)
+        checkbox.removeEventFilter(tree.itemDelegate())
+        checkbox.pressed.connect(lambda: tree.setCurrentItem(self, column_number))
         checkbox.stateChanged.connect(lambda: tree.itemChanged.emit(self, FieldsSpec.ColumnsOrder.PROPERTY))
+        self.update_checkbox_text_color()
+
+    def update_checkbox_text_color(self):
+        checkbox = self.get_checkbox()
+        if not isinstance(checkbox, QCheckBox):
+            return
+        palette = QPalette(checkbox.palette())
+        for group in (QPalette.ColorGroup.Active, QPalette.ColorGroup.Inactive):
+            for role in (QPalette.ColorRole.WindowText, QPalette.ColorRole.ButtonText):
+                color = (self.treeWidget().palette().color(group, QPalette.ColorRole.HighlightedText)
+                         if self.isSelected() else self.treeWidget().palette().color(group, QPalette.ColorRole.Text))
+                palette.setColor(group, role, color)
+        checkbox.setPalette(palette)
 
     def remove_checkbox(self):
         if not (tree := self.treeWidget()):
@@ -238,14 +259,14 @@ class FieldItem(Item):
         self.setText(FieldsSpec.ColumnsOrder.DESCRIPTION, self.spec.description if self.spec else str())
 
     @void_tree_signals
-    def set_length(self, length: int | None = None, fill_length: int | None = 3) -> None:
+    def set_length(self, length: int | None = None, fill_length: int | None = 3, *, preview=None) -> None:
         column = FieldsSpec.ColumnsOrder.LENGTH
 
         if not self.spec:
             self.set_spec()
 
         if length is None:
-            length: int = self.get_field_length(count_disabled=self.is_disabled)
+            length: int = self.get_field_length(count_disabled=self.is_disabled, preview=preview)
 
         if not self.spec and self.field_length:
             fill_length = len(self.text(FieldsSpec.ColumnsOrder.LENGTH))
@@ -255,18 +276,28 @@ class FieldItem(Item):
         self.setText(column, str(length))
 
         if parent := self.parent():
-            parent.set_length()
+            parent.set_length(preview=preview)
 
-    def get_field_length(self, count_disabled=False):
+    def get_field_length(self, count_disabled=False, *, preview=None):
         if not self.childCount():
+            if preview is not None and preview[0] is self:
+                return preview[1]
             return len(self.field_data)
 
         length = int()
+        parent_spec = self.spec or self.epay_spec.get_field_spec(self.get_field_path())
 
         for item in self.get_children():
             if not count_disabled and item.is_disabled:
                 continue
 
-            length += item.get_field_length()
+            length += item.get_field_length(preview=preview)
+            # A row shows its value length. Its container additionally owns
+            # the tag and length prefix used to encode that value.
+            child_spec = item.spec or self.epay_spec.get_field_spec(item.get_field_path())
+            if child_spec is not None:
+                length += child_spec.var_length
+            if parent_spec is not None:
+                length += parent_spec.tag_length
 
         return length

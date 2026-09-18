@@ -1,6 +1,7 @@
 from enum import StrEnum
 from common.core.enums.TermFilesPath import TermDirs
-from common.gui.tools.ResourcePath import ResourcePath
+from common.core.tools.ResourcePath import ResourcePath
+from common.core.enums.ApplicationResources import ResourceNames
 
 
 class GuiDirs(StrEnum):
@@ -9,7 +10,7 @@ class GuiDirs(StrEnum):
 
 
 class GuiFiles(StrEnum):
-    MAIN_LOGO = "triforce_unsigned.png"
+    MAIN_LOGO = ResourceNames.MAIN_LOGO
     SIGNED_LOGO = "triforce_signed.png"
     MUSIC_ON = "music_on.png"
     MUSIC_OFF = "music_off.png"
@@ -19,10 +20,13 @@ class GuiFiles(StrEnum):
     RED_CIRCLE = "red_circle.ico"
     YELLOW_CIRCLE = "yellow_circle.ico"
     NEW_TAB = "new_tab.ico"
-    HTML_DOCUMENT = "signal_user_reference_guide.html"
+    HTML_DOCUMENT = ResourceNames.USER_GUIDE
 
 
 class GuiFilesPath(StrEnum):
+    SETTINGS = f"{GuiDirs.STYLE_DIR}/settings.svg"
+    CHECK_WHITE = f"{GuiDirs.STYLE_DIR}/check_white.svg"
+    CHECK_PARTIAL_WHITE = f"{GuiDirs.STYLE_DIR}/check_partial_white.svg"
     MAIN_LOGO = f"{GuiDirs.STYLE_DIR}/{GuiFiles.MAIN_LOGO}"
     SIGNED_LOGO = f"{GuiDirs.STYLE_DIR}/{GuiFiles.SIGNED_LOGO}"
     MUSIC_ON = f"{GuiDirs.STYLE_DIR}/{GuiFiles.MUSIC_ON}"

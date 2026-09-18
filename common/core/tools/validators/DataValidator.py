@@ -1,3 +1,4 @@
+from common.core.tools.DebugTrace import trace_operation
 from common.core.tools.validators.Validator import Validator
 from common.core.data_models.Config import Config
 from common.core.data_models.Validation import ValidationResult
@@ -22,18 +23,22 @@ class DataValidator:
         self.config: Config = config
         self.validator = Validator(config)
 
+    @trace_operation
     def validate_mti(self, mti):
         validation_result: ValidationResult = self.validator.validate_mti(mti, ValidationResult())
         self.validator.process_validation_result(validation_result)
 
+    @trace_operation
     def validate_field_number(self, field_number: int | str):
         validation_result: ValidationResult = self.validator.validate_field_number(field_number, ValidationResult())
         self.validator.process_validation_result(validation_result)
 
+    @trace_operation
     def validate_field_path(self, field_path):
         validation_result: ValidationResult = self.validator.validate_field_path(field_path, ValidationResult())
         self.validator.process_validation_result(validation_result)
 
+    @trace_operation
     def validate_url(self, url):
         validation_result: ValidationResult = self.validator.validate_url(url, ValidationResult())
         self.validator.process_validation_result(validation_result)

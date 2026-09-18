@@ -1,8 +1,10 @@
 from typing import Callable
+from copy import deepcopy
 from loguru import logger
-from PyQt6.QtCore import pyqtSignal, Qt
-from PyQt6.QtWidgets import QTreeWidgetItem, QItemDelegate
-from PyQt6.QtGui import QUndoStack
+from PyQt6.QtCore import pyqtSignal, Qt, QTimer, QPersistentModelIndex
+from PyQt6 import sip
+from PyQt6.QtWidgets import QTreeWidgetItem, QItemDelegate, QApplication, QStyleOptionViewItem, QAbstractItemDelegate, QStyle
+from PyQt6.QtGui import QUndoStack, QPalette, QColor
 from common.gui.enums.UndoSteps import UndoSteps
 from common.gui.undo_commands.RemoveItemCommand import RemoveItemCommand
 from common.gui.undo_commands.InsertSubItemCommand import InsertSubItemCommand
@@ -25,6 +27,35 @@ from common.gui.enums.RootItemNames import RootItemNames
 class SpecView(TreeView):
 
     class SpecViewDelegate(QItemDelegate):
+        def paint(self, painter, option, index):
+            if index.data(Qt.ItemDataRole.CheckStateRole) is None or not (
+                option.state & QStyle.StateFlag.State_HasFocus
+            ):
+                return super().paint(painter, option, index)
+            # Check-state cells have no text to focus: outline the indicator.
+            unfocused = QStyleOptionViewItem(option)
+            unfocused.state &= ~QStyle.StateFlag.State_HasFocus
+            super().paint(painter, unfocused, index)
+            indicator_option = QStyleOptionViewItem(option)
+            indicator_option.features |= QStyleOptionViewItem.ViewItemFeature.HasCheckIndicator
+            indicator_option.checkState = Qt.CheckState(index.data(Qt.ItemDataRole.CheckStateRole))
+            indicator = self.tree.style().subElementRect(
+                QStyle.SubElement.SE_ItemViewItemCheckIndicator, indicator_option, self.tree)
+            focus_rect = indicator.adjusted(-2, -2, 2, 2).intersected(option.rect)
+            self.drawFocus(painter, option, focus_rect)
+
+        def drawDisplay(self, painter, option, rect, text):
+            if QApplication.instance().property("signalTreeColor") not in ('#F0F0F0', '#8996A3', '#FFFBEB', '#EFF1F5'):
+                option = QStyleOptionViewItem(option)
+                source = option.palette.color(QPalette.ColorRole.Text).name().lower()
+                color = {"#000000": "#CDD5DF", "#ffffff": "#CDD5DF",
+                         "#ff0000": "#FF8D96", "#800000": "#FF8D96",
+                         "#0000ff": "#91C5FF"}.get(source, source)
+                option.palette.setColor(QPalette.ColorRole.Text, QColor(color))
+                if source in ("#ff0000", "#800000", "#0000ff"):
+                    option.palette.setColor(QPalette.ColorRole.HighlightedText, QColor(color))
+            super().drawDisplay(painter, option, rect, text)
+
         def __init__(self, tree: TreeView, stack: QUndoStack):
             super().__init__()
 
@@ -32,6 +63,9 @@ class SpecView(TreeView):
             self.stack = stack
 
         def setModelData(self, editor, model, idx):
+            if self.tree.window.read_only:
+                self.tree.warn_blocked(QPersistentModelIndex(idx))
+                return
             role = Qt.ItemDataRole.EditRole
 
             old = model.data(idx, role) or str()
@@ -44,6 +78,8 @@ class SpecView(TreeView):
             if new != old:
                 item = self.tree.itemFromIndex(idx)
                 self.stack.push(EditItemTextCommand(self.tree, item, idx.column(), old, new))
+                if idx.column() == self.tree._field_sort_column:
+                    self.tree.schedule_auto_sort()
 
     _spec: EpaySpecification = EpaySpecification()
     search_finished = pyqtSignal()
@@ -57,7 +93,7 @@ class SpecView(TreeView):
             if not self.hasFocus():
                 self.setFocus()
 
-            logger.warning("Read only mode. Uncheck the checkbox on top of the window")
+            self.warn_blocked(fuction.__name__)
 
         return wrapper
 
@@ -69,13 +105,76 @@ class SpecView(TreeView):
         super(SpecView, self).__init__()
         self.root: SpecItem = SpecItem([RootItemNames.SPECIFICATION_ROOT_NAME])
         self.window = window
+        self._tab_editing = False
+        self._last_blocked_warning = None
+        self._pending_validation = {}
+        self._validation_timer = QTimer(self)
+        self._validation_timer.setSingleShot(True)
+        self._validation_timer.timeout.connect(self._validate_departed_cells)
         self.validator = SpecValidator()
         self.setItemDelegate(QItemDelegate())
         self._setup()
+        self.selectionModel().currentChanged.connect(self._schedule_validation)
+        self.selectionModel().currentChanged.connect(self._reset_blocked_warning)
+        QApplication.instance().focusChanged.connect(self._schedule_validation)
+
+    def _reset_blocked_warning(self, *args):
+        self._last_blocked_warning = None
+
+    def warn_blocked(self, target, message="Read-only mode. Clear the checkbox at the top of the window"):
+        warning = (target, message)
+        if warning != self._last_blocked_warning:
+            self._last_blocked_warning = warning
+            logger.warning(message)
+
+    def _schedule_validation(self, *args):
+        if self._pending_validation:
+            self._validation_timer.start(0)
+
+    def _validate_departed_cells(self):
+        focused = QApplication.focusWidget()
+        inside = focused is self or (focused is not None and self.isAncestorOf(focused))
+        current, column = self.currentItem(), self.currentColumn()
+        for key, (item, columns) in list(self._pending_validation.items()):
+            if sip.isdeleted(item) or item.treeWidget() is not self:
+                self._pending_validation.pop(key, None)
+                continue
+            if not inside or item is not current:
+                self._pending_validation.pop(key, None)
+                self._validate_row(item)
+            else:
+                for previous in list(columns):
+                    if previous != column:
+                        columns.remove(previous)
+                        self._validate_departed_column(item, previous)
+
+    def _validate_departed_column(self, item, column):
+        try:
+            self.validator.validate_column(item, column)
+            if item is not self.root and column in (SpecFieldDef.ColumnsOrder.MIN_LENGTH, SpecFieldDef.ColumnsOrder.MAX_LENGTH):
+                self.validator.validate_length_relation(item)
+        except ValueError as error:
+            logger.warning(error)
+
+    def _validate_row(self, item):
+        if item is not self.root and item.reserved_for_future:
+            return
+        with SignalsBlocker(self):
+            result = self.validator.validate_spec_row(item)
+            errors = {error for group in result.errors.values() for error in group}
+            for error in sorted(errors):
+                logger.error(error)
+            if errors:
+                item.set_item_color(Colors.RED)
+            else:
+                item.set_item_color()
 
     def _setup(self):
+        self.setAllColumnsShowFocus(False)
+        self.setTabKeyNavigation(True)
         self.setHeaderLabels(SpecFieldDef.Columns)
         self.addTopLevelItem(self.root)
+        self.setup_field_sorting(SpecFieldDef.ColumnsOrder.FIELD)
         self.setItemDelegate(self.SpecViewDelegate(self, self.undo_stack))
         self.itemDoubleClicked.connect(self.editItem)
         self.itemClicked.connect(self.process_item_click)
@@ -107,31 +206,163 @@ class SpecView(TreeView):
 
     def set_read_only(self, readonly: bool = True, parent: SpecItem | None = None) -> None:
         if parent is None:
+            self._reset_blocked_warning()
+        if readonly:
+            self._tab_editing = False
+        if parent is None:
             parent = self.root
 
         spec_item: SpecItem
 
         for spec_item in parent.get_children():
-            spec_item.set_read_only(readonly)
+            with SignalsBlocker(self):
+                spec_item.set_read_only(readonly)
 
             if not spec_item.get_children():
                 continue
 
             self.set_read_only(readonly=readonly, parent=spec_item)
 
+    def _checkbox_edit_warning(self, item: SpecItem, column: int):
+        if self.window.read_only:
+            return "Read-only mode. Clear the checkbox at the top of the window"
+        if item.is_secret_pan(column):
+            return "The card number must always be masked"
+        if column == SpecFieldDef.ColumnsOrder.CAN_BE_GENERATED:
+            return 'The "Generate" setting is predefined and cannot be changed'
+
     @void_qt_signals
     def process_item_click(self, item: SpecItem, column: int) -> None:
-        if item.is_secret_pan(column):
-            logger.warning("The Card Number is a secret constantly")
+        if self.window.read_only:
             return
+        if column in SpecFieldDef.Checkboxes:
+            if warning := self._checkbox_edit_warning(item, column):
+                self.warn_blocked(QPersistentModelIndex(self.indexFromItem(item, column)), warning)
 
-        if column == SpecFieldDef.ColumnsOrder.CAN_BE_GENERATED:
-            logger.warning('Checkbox "Generate" is pre-defined, not possible to change the state')
-            return
+    def _navigation_cells(self):
+        columns = [self.header().logicalIndex(i) for i in range(self.columnCount())]
+        columns = [column for column in columns if not self.isColumnHidden(column)]
+        pending = [self.root]
+        while pending:
+            item = pending.pop()
+            if item.isHidden():
+                continue
+            for column in columns:
+                if item is self.root and column not in (
+                    SpecFieldDef.ColumnsOrder.FIELD, SpecFieldDef.ColumnsOrder.DESCRIPTION
+                ):
+                    continue
+                yield item, column
+            pending.extend(reversed(item.get_children()))
 
-        if column > SpecFieldDef.ColumnsOrder.TAG_LENGTH and self.window.read_only:
-            logger.warning("Read only mode. Uncheck the checkbox on top of the window")
+    def _navigate_editing_cell(self, reverse=False):
+        cells = list(self._navigation_cells())
+        if not cells:
             return
+        current = self.currentItem(), self.currentColumn()
+        if current in cells:
+            position = cells.index(current) + (-1 if reverse else 1)
+            position = max(0, min(position, len(cells) - 1))
+        else:
+            position = len(cells) - 1 if reverse else 0
+        item, column = cells[position]
+        self._focus_cell(item, column)
+        if self._tab_editing and not self.window.read_only and column not in SpecFieldDef.Checkboxes:
+            self.editItem(item, column)
+
+    def _focus_cell(self, item, column):
+        parent = item.parent()
+        while parent is not None:
+            parent.setExpanded(True)
+            parent = parent.parent()
+        self.setFocus()
+        self.setCurrentItem(item, column)
+        self.scrollTo(self.indexFromItem(item, column))
+
+    def _navigate_arrow(self, key):
+        rows = []
+        for item, column in self._navigation_cells():
+            if not rows or rows[-1][0] is not item:
+                rows.append((item, []))
+            rows[-1][1].append(column)
+        if not rows:
+            return
+        current, column = self.currentItem(), self.currentColumn()
+        row = next((i for i, (item, _) in enumerate(rows) if item is current), 0)
+        item, columns = rows[row]
+        if key in (Qt.Key.Key_Left, Qt.Key.Key_Right):
+            position = columns.index(column) if column in columns else 0
+            position += -1 if key == Qt.Key.Key_Left else 1
+            column = columns[max(0, min(position, len(columns) - 1))]
+        else:
+            row += -1 if key == Qt.Key.Key_Up else 1
+            item, columns = rows[max(0, min(row, len(rows) - 1))]
+            if column not in columns:
+                column = min(columns, key=lambda candidate: abs(
+                    self.header().visualIndex(candidate) - self.header().visualIndex(column)))
+        self._focus_cell(item, column)
+
+    def mousePressEvent(self, event):
+        self._tab_editing = False
+        super().mousePressEvent(event)
+        if not self.window.read_only or event.button() != Qt.MouseButton.LeftButton:
+            return
+        index = self.indexAt(event.position().toPoint())
+        if not index.isValid() or index.data(Qt.ItemDataRole.CheckStateRole) is None:
+            return
+        option = QStyleOptionViewItem()
+        self.initViewItemOption(option)
+        option.rect = self.visualRect(index)
+        option.features |= QStyleOptionViewItem.ViewItemFeature.HasCheckIndicator
+        option.checkState = Qt.CheckState(index.data(Qt.ItemDataRole.CheckStateRole))
+        indicator = self.style().subElementRect(QStyle.SubElement.SE_ItemViewItemCheckIndicator, option, self)
+        if indicator.contains(event.position().toPoint()):
+            self.warn_blocked(QPersistentModelIndex(index))
+
+    def closeEditor(self, editor, hint):
+        hints = QAbstractItemDelegate.EndEditHint
+        if hint == hints.RevertModelCache:
+            self._tab_editing = False
+        if hint not in (hints.EditNextItem, hints.EditPreviousItem):
+            return super().closeEditor(editor, hint)
+        super().closeEditor(editor, hints.NoHint)
+        self._navigate_editing_cell(reverse=hint == hints.EditPreviousItem)
+
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key.Key_Left, Qt.Key.Key_Right, Qt.Key.Key_Up, Qt.Key.Key_Down):
+            self._navigate_arrow(event.key())
+            event.accept()
+            return
+        if event.key() in (Qt.Key.Key_Tab, Qt.Key.Key_Backtab):
+            reverse = event.key() == Qt.Key.Key_Backtab or bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
+            self._navigate_editing_cell(reverse=reverse)
+            event.accept()
+            return
+        item, column = self.currentItem(), self.currentColumn()
+        if event.key() == Qt.Key.Key_Space and item is not None and column in SpecFieldDef.Checkboxes:
+            if warning := self._checkbox_edit_warning(item, column):
+                self.warn_blocked(QPersistentModelIndex(self.indexFromItem(item, column)), warning)
+            elif item.data(column, Qt.ItemDataRole.CheckStateRole) is not None:
+                self._tab_editing = True
+                item.setCheckState(column, Qt.CheckState.Unchecked if item.is_checked(column) else Qt.CheckState.Checked)
+            event.accept()
+            return
+        if event.key() == Qt.Key.Key_Escape:
+            self._tab_editing = False
+        typing = bool(event.text() and event.text().isprintable()) and not (
+            event.modifiers() & (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.AltModifier
+                                 | Qt.KeyboardModifier.MetaModifier)
+        )
+        if item is not None and column not in SpecFieldDef.Checkboxes and (
+            event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_F2) or typing
+        ):
+            self.editItem(item, column)
+            editor = QApplication.focusWidget()
+            if typing and editor is not self and self.isAncestorOf(editor):
+                QApplication.sendEvent(editor, event)
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     @void_qt_signals
     def process_item_change(self, item: SpecItem, column: int):
@@ -156,7 +387,13 @@ class SpecView(TreeView):
             case SpecFieldDef.ColumnsOrder.TAG_LENGTH:
                 self.cascade_tag_length(item)
 
-        self.validate_item(item, column)
+        _, columns = self._pending_validation.setdefault(id(item), (item, set()))
+        columns.add(column)
+        result = self.validator.validate_spec_row(item)
+        if not any(result.errors.values()):
+            with SignalsBlocker(self):
+                item.set_item_color()
+        self._schedule_validation()
 
     def search(self, text: str, parent: SpecItem | None = None) -> None:
         TreeView.search(self, text, parent)
@@ -191,10 +428,11 @@ class SpecView(TreeView):
             return
 
         if self.window.read_only:
-            logger.warning("Read only mode. Uncheck the checkbox on top of the window")
+            self.warn_blocked(QPersistentModelIndex(self.indexFromItem(item, column)))
             return
 
         TreeView.editItem(self, item, column)
+        self._tab_editing = True
 
     def validate_all(self, parent: SpecItem | None = None) -> None:
         if parent is None:
@@ -204,30 +442,12 @@ class SpecView(TreeView):
 
         for child_item in parent.get_children():
 
-            for column in SpecFieldDef.ColumnsOrder:
-                self.validate_item(child_item, column)
+            self._validate_row(child_item)
 
             if not child_item.childCount():
                 continue
 
             self.validate_all(parent=child_item)
-
-    def validate_item(self, item: SpecItem, column: int) -> None:
-        if item is self.root:
-            return
-
-        if item.reserved_for_future:
-            return
-
-        try:
-            self.validator.validate_column(item, column)
-
-        except ValueError as validation_error:
-            logger.error(validation_error)
-            item.set_item_color(Colors.RED)
-            return
-
-        item.set_item_color()
 
     def hide_reserved(self, hide=True):
         item: SpecItem
@@ -239,7 +459,7 @@ class SpecView(TreeView):
 
     def reload_spec(self, commit):
         spec: EpaySpecModel = self.generate_spec()
-        self.spec.reload_spec(spec, commit)
+        self.spec.reload_spec(spec, commit, config=self.window.config)
 
     def reload(self):
         self.setup()
@@ -307,8 +527,11 @@ class SpecView(TreeView):
             return
 
         item.parse_field_spec(field_spec)
+        item.spec = deepcopy(field_spec)
 
     def parse_spec(self, spec=None):
+        self._validation_timer.stop()
+        self._pending_validation.clear()
         if spec is None:
             spec = self.spec
 
@@ -320,12 +543,14 @@ class SpecView(TreeView):
 
         self.clean()
         self.root.setText(SpecFieldDef.ColumnsOrder.DESCRIPTION, spec.name)
-        self.spec.fields = spec.fields
+        self._draft_spec = deepcopy(spec.spec if hasattr(spec, 'spec') else spec)
         self.parse_spec_fields(spec.fields)
         self.collapseAll()
         self.expandItem(self.root)
         self.set_current_item_by_path(current_path)
         self.validate_all()
+        self.set_read_only(self.window.read_only)
+        self.schedule_auto_sort()
 
     def get_item_by_path(self, field_path: FieldPath, parent: SpecItem | None = None) -> SpecItem:
         if parent is None:
@@ -356,7 +581,13 @@ class SpecView(TreeView):
         if parent is None:
             parent = self.root
 
-        for field in sorted(input_json, key=int):
+        def field_order(key):
+            number = input_json[key].field_number
+            if not number:
+                return (0, 0)
+            return (1, int(number)) if number.isascii() and number.isdigit() else (2, number)
+
+        for field in sorted(input_json, key=field_order):
 
             if field == self.spec.FIELD_SET.FIELD_001_BITMAP_SECONDARY:
                 continue
@@ -364,7 +595,7 @@ class SpecView(TreeView):
             field_data: IsoField = input_json[field]
 
             field_data_for_item = [
-                field,
+                field_data.field_number,
                 field_data.description,
                 field_data.min_length,
                 field_data.max_length,
@@ -385,6 +616,7 @@ class SpecView(TreeView):
             }
 
             item: SpecItem = SpecItem(field_data_for_item)
+            item.spec = deepcopy(field_data)
 
             item.set_checkboxes(checkboxes)
 
@@ -396,6 +628,22 @@ class SpecView(TreeView):
         self.make_order()
 
     def generate_spec(self) -> EpaySpecModel:
+        errors = set()
+        pending = [self.root]
+        while pending:
+            row = pending.pop()
+            pending.extend(row.get_children())
+            if row is not self.root and row.reserved_for_future:
+                for column in (SpecFieldDef.ColumnsOrder.FIELD, SpecFieldDef.ColumnsOrder.DESCRIPTION):
+                    try:
+                        self.validator.validate_column(row, column)
+                    except ValueError as error:
+                        errors.add(str(error))
+            else:
+                result = self.validator.validate_spec_row(row)
+                errors.update(error for group in result.errors.values() for error in group)
+        if errors:
+            raise ValueError('Invalid specification:\n' + '\n'.join(sorted(errors)))
         name: str = self.root.text(SpecFieldDef.ColumnsOrder.DESCRIPTION)
         fields_set: FieldSet
 
@@ -424,12 +672,13 @@ class SpecView(TreeView):
                     reserved_for_future=row.reserved_for_future,
                     description=row.description,
                     is_secret=row.is_secret,
+                    is_utrnno=row.spec.is_utrnno if row.spec else False,
                     fields=None
                 )
 
                 fields[row.field_number] = field
 
-                if not(validators := self.spec.get_field_validations(field.field_path)):
+                if not(validators := row.spec.validators if row.spec else self.spec.get_field_validations(field.field_path)):
                     validators = Validators()
 
                 field.validators = validators
@@ -446,4 +695,18 @@ class SpecView(TreeView):
 
         fields_set: FieldSet = generate_fields()
 
-        return EpaySpecModel(name=name, fields=fields_set, mti=self.spec.mti, utrnno_path=self.spec.utrnno_path)
+        return EpaySpecModel(name=name, fields=fields_set, mti=self._draft_spec.mti, utrnno_path=self._draft_spec.utrnno_path)
+
+    def finish_editing(self):
+        editor = QApplication.focusWidget()
+        if self.state() == self.State.EditingState and editor is not None and self.isAncestorOf(editor):
+            self.commitData(editor)
+            self.closeEditor(editor, QAbstractItemDelegate.EndEditHint.NoHint)
+
+    def draft_snapshot(self):
+        def snapshot(item):
+            return ([item.text(column) for column in range(self.columnCount())],
+                    [item.data(column, Qt.ItemDataRole.CheckStateRole) for column in range(self.columnCount())],
+                    [snapshot(child) for child in item.get_children()],
+                    deepcopy(item.spec.validators) if item.spec else None)
+        return snapshot(self.root), deepcopy(self._draft_spec.mti), list(self._draft_spec.utrnno_path)

@@ -1,7 +1,8 @@
+from common.core.tools.DebugTrace import trace_operation
 from pathlib import Path
 from loguru import logger
 from typing import Callable
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QCoreApplication
 from PyQt6.QtCore import pyqtSignal, QObject
 from PyQt6.QtNetwork import QTcpSocket
 from common.core.tools.SpecFilesRotator import SpecFilesRotator
@@ -16,6 +17,10 @@ from common.core.tools.validators.DataValidator import DataValidator
 from common.core.data_models.Config import Config
 from common.core.data_models.Transaction import Transaction
 from common.core.tools.Connector import Connector
+from common.core.tools.ConfigStore import save_config
+from common.core.tools.ConfigManager import ConfigManager, ConfigView
+from common.core.tools.ErrorReporting import log_error
+from common.core.exceptions.exceptions import SignalError
 from common.core.tools.LogPrinter import LogPrinter
 from common.core.tools.TransTimer import TransactionTimer
 from common.core.data_models.Currencies import Currencies
@@ -35,15 +40,18 @@ class Terminal(QObject):
     trans_validator: TransValidator
     need_reconnect: pyqtSignal = pyqtSignal(str, str)
 
-    def __init__(self, config: Config, connector: ConnectionInterface | None = None, application=QApplication([])):
+    def __init__(self, config: Config, connector: ConnectionInterface | None = None, application=None):
         super(Terminal, self).__init__()
 
         self.keep_alive_timer = TransactionTimer(KeepAlive.TransTypes.TRANS_TYPE_KEEP_ALIVE)
-        self.pyqt_application = application
-        self.config: Config = config
+        self.pyqt_application = application if application is not None else QCoreApplication.instance() or QCoreApplication([])
+        self.config_manager = config.manager if isinstance(config, ConfigView) else ConfigManager(config)
+        self.config = self.config_manager.view
 
         if connector is None:
             connector: Connector = Connector(self.config)
+        elif connector.config is not self.config:
+            connector.config = self.config  # Bind an externally supplied connector once.
 
         self.trans_validator = TransValidator(self.config)
         self.data_validator = DataValidator(self.config)
@@ -55,7 +63,9 @@ class Terminal(QObject):
         self.trans_queue: TransactionQueue = TransactionQueue(self.connector)
         self.spec: EpaySpecification = EpaySpecification(Path(TermFilesPath.SPECIFICATION))
         self.connect_interfaces()
+        self.config_manager.subscribe(lambda old, new: self.process_config_change(old))
 
+    @trace_operation
     def run_application(self) -> int:
         return self.pyqt_application.exec()
 
@@ -105,7 +115,7 @@ class Terminal(QObject):
 
     def reconnect(self, host: str | None = None, port: str | None = None) -> None:
         if self.connector.connection_in_progress():
-            logger.warning("Unable to reconnect while connection in progress")
+            logger.warning("Cannot reconnect while a connection is in progress")
             return
 
         if host is None:
@@ -120,36 +130,50 @@ class Terminal(QObject):
         if config is None:
             config = self.config
 
-        with open(TermFilesPath.CONFIG, "w") as file:
-            file.write(config.model_dump_json(indent=4))
+        save_config(config, self.config_manager.filename)
 
+    @trace_operation
+    def update_config(self, config: Config, *, persist=True, expected_revision=None):
+        return self.config_manager.replace(config, persist=persist, expected_revision=expected_revision)
+
+    @trace_operation
     def send(self, transaction: Transaction) -> None:
-        if transaction.generate_fields:
-            transaction: Transaction = self.generator.set_generated_fields(transaction)
+        self.spec.require_ready()
+        try:
+            if transaction.generate_fields:
+                transaction = self.generator.set_generated_fields(transaction)
+            self.trans_queue.put_transaction(transaction)
+        except Exception as error:
+            # This method is also a Qt slot: report failure through the request channel.
+            transaction.success = False
+            transaction.error = str(error) if isinstance(error, (SignalError, ValueError)) else "Transaction preparation failed; see the diagnostic log"
+            log_error(error, "Transaction preparation failed")
+            self.trans_queue.socket_error.emit(transaction)
 
-        self.trans_queue.put_transaction(transaction)
-
+    @trace_operation
     def backup_spec(self):
         if not (backup_filename := SpecFilesRotator(self.config).backup_spec()):
             return
 
-        logger.info(f"Specification backup is done. Filename: {backup_filename}")
+        logger.debug(f"Specification backup completed. Filename: {backup_filename}")
 
+    @trace_operation
     def process_config_change(self, old_config: Config) -> None:
-        self.read_config()
-
-        for tool in (
-            self.connector,
-            self.logger,
-            self.log_printer,
-            self.parser,
-            self.trans_validator,
-            self.data_validator,
-        ):
-            tool.config = self.config
+        # Consumers already share the live view. Only behavioral changes belong here.
+        if old_config.debug.model_dump() != self.config.debug.model_dump():
+            self.logger.setup(wireless_handler=getattr(self, "wireless_handler", None),
+                              filename=getattr(getattr(self, "_cli_config", None), "log_file", TermFilesPath.LOG_FILE_NAME))
+            if getattr(self, "_cli_config", None) is not None and not self._cli_config.no_print:
+                self.logger.add_stdout_handler()
+        if (old_config.host.keep_alive_mode, old_config.host.keep_alive_interval) != (
+                self.config.host.keep_alive_mode, self.config.host.keep_alive_interval):
+            interval = KeepAlive.IntervalNames.KEEP_ALIVE_STOP
+            if self.config.host.keep_alive_mode:
+                interval = KeepAlive.IntervalNames.KEEP_ALIVE_DEFAULT % self.config.host.keep_alive_interval
+            self.keep_alive_timer.set_trans_loop_interval(interval)
 
         if "" in (self.config.host.host, self.config.host.port):
-            logger.warning("Lost SV address or SV port. Check the configuration")
+            logger.warning("Missing SV address or port. Check the configuration")
 
         try:
             if not self.config.host.port:
@@ -163,33 +187,30 @@ class Terminal(QObject):
                 f"Incorrect SV port value: {self.config.host.port}. Must be a number in the range of 0 to 65535"
             )
 
+        if old_config.terminal.show_license_dialog == self.config.terminal.show_license_dialog:
+            return
+
         try:
             license_info = LicenseInfo(TermFilesPath.LICENSE_INFO)
             license_info.show_agreement = self.config.terminal.show_license_dialog
 
             if not license_info.accepted:
-                raise ValueError("License is not accepted")
+                raise ValueError("License has not been accepted")
 
             with open(TermFilesPath.LICENSE_INFO, "w") as license_json:
                 license_json.write(license_info.model_dump_json(indent=4))
 
         except ValueError as not_accepted:
-            logger.error(not_accepted)
-            exit(100)
+            raise SignalError(f"Cannot apply settings: {not_accepted}") from not_accepted
 
         except Exception as license_error:
-            logger.error(f"Cannot save license params: {license_error}")
+            logger.error(f"Cannot save license information: {license_error}")
 
+    @trace_operation
     def read_config(self, config_file: str | None = None) -> None:
 
-        if config_file is None:
-            config_file = TermFilesPath.CONFIG
-
-        try:
-            self.config: Config = Config(config_file)
-                
-        except Exception as parsing_error:
-            logger.error(f"Cannot parse configuration file: {parsing_error}")
+        filename = config_file if config_file is not None else self.config_manager.filename
+        return self.update_config(Config(filename), persist=False)
 
     def transaction_sent(self, request: Transaction) -> None:
         try:
@@ -201,12 +222,13 @@ class Terminal(QObject):
         try:
             self.log_printer.print_transaction(request)
         except Exception as print_error:
-            logger.error(f"Transaction print error {print_error}")
+            logger.error(f"Transaction printing error: {print_error}")
 
         if not request.is_keep_alive:
             logger.info(f"Outgoing transaction ID [{request.trans_id}] sent")
             logger.info("")
 
+    @trace_operation
     def transaction_received(self, response: Transaction) -> None:
         resp_trans_id = response.match_id if response.matched else response.trans_id
 
@@ -257,10 +279,11 @@ class Terminal(QObject):
         if not response.matched:
             match_fields: list[str] = [field for field in self.spec.get_match_fields() if field in response.data_fields]
             match_fields: str = ', '.join(match_fields)
-            logger.warning(f"Non-matched Transaction received. Transaction ID [{response.trans_id}]")
+            logger.warning(f"Unmatched transaction received. Transaction ID [{response.trans_id}]")
             logger.warning(f"Fields {match_fields} from the response don't correspond to any requests in the current "
                            f"session or request was matched before")
 
+    @trace_operation
     def keep_alive(self) -> None:
         if self.connector.connection_in_progress():
             return
@@ -269,7 +292,7 @@ class Terminal(QObject):
             transaction: Transaction = self.parser.parse_file(TermFilesPath.KEEP_ALIVE)
 
         except Exception as transaction_building_error:
-            logger.error(f"Keep alive transaction building error: {transaction_building_error}")
+            logger.error(f"Cannot build keep-alive transaction: {transaction_building_error}")
             return
 
         transaction.generate_fields = []
@@ -285,6 +308,7 @@ class Terminal(QObject):
 
         self.send(transaction)
 
+    @trace_operation
     def save_transaction(self, transaction: Transaction, file_format: str, file_name) -> None:
         data_processing_map: dict[str, Callable] = {
             DataFormats.JSON: lambda _trans: _trans.model_dump_json(indent=4),
@@ -310,9 +334,10 @@ class Terminal(QObject):
 
         logger.info(f"The transaction was saved successfully to {file_name}")
 
+    @trace_operation
     def build_reversal(self, original_transaction: Transaction) -> Transaction:
         if not (original_transaction.matched and original_transaction.match_id):
-            raise LookupError(f"Lost response for transaction {original_transaction.trans_id}. Cannot build reversal")
+            raise LookupError(f"Missing response for transaction {original_transaction.trans_id}. Cannot build reversal")
 
         reversal_trans_id: str = original_transaction.trans_id + "_R"
         existed_reversal: Transaction | None = self.trans_queue.get_transaction(reversal_trans_id)

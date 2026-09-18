@@ -9,6 +9,15 @@ from common.gui.enums.Colors import Colors
 
 
 class Item(QTreeWidgetItem):
+    def __lt__(self, other):
+        tree = self.treeWidget()
+        if tree is not None and tree.sortColumn() == 0:
+            def key(item):
+                value = item.text(0)
+                return (not value.isdigit(), int(value) if value.isdigit() else value)
+            return key(self) < key(other)
+        return super().__lt__(other)
+
     _field_number: str = None
     _epay_spec = EpaySpecification()
     _is_disabled: bool = False

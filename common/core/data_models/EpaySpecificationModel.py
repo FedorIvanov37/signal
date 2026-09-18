@@ -127,3 +127,57 @@ class EpaySpecModel(BaseModel):
     mti: list[Mti] = []
     fields: FieldSet = {}
     utrnno_path: FieldPath = ["47", "064"]
+
+    def validate_for_use(self):
+        """Reject unusable data before installing it in a running terminal."""
+        from string import printable
+        errors = []
+        if not self.fields:
+            errors.append('Specification must contain fields')
+
+        def text_values(value, location='Specification'):
+            if isinstance(value, str) and any(character not in printable for character in value):
+                errors.append(f'{location}: non-printable characters; check the encoding')
+            elif isinstance(value, dict):
+                for key, child in value.items():
+                    text_values(key, location)
+                    text_values(child, f'{location}.{key}')
+            elif isinstance(value, list):
+                for child in value:
+                    text_values(child, location)
+
+        text_values(self.model_dump())
+
+        def fields(values, parent=()):
+            seen = set()
+            for number, field in values.items():
+                location = f'Field {".".join((*parent, number))}'
+                if field.field_number != number:
+                    errors.append(f'Field entry {number!r}: field_number {field.field_number!r} does not match its key')
+                if not number or not number.isascii() or not number.isdigit() or int(number) < 1:
+                    errors.append(f'Invalid field number {number!r}')
+                elif not parent and not 2 <= int(number) <= 128 and number != '1':
+                    errors.append(f'Invalid field number {number!r}: allowed range 2-128')
+                else:
+                    if int(number) in seen:
+                        errors.append(f'Duplicated field number {number!r}')
+                    seen.add(int(number))
+                if not field.reserved_for_future and number != '1':
+                    lengths = (field.min_length, field.max_length, field.var_length, field.tag_length)
+                    if any(not isinstance(value, int) or isinstance(value, bool) for value in lengths):
+                        errors.append(f'{location}: lengths must be integers')
+                    else:
+                        if field.min_length < 1 or field.max_length < field.min_length:
+                            errors.append(f'{location}: invalid Min/Max Length')
+                        if field.var_length < 0 or field.tag_length < 0:
+                            errors.append(f'{location}: negative length')
+                        if field.tag_length > 0 and not field.fields:
+                            errors.append(f'{location}: Non-zero Tag Len without subfields')
+                    if not any((field.alpha, field.numeric, field.special)):
+                        errors.append(f'{location}: Missing field data type')
+                if field.fields:
+                    fields(field.fields, (*parent, number))
+
+        fields(self.fields)
+        if errors:
+            raise ValueError('Invalid specification:\n' + '\n'.join(errors))

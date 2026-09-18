@@ -1,3 +1,4 @@
+from common.core.tools.DebugTrace import trace_operation
 from sys import exit
 from glob import glob
 from time import sleep
@@ -40,18 +41,19 @@ class SignalCli(Terminal):
     _job_id: str = str(uuid4())
 
     def __init__(self, config: Config):
-        super(SignalCli, self).__init__(config, application=QCoreApplication([]))
-        self.config: Config = config
+        super(SignalCli, self).__init__(config, application=QCoreApplication.instance() or QCoreApplication([]))
         self.api = SignalApi(self.config, terminal=self)
         self.run_timer = QTimer()
         self.api_timer = QTimer()
+        self._stop_requested = False
+        self._exit_code = 0
+        self._finish_logged = False
+        self._finish_mark = True
         self.connect_all()
         self.setup()
 
+    @trace_operation
     def setup(self):
-        for os_signal in SIGINT, SIGTERM:
-            signal(os_signal, self.finish)
-
         self.api.open_connection.connect(self.reconnect)
         self.api.send_transaction.connect(self.send)
 
@@ -59,21 +61,23 @@ class SignalCli(Terminal):
 
         self._cli_config = cli_args_parser.parse_arguments()
 
+        if not self._cli_config.no_print:
+            print(f"{TextConstants.HELLO_MESSAGE}\n")
+
         try:
             self.parse_cli_config(self._cli_config)
 
         except ValueError as config_parsing_error:
-            logger.error(f"Error run in Console Mode: {config_parsing_error}")
+            logger.error(f"Error running in console mode: {config_parsing_error}")
             exit(100)
-
-        if not self._cli_config.no_print:
-            print(f"{TextConstants.HELLO_MESSAGE}\n")
 
         self.logger.setup(filename=self._cli_config.log_file)
 
         if not self._cli_config.no_print:
             self.logger.add_stdout_handler()
 
+        logger.debug("Startup mode selected: CLI; configuration_file={} runtime_log_level={}",
+                     self._cli_config.config_file, self.config.debug.level)
         logger.info("Press CTRL+C to exit")
         logger.info(str())
         logger.info(LogMarks.BEGIN % self._job_id)
@@ -89,7 +93,7 @@ class SignalCli(Terminal):
         logger.info(f"Trying to apply custom specification {self._cli_config.specification}")
 
         try:
-            self.spec.parse_file(self._cli_config.specification)
+            self.spec.parse_file(self._cli_config.specification, config=self.config)
 
         except Exception as spec_parsing_error:
             logger.error(f"Custom specification parsing error: {spec_parsing_error}")
@@ -101,14 +105,41 @@ class SignalCli(Terminal):
     def connect_all(self):
         self._finished.connect(self.pyqt_application.quit)
         self.run_timer.timeout.connect(self.main)
-        self.api_timer.timeout.connect(lambda: None)
+        self.api_timer.timeout.connect(self._check_stop)
+
+    def _request_stop(self, signum, frame):
+        # Python signal handlers may run inside a SIP/Qt call. Never raise or
+        # destroy Qt objects here; unwind the active operation normally first.
+        self._stop_requested = True
+        self._exit_code = 128 + signum
+
+    def _check_stop(self):
+        if self._stop_requested:
+            self.finish(self._exit_code)
 
     def run_application(self):
+        previous_handlers = {sig: signal(sig, self._request_stop) for sig in (SIGINT, SIGTERM)}
         self.run_timer.setSingleShot(True)
         self.run_timer.start(0)
+        self.api_timer.start(100)
+        try:
+            return self.pyqt_application.exec()
+        finally:
+            self.run_timer.stop()
+            self.api_timer.stop()
+            self.keep_alive_timer._trans_loop_timer.stop()
+            for timer in self.trans_queue.timers.values():
+                timer.stop()
+            if self.api.is_started():
+                self.api.stop()
+            self.connector.abort()
+            for sig, handler in previous_handlers.items():
+                signal(sig, handler)
+            if self._finish_mark and not self._finish_logged:
+                self._finish_logged = True
+                logger.info(LogMarks.FINISH % self._job_id)
 
-        return self.pyqt_application.exec()
-
+    @trace_operation
     def main(self):
 
         """
@@ -116,7 +147,7 @@ class SignalCli(Terminal):
         This is the main function, which runs after CLI mode begin
 
         Important: --repeat flag has a priority over --api-mode. When --repeat flag set along with the --api-mode
-        the api-mode will newer be run because the files will be parsed and sent in endless cycle
+        API mode will never run because the files will be parsed and sent in an endless cycle
 
         """
 
@@ -144,7 +175,7 @@ class SignalCli(Terminal):
             self.api_timer.start(100)
 
             if files := self.get_files_to_process():
-                logger.warning(f"Signal started in API mode, files processing ignored: {', '.join(files)}")
+                logger.warning(f"Signal started in API mode, file processing skipped: {', '.join(files)}")
 
             self.api.start()
 
@@ -152,12 +183,15 @@ class SignalCli(Terminal):
 
         if not (filenames := self.get_files_to_process()):
             if not any([self._cli_config.about, self._cli_config.version]):
-                logger.warning("No files are specified to process")
+                logger.warning("No files specified for processing")
 
             self.finish()
+            return
 
-        while True:
+        while not self._stop_requested:
             for file in filenames:
+                if self._stop_requested:
+                    break
                 logger.info(str())
                 logger.info(f"Processing file {basename(file)}")
 
@@ -168,25 +202,32 @@ class SignalCli(Terminal):
                     continue
 
                 self.send(transaction)
+                if self._stop_requested:
+                    break
 
                 if not self._cli_config.parallel:
                     self.wait_response(transaction)
 
                 for _ in range(self._cli_config.interval * 10):
+                    if self._stop_requested:
+                        break
                     self.wait(0.1)
                     self.pyqt_application.processEvents()
 
             if not self._cli_config.repeat:
                 break
 
-        self.finish()
+        self.finish(self._exit_code)
 
+    @trace_operation
     def finish(self, code=0, mark=True):
-        if mark:
-            logger.info(LogMarks.FINISH % self._job_id)
+        self._stop_requested = True
+        self._exit_code = code
+        self._finish_mark = mark
 
-        exit(code)
+        self.pyqt_application.exit(code)
 
+    @trace_operation
     def send(self, transaction: Transaction):
         if self.connector.connection_in_progress():
             transaction.success = False
@@ -244,7 +285,7 @@ class SignalCli(Terminal):
 
         print(TextConstants.HELLO_MESSAGE)
         print("")
-        print("  Welcome to SIGNAL Command Line Mode!")
+        print("  Welcome to Signal Command Line Mode!")
         print("")
         print("  Signal distributes under GNU/GPL license as a free software. "
               "To proceed work you have to read and accept license agreement")
@@ -259,13 +300,13 @@ class SignalCli(Terminal):
                     '  Type "yes" or "y" to see the license agreement or press "Ctrl + C" to reject the license: ')
 
             except KeyboardInterrupt:
-                logger.error("License agreement rejected, exiting")
+                logger.error("License agreement rejected. Exiting")
                 raise LicenseRejected
 
         agreement_path = abspath(TermFilesPath.LICENSE_AGREEMENT)
 
         if not isfile(agreement_path):
-            raise ValueError("Lost license agreement text file")
+            raise ValueError("Missing license agreement text file")
 
         system(f'more "{agreement_path}"')
         print("")
@@ -282,10 +323,10 @@ class SignalCli(Terminal):
                     '  Type "yes" or "y" to accept the license agreement or press "Ctrl + C" to reject the license: ')
 
             except KeyboardInterrupt:
-                logger.error("License agreement rejected, exiting")
+                logger.error("License agreement rejected. Exiting")
                 raise LicenseRejected
 
-        logger.info(f"The license accepted! License ID {license_info.license_id}")
+        logger.info(f"The license was accepted. License ID: {license_info.license_id}")
 
         license_info.accepted = True
         license_info.show_agreement = False
@@ -302,6 +343,7 @@ class SignalCli(Terminal):
         except Exception as file_saving_error:
             logger.error(file_saving_error)
 
+    @trace_operation
     def get_files_to_process(self) -> list[str]:
         filenames: list[str] = list()
 
@@ -326,13 +368,19 @@ class SignalCli(Terminal):
 
         return filenames
 
+    @trace_operation
     def parse_cli_config(self, cli_config: CliConfig):
-        self.connector.config.host.host = str(cli_config.address) if cli_config.address else self.config.host.host
-        self.connector.config.host.port = int(cli_config.port) if cli_config.port else self.config.host.port
-        self.config.debug.level = cli_config.log_level if cli_config.log_level else self.config.debug.level
+        candidate = self.config.model_copy(deep=True)
+        candidate.host.host = str(cli_config.address) if cli_config.address else candidate.host.host
+        candidate.host.port = int(cli_config.port) if cli_config.port else candidate.host.port
+        candidate.debug.level = cli_config.log_level if cli_config.log_level else candidate.debug.level
+        self.update_config(candidate, persist=False)
 
+    @trace_operation
     def wait_response(self, request: Transaction):
-        while not request.matched:
+        if not self.spec.get_resp_mti(request.message_type):
+            return
+        while not self._stop_requested and not request.matched:
             if (datetime.now() - request.sending_time).total_seconds() > self._cli_config.timeout:
                 return
 

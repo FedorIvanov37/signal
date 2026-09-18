@@ -1,8 +1,8 @@
 from copy import deepcopy
 from contextlib import suppress
-from PyQt6.QtGui import QPalette, QColor
+from PyQt6.QtGui import QPalette, QColor, QFont
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QDialog, QListWidgetItem, QCheckBox, QLineEdit, QSpinBox
+from PyQt6.QtWidgets import QDialog, QListWidgetItem, QCheckBox, QLineEdit, QSpinBox, QGridLayout, QSizePolicy
 from common.gui.tools.widgets.CheckableComboBox import CheckableComboBox
 from common.gui.forms.field_validator_window import Ui_FieldDataSet
 from common.gui.decorators.window_settings import set_window_icon, has_close_button_only
@@ -39,6 +39,29 @@ class FieldDataSet(Ui_FieldDataSet, QDialog):
     @set_window_icon
     @has_close_button_only
     def setup(self):
+        self.FillSymbolLabel.setText('Character')
+        self.FillSymbol.setFont(QFont('Calibri', 12))
+        for control in (self.MinLength, self.MaxLength, self.DataLength, self.TagLength,
+                        self.FillSide, self.FillUpTo, self.FillSymbol):
+            control.setFixedWidth(120)
+        actions = QGridLayout()
+        actions.setHorizontalSpacing(6)
+        actions.setVerticalSpacing(6)
+        for index, button in enumerate((self.PlusButton, self.MinusButton, self.ButtonClear, self.ButtonClearAll)):
+            self.horizontalLayout.removeWidget(button)
+            button.setStyleSheet('QPushButton { padding: 4px 8px; }')
+            button.setMaximumWidth(16777215)
+            button.ensurePolished()
+            button.setMinimumWidth(button.fontMetrics().horizontalAdvance(button.text()) + 16)
+            button.setFixedHeight(28)
+            button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            actions.addWidget(button, index // 2, index % 2)
+        actions.setColumnStretch(0, 1)
+        actions.setColumnStretch(1, 1)
+        self.gridLayout.removeItem(self.horizontalLayout)
+        self.horizontalLayout.deleteLater()
+        self.gridLayout.addLayout(actions, 2, 0)
+        self.horizontalLayout_11.setContentsMargins(self.gridLayout.contentsMargins().left(), 0, 0, 0)
         self._literal_validations_map = {
             LiteralValidations.MUST_CONTAIN: self.field_spec.validators.must_contain,
             LiteralValidations.MUST_CONTAIN_ONLY: self.field_spec.validators.must_contain_only,
@@ -483,7 +506,7 @@ class FieldDataSet(Ui_FieldDataSet, QDialog):
                         field_type_values[FieldTypeParams.TO_LOWERCASE].setChecked(iso_field.validators.field_type_validators.change_to_lower)
                         field_type_values[FieldTypeParams.IGNORE_VALIDATIONS].setChecked(iso_field.validators.field_type_validators.do_not_validate)
 
-            except KeyError | AttributeError:
+            except (KeyError, AttributeError):
                 continue
 
         if self.field_spec.field_number == self.spec.FIELD_SET.FIELD_002_PRIMARY_ACCOUNT_NUMBER:

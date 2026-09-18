@@ -1,3 +1,4 @@
+from common.core.tools.DebugTrace import trace_operation
 from contextlib import suppress
 from http import HTTPStatus
 from time import sleep
@@ -12,15 +13,17 @@ from threading import Lock
 from webbrowser import open as open_url
 from PyQt6.QtCore import pyqtSignal, QObject
 from PyQt6.QtNetwork import QTcpSocket
-from common.gui.enums.GuiFilesPath import GuiFiles
+from common.core.enums.ApplicationResources import ResourceNames
 from common.api.toolkit.LogTail import LogTail
 from common.api.enums.ApiFiles import ApiFiles
 from common.core.tools.Parser import Parser
 from common.core.exceptions.exceptions import DataValidationError, DataValidationWarning
 from common.core.enums.TextConstants import TextConstants, ReleaseDefinition
 from common.core.tools.Terminal import Terminal
+from common.core.exceptions.exceptions import SignalError, DataFileError
+from common.core.tools.ConfigManager import ConfigConflictError
+from common.core.tools.ErrorReporting import log_error
 from common.core.data_models.Config import Config
-from common.core.tools.SpecFilesRotator import SpecFilesRotator
 from common.core.data_models.Transaction import Transaction
 from common.core.enums.TermFilesPath import TermFilesPath
 from common.core.data_models.EpaySpecificationModel import EpaySpecModel
@@ -67,7 +70,7 @@ class SignalApi(QObject):
         super().__init__()
         self.api_tasks = {}
         self.lock = Lock()
-        self.config = config
+        self.config = terminal.config
         self.terminal = terminal
         self.api = Api(self)
         self.terminal.logger.add_api_handler()
@@ -79,6 +82,7 @@ class SignalApi(QObject):
 
         connection_map = {
             self.api.api_request: self.process_api_call,
+            self.api.request_finished: self.discard_request,
             self.api.api_started: self.api_started,
             self.api.api_stopped: self.api_stopped,
             self.terminal.trans_queue.incoming_transaction: self.process_incoming_transaction,
@@ -91,6 +95,11 @@ class SignalApi(QObject):
     def start(self):
         self.api.start()
 
+    def discard_request(self, request_id: str):
+        """Release requests whose HTTP caller has finished, timed out or disconnected."""
+        with self.lock:
+            self.api_tasks.pop(request_id, None)
+
     def stop(self):
         self.api.stop()
 
@@ -100,7 +109,26 @@ class SignalApi(QObject):
     def is_started(self):
         return self.api.is_api_started()
 
+    @trace_operation
     def process_api_call(self, request: ApiRequest):
+        # This executes in the Qt thread, outside FastAPI's exception handlers.
+        try:
+            self._process_api_call(request)
+        except TerminalApiError as error:
+            self.send_response(request, error.http_status, error=error.detail)
+        except ConfigConflictError as error:
+            self.send_response(request, HTTPStatus.CONFLICT, error=str(error))
+        except DataFileError as error:
+            status = HTTPStatus.UNPROCESSABLE_ENTITY if error.operation == "load" else HTTPStatus.INTERNAL_SERVER_ERROR
+            self.send_response(request, status, error=str(error))
+        except (SignalError, ValueError) as error:
+            self.send_response(request, HTTPStatus.UNPROCESSABLE_ENTITY, error=str(error))
+        except Exception as error:
+            log_error(error, f"Unexpected API backend error; request {request.request_id}")
+            self.send_response(request, HTTPStatus.INTERNAL_SERVER_ERROR,
+                               error="Internal processing error; see the diagnostic log")
+
+    def _process_api_call(self, request: ApiRequest):
         request_type = " ".join(request.request_type.split("_")).title()
 
         with self.lock:
@@ -123,18 +151,21 @@ class SignalApi(QObject):
             )
 
         processor(request)
+        logger.debug("API processor returned: request_id={} request_type={}", request.request_id, request.request_type)
+        with self.lock:
+            if request.request_id not in self.api_tasks:
+                return  # The processor or a synchronous socket callback already completed it.
 
         if request.request_type not in (ApiRequestType.OUTGOING_TRANSACTION, ApiRequestType.REVERSE_TRANSACTION):
             return
 
-        if self.config.api.wait_remote_host_response:
+        if (self.config.api.wait_remote_host_response and request.transaction is not None
+                and self.terminal.spec.get_resp_mti(request.transaction.message_type)):
             return
 
-        request.http_status = HTTPStatus.OK
-        request.response_data = TransactionResp()
-        request.response_data.status = request.response_data.status % request.request_id
-
-        self.api.process_backend_response(request)
+        response = TransactionResp()
+        response.status = response.status % request.request_id
+        self.send_response(request, HTTPStatus.OK, message=response)
 
     def get_predefined_transaction(self, trans_type: TransTypes) -> Transaction:
         match trans_type:
@@ -166,7 +197,7 @@ class SignalApi(QObject):
             if type(request) not in (ApiTransactionRequest, ReversalRequest):
                 continue
 
-            if request.transaction.trans_id == transaction.trans_id:
+            if request.transaction is not None and request.transaction.trans_id == transaction.trans_id:
                 return True
 
         return False
@@ -262,8 +293,9 @@ class SignalApi(QObject):
         return self.clean_transaction(transaction)
 
     def get_config(self) -> Config:
-        return self.config
+        return self.terminal.config_manager.read()[0]
 
+    @trace_operation
     def convert_to(self, transaction: Transaction, to_format: DataConversionFormats):
         transaction: Transaction = self.generator.set_generated_fields(transaction)
 
@@ -281,33 +313,20 @@ class SignalApi(QObject):
             case _:
                 raise HTTPException(HTTPStatus.UNPROCESSABLE_ENTITY, detail=f"Unknown data format {to_format}")
 
+    @trace_operation
     def process_api_update_config(self, request: ConfigAction):
+
+        if request.config is None:
+            raise ValueError("Configuration is required")
+
         logger.info("")
         logger.info("Processing incoming request to update the config")
         logger.info("")
 
-        self.terminal.log_printer.print_config(request.config)
+        self.terminal.update_config(request.config)
+        self.send_response(request, HTTPStatus.OK, message=self.get_config())
 
-        try:
-            old_config = self.config.model_copy(deep=True)
-
-            with open(TermFilesPath.CONFIG, "w") as file:
-                file.write(request.config.model_dump_json(indent=4))
-
-            self.terminal.read_config()
-            self.terminal.process_config_change(old_config)
-            self.config = self.terminal.config
-
-            config = self.config
-
-        except Exception as config_update_error:
-            self.send_response(request, HTTPStatus.UNPROCESSABLE_ENTITY, error=config_update_error)
-            return
-
-        self.api.config = self.config
-
-        self.send_response(request, HTTPStatus.OK, message=config)
-
+    @trace_operation
     def process_api_reverse_transaction(self, request: ApiRequest):
         original_transaction: Transaction
 
@@ -337,11 +356,12 @@ class SignalApi(QObject):
     def get_live_log() -> HTMLResponse:
         return HTMLResponse(LogTail)
 
+    @trace_operation
     def process_api_update_spec(self, request: ApiRequest):
-        SpecFilesRotator(self.config).backup_spec()
-        self.terminal.spec.reload_spec(request.spec, commit=True)
+        self.terminal.spec.reload_spec(request.spec, commit=True, config=self.config)
         self.send_response(request, HTTPStatus.OK, message=self.terminal.spec.spec)
 
+    @trace_operation
     def process_api_connect(self, request: ConnectionAction):
         if self.terminal.connector.connection_in_progress():
             self.send_response(request, HTTPStatus.SERVICE_UNAVAILABLE, error="Connection is in progress")
@@ -386,7 +406,10 @@ class SignalApi(QObject):
 
         self.send_response(request, HTTPStatus.OK, message=self.get_connection())
 
+    @trace_operation
     def process_api_trans_request(self, request: ApiTransactionRequest):
+        logger.debug("API transaction dispatch: request_id={} trans_id={}",
+                     request.request_id, request.transaction.trans_id if request.transaction is not None else None)
         try:
             self.terminal.trans_validator.validate_transaction(request.transaction)
 
@@ -404,6 +427,7 @@ class SignalApi(QObject):
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 error="Cannot send the transaction while the host connection is in progress"
             )
+            return
 
         with self.lock:
             self.api_tasks[request.request_id] = request
@@ -411,6 +435,8 @@ class SignalApi(QObject):
         self.send_transaction.emit(request.transaction)
 
     def send_response(self, request: ApiRequest, status: HTTPStatus, message: Any = None, error: error_type = None):
+        logger.debug("API response ready: request_id={} status={} has_error={}",
+                     getattr(request, "request_id", None), int(status), error is not None)
         if isinstance(request, TransactionResp):
             self.terminal_response.emit(request)
             return
@@ -426,6 +452,7 @@ class SignalApi(QObject):
 
         self.terminal_response.emit(request)
 
+    @trace_operation
     def process_api_reconnect(self, request: ApiRequest):
         logger.info("[Re]connecting...")
 
@@ -445,6 +472,7 @@ class SignalApi(QObject):
             request, HTTPStatus.BAD_GATEWAY, message=f"Cannot reconnect: {self.terminal.connector.error()}"
         )
 
+    @trace_operation
     def process_api_disconnect(self, request: ApiRequest, send_resp: bool = True):
         if self.terminal.connector.connection_in_progress():
             self.send_response(request, HTTPStatus.NOT_ACCEPTABLE, error="Connection is in progress")
@@ -491,7 +519,7 @@ class SignalApi(QObject):
 
         message = f"""<head>
                         <title>Signal {ReleaseDefinition.VERSION} | About </title>
-                        <link rel="icon" type="image/png" href="static/{GuiFiles.MAIN_LOGO}"> 
+                        <link rel="icon" type="image/png" href="static/{ResourceNames.MAIN_LOGO}">
                         <link rel="stylesheet" href="static/octicons/octicons.css" />
                       </head>
                         <body style="font-size:20px; background-color: #012e4f; color: #ffffff; padding: 10px; 

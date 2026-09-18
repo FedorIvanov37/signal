@@ -1,7 +1,22 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, PrivateAttr
+from typing import ClassVar, Literal
 from common.core.enums.Validation import ValidationMode
 from common.core.decorators.json_file_model import json_file_model
 from common.core.decorators.set_default_config_file import set_default_config_file
+
+
+class Theme(BaseModel):
+    treeColor: Literal['#FFFBEB', '#EFF1F5', '#282828', '#2E3440', '#282A36', '#1E1E2E', '#292D32', '#2D3742', '#2C3935', '#38323C', '#8996A3', '#24658C', '#124B70', '#012E4F', '#011627', '#243447', '#102D28', '#3B202B', '#000000', '#F0F0F0'] = '#F0F0F0'
+    windowColor: Literal['#FFFBEB', '#EFF1F5', '#282828', '#2E3440', '#282A36', '#1E1E2E', '#292D32', '#2D3742', '#2C3935', '#38323C', '#8996A3', '#24658C', '#124B70', '#012E4F', '#011627', '#243447', '#102D28', '#3B202B', '#000000', '#F0F0F0'] = '#F0F0F0'
+    consoleColor: Literal['#FFFBEB', '#EFF1F5', '#282828', '#2E3440', '#282A36', '#1E1E2E', '#292D32', '#2D3742', '#2C3935', '#38323C', '#8996A3', '#24658C', '#124B70', '#012E4F', '#011627', '#243447', '#102D28', '#3B202B', '#000000', '#F0F0F0'] = '#012E4F'
+
+    @field_validator('treeColor', 'windowColor', 'consoleColor', mode='before')
+    @classmethod
+    def migrate_grey(cls, value):
+        return '#8996A3' if isinstance(value, str) and value.upper() in ('#B8C2CC', '#98A4B0') else value
+
+    def colors(self):
+        return {'Tree': self.treeColor, 'Window': self.windowColor, 'Console': self.consoleColor}
 
 
 class Host(BaseModel):
@@ -48,6 +63,7 @@ class Validation(BaseModel):
 
 
 class Fields(BaseModel):
+    auto_sort: bool = False
     max_amount: int
     max_amount_limited: bool
     build_fld_90: bool = True
@@ -59,7 +75,7 @@ class Fields(BaseModel):
     @classmethod
     def amount_should_be_digit(cls, max_amount: str):
         if not str(max_amount).isdigit():
-            raise ValueError("Max transaction amount should be digits only")
+            raise ValueError("Maximum transaction amount must contain digits only")
 
         return int(max_amount)
 
@@ -94,6 +110,8 @@ class ApiModel(BaseModel):
 @set_default_config_file
 @json_file_model
 class Config(BaseModel):
+    _source_file: str | None = PrivateAttr(default=None)
+    describe_file_errors: ClassVar[bool] = True
     host: Host = Host()
     terminal: Terminal = Terminal()
     debug: Debug = Debug()
@@ -101,6 +119,7 @@ class Config(BaseModel):
     fields: Fields | None = None
     specification: Specification = Specification()
     api: ApiModel = ApiModel()
+    theme: Theme = Theme()
 
     @field_validator("host", "api", mode="after")
     @classmethod
@@ -109,12 +128,12 @@ class Config(BaseModel):
             val.port = int(val.port)
 
         except ValueError:
-            raise ValueError("Port can contain numbers only")
+            raise ValueError("Port must contain digits only")
 
         except AttributeError:
-            raise ValueError("Lost port in config")
+            raise ValueError("Missing port in configuration")
 
         if val.port not in range(0, 65536):
-            raise ValueError(f"Incorrect port number {val.port}. Port number must be in range 0-65535")
+            raise ValueError(f"Incorrect port number {val.port}. Port number must be in the range 0-65535")
 
         return val

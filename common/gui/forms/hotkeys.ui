@@ -377,7 +377,7 @@
      </item>
      <item row="12" column="1">
       <property name="text">
-       <string>Disabe / Enable row</string>
+       <string>Disable / Enable row</string>
       </property>
      </item>
      <item row="13" column="0">
@@ -477,7 +477,7 @@
      </item>
      <item row="22" column="1">
       <property name="text">
-       <string>Previous Tab</string>
+       <string>Previous tab</string>
       </property>
      </item>
      <item row="23" column="0">

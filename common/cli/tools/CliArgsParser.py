@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from common.cli.data_models.CliConfig import CliConfig
 from common.core.data_models.Config import Config
 from common.core.enums.TermFilesPath import TermFilesPath
-from common.core.constants.LogDefinition import LOG_LEVEL, DebugLevels
+from common.core.constants.LogDefinition import LOG_LEVEL
 
 
 class CliArgsParser(ArgumentParser):
@@ -26,33 +26,33 @@ class CliArgsParser(ArgumentParser):
                           help="Host TCP/IP address")
 
         self.add_argument("-p", "--port", type=int, default=self.config.host.port, action="store",
-                          help="TCP/IP port to connect")
+                          help="TCP/IP port to connect to")
 
         self.add_argument("-r", "--repeat", action="store_true", help="Repeat transactions after sending")
 
         self.add_argument("--log-file", type=str, default=TermFilesPath.LOG_FILE_NAME, action="store",
                           help=f"Set log file path. Default {TermFilesPath.LOG_FILE_NAME}")
 
-        self.add_argument("-l", "--log-level", type=str, default=DebugLevels.INFO, action="store",
-                          help=f"Debug level: {', '.join(LOG_LEVEL)}")
+        self.add_argument("-l", "--log-level", type=str, default=None, action="store",
+                          help=f"Debug level: {', '.join(LOG_LEVEL)}. Uses the configuration value when omitted")
 
         self.add_argument("--no-print", action="store_true", default=False,
                           help="Do not print the log to the screen")
 
         self.add_argument("-i", "--interval", type=int, default=0, action="store",
-                          help="Wait (seconds) before send next transaction")
+                          help="Wait time in seconds before sending the next transaction")
 
         self.add_argument("--parallel", action="store_true",
-                          help="Send new transaction with no waiting of answer for previous one")
+                          help="Send transactions without waiting for previous responses")
 
         self.add_argument("--config-file", action="store", default=TermFilesPath.CONFIG,
                           help="Set configuration file path")
 
-        self.add_argument("-f", "--file", type=str, default=None, help="File or file-mask to parse")
+        self.add_argument("-f", "--file", type=str, default=None, help="File or filename pattern to parse")
 
-        self.add_argument("-t", "--timeout", type=int, default=60, help="Timeout of waiting resp")
+        self.add_argument("-t", "--timeout", type=int, default=60, help="Response timeout in seconds")
 
-        self.add_argument("--about", action="store_true", help="Show info about the Signal")
+        self.add_argument("--about", action="store_true", help="Show information about Signal")
 
         self.add_argument("-e", "--echo-test", action="store_true", help="Send echo-test")
 
@@ -65,7 +65,7 @@ class CliArgsParser(ArgumentParser):
         self.add_argument("--api-mode", action="store_true", default=False, help="Run Signal in API mode")
 
         self.add_argument("-s", "--specification", action="store", default=TermFilesPath.SPECIFICATION,
-                          help="Set custom Specification JSON file path")
+                          help="Set the path to a custom specification JSON file")
 
     def parse_arguments(self) -> CliConfig:
         cli_arguments = self.parse_args()

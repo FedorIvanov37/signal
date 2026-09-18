@@ -1,12 +1,13 @@
 from loguru import logger
 from re import sub as regexp_substitute, match as regexp_match
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QTabWidget, QWidget
-from PyQt6.QtGui import QFont, QIcon
+from PyQt6.QtWidgets import QTabWidget, QWidget, QApplication
+from PyQt6.QtGui import QFont, QIcon, QPainter, QColor
 from common.gui.tools.tab_view.Widgets import TabBar, ComboBox, LineEdit, TabWidget
 from common.core.data_models.Config import Config
 from common.gui.decorators.void_qt_signals import void_qt_signals
 from common.gui.tools.json_views.JsonView import JsonView
+from common.gui.tools.json_views.TransactionView import TransactionView
 from common.core.data_models.Transaction import Transaction
 from common.gui.enums.GuiFilesPath import GuiFilesPath
 from common.gui.enums.TabViewParams import TabViewParams
@@ -24,6 +25,7 @@ class TabView(QTabWidget):
     new_tab_opened: pyqtSignal = pyqtSignal()
     copy_bitmap: pyqtSignal = pyqtSignal()
     files_dropped: pyqtSignal = pyqtSignal(list)
+    text_dropped: pyqtSignal = pyqtSignal(str)
     _config: Config
 
     @property
@@ -43,10 +45,10 @@ class TabView(QTabWidget):
             json_view = self.currentWidget().json_view
 
         except AttributeError:
-            return JsonView(self.config)
+            return TransactionView(self.config)
 
         if not json_view:
-            return JsonView(self.config)
+            return TransactionView(self.config)
 
         return json_view
 
@@ -115,6 +117,7 @@ class TabView(QTabWidget):
             self.json_view.need_disable_next_level: self.disable_next_level_button,
             self.json_view.need_enable_next_level: self.enable_next_level_button,
             self.json_view.files_dropped: self.files_dropped,
+            self.json_view.text_dropped: self.text_dropped,
         }
 
         for signal, slot in json_view_connection_map.items():
@@ -255,8 +258,7 @@ class TabView(QTabWidget):
         self.json_view.resize_all()
 
     def clear_message(self) -> None:
-        self.msg_type.setCurrentIndex(-1)
-        self.json_view.clean()
+        self.json_view.clear_with_history(self.msg_type)
 
     def set_json_focus(self):
         self.json_view.setFocus()
@@ -272,7 +274,7 @@ class TabView(QTabWidget):
 
         self.close_tab(self.plus_tab_index)
 
-        tab_widget = TabWidget(json_view=JsonView(self.config))
+        tab_widget = TabWidget(json_view=TransactionView(self.config))
 
         tab_widget.button.clicked.connect(self.copy_bitmap)
 
@@ -285,16 +287,32 @@ class TabView(QTabWidget):
 
     def add_plus_tab(self):  # Add the technical "plus" tab
         self.addTab(QWidget(), '')
-        self.setTabIcon(self.plus_tab_index, QIcon(GuiFilesPath.NEW_TAB))
-        self.setTabsClosable(self.count() > 2)
+        self.setTabToolTip(self.plus_tab_index, "New transaction tab (Ctrl+T)")
+        self.update_plus_icon()
+        # Keep tab-bar metrics stable when a second transaction is opened.
+        # Main and plus tabs have their close buttons hidden separately.
+        self.setTabsClosable(True)
         self.setCurrentIndex(self.last_tab_index)
 
-        try:
-            self.tabBar().tabButton(self.plus_tab_index, TabBar.ButtonPosition.RightSide).resize(int(), int())
-        except AttributeError:
-            return
+        close_button = self.tabBar().tabButton(self.plus_tab_index, TabBar.ButtonPosition.RightSide)
+        self.tabBar().setTabButton(self.plus_tab_index, TabBar.ButtonPosition.RightSide, None)
+        if close_button is not None:
+            close_button.deleteLater()
 
         self.mark_active_tab()
+
+    def update_plus_icon(self):
+        icon = QIcon(GuiFilesPath.NEW_TAB)
+        if QApplication.instance().property("signalDarkTheme"):
+            pixmap = icon.pixmap(self.iconSize() * self.devicePixelRatioF())
+            if not pixmap.isNull():
+                pixmap.setDevicePixelRatio(self.devicePixelRatioF())
+                painter = QPainter(pixmap)
+                painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
+                painter.fillRect(pixmap.rect(), QColor("#FFFFFF"))
+                painter.end()
+                icon = QIcon(pixmap)
+        self.setTabIcon(self.plus_tab_index, icon)
 
     def get_tab_name(self) -> str:
         tab_name_index = self.count()

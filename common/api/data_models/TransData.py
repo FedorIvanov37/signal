@@ -45,7 +45,7 @@ class TransData(BaseModel):
 
         try:
             currencies = Currencies.parse_file(TermFilesPath.CURRENCY_DICT)
-        except ValidationError | PydanticCustomError:
+        except (ValidationError, PydanticCustomError):
             return currency
 
         if currency not in currencies.currencies:

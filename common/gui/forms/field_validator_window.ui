@@ -131,7 +131,7 @@
            </font>
           </property>
           <property name="text">
-           <string>Min Lenght</string>
+           <string>Min length</string>
           </property>
          </widget>
         </item>
@@ -151,7 +151,7 @@
            </font>
           </property>
           <property name="text">
-           <string>Max Lenght</string>
+           <string>Max length</string>
           </property>
          </widget>
         </item>
@@ -447,7 +447,7 @@
            </font>
           </property>
           <property name="text">
-           <string>Pad by</string>
+           <string>Padding character</string>
           </property>
          </widget>
         </item>
@@ -475,7 +475,7 @@
            <number>1</number>
           </property>
           <property name="placeholderText">
-           <string>Any letter</string>
+           <string>Any character</string>
           </property>
          </widget>
         </item>
@@ -515,7 +515,7 @@
       <bool>true</bool>
      </property>
      <property name="title">
-      <string>Field Custom Validation</string>
+      <string>Custom field validation</string>
      </property>
      <layout class="QGridLayout" name="gridLayout">
       <item row="0" column="0">

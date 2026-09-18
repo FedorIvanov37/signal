@@ -32,7 +32,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>SIGNAL | GNU General Public License</string>
+   <string>Signal | GNU General Public License</string>
   </property>
   <property name="modal">
    <bool>true</bool>

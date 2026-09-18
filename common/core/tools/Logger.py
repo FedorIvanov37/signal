@@ -84,7 +84,8 @@ class Logger:
 
         handler_id = logger.add(
             stdout,
-            format=self.format,
+            format=LogDefinition.console_format,
+            colorize=None,  # Detect terminal support; keep redirected output free of ANSI codes.
             level=self.config.debug.level,
             backtrace=False,
             diagnose=False,
@@ -97,7 +98,7 @@ class Logger:
 
         handler_id = logger.add(
             wireless_handler,
-            format=LogDefinition.DISPLAY_DATE_FORMAT,
+            format="{message}",
             level=self.config.debug.level,
             backtrace=False,
             diagnose=False,

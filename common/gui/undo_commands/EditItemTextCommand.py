@@ -16,20 +16,31 @@ class EditItemTextCommand(QUndoCommand):
         self.new_text = new_text
         self.signal = signal
 
-    def redo(self):
+    def _apply(self, text):
+        from common.gui.tools.json_items.FIeldItem import FieldItem
+        from common.gui.enums.MainFieldSpec import ColumnsOrder
+
+        field_value = isinstance(self.item, FieldItem) and self.column == ColumnsOrder.VALUE
         with SignalsBlocker(self.tree):
-            self.item.setData(self.column, Qt.ItemDataRole.EditRole, self.new_text)
+            if field_value:
+                # Discard the cached value before restoring history. Otherwise
+                # field_data and masking keep returning the previous secret.
+                self.item._secret = ""
+                self.item.masked = False
+            self.item.setData(self.column, Qt.ItemDataRole.EditRole, text)
 
-        if self.signal is not None:
-            self.signal.emit(self.new_text, self.column)
+        try:
+            if isinstance(self.item, FieldItem):
+                self.tree.set_item_length(text, self.column, item=self.item)
+            elif self.signal is not None:
+                self.signal.emit(text, self.column)
+            self.tree.itemChanged.emit(self.item, self.column)
+        finally:
+            if field_value:
+                self.item.hide_secret()
 
-        self.tree.itemChanged.emit(self.item, self.column)
+    def redo(self):
+        self._apply(self.new_text)
 
     def undo(self):
-        with SignalsBlocker(self.tree):
-            self.item.setData(self.column, Qt.ItemDataRole.EditRole, self.old_text)
-
-        if self.signal is not None:
-            self.signal.emit(self.old_text, self.column)
-
-        self.tree.itemChanged.emit(self.item, self.column)
+        self._apply(self.old_text)

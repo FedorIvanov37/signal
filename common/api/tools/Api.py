@@ -1,3 +1,4 @@
+from common.core.tools.DebugTrace import trace_operation
 from os import getcwd
 from os.path import normpath
 from uuid import uuid4
@@ -17,7 +18,7 @@ from common.core.enums.TextConstants import TextConstants
 from common.core.data_models.Config import Config
 from common.core.data_models.Transaction import Transaction
 from common.core.data_models.EpaySpecificationModel import EpaySpecModel
-from common.gui.enums.ApiMode import ApiModes
+from common.api.enums.ApiModes import ApiModes
 from common.api.enums.TransTypes import TransTypes
 from common.api.data_models.ExceptionContent import ExceptionContent
 from common.api.enums.ApiUrl import ApiUrl
@@ -26,9 +27,11 @@ from common.api.data_models.Connection import Connection
 from common.api.data_models.TransactionResp import TransactionResp
 from common.api.enums.ApiRequestType import ApiRequestType
 from common.api.exceptions.TerminalApiError import TerminalApiError
+from common.core.exceptions.exceptions import SignalError
+from common.core.tools.ErrorReporting import log_error
 from common.api.enums.DataCoversionFormats import DataConversionFormats
-from common.gui.enums.GuiFilesPath import GuiFilesPath
-from common.gui.tools.ResourcePath import ResourcePath
+from common.core.enums.ApplicationResources import ApplicationResources
+from common.core.tools.ResourcePath import ResourcePath
 
 from common.api.data_models.ApiRequests import (
     ApiRequest,
@@ -68,6 +71,7 @@ class Api(QObject):
     api_started: pyqtSignal = pyqtSignal(ApiModes)
     api_stopped: pyqtSignal = pyqtSignal(ApiModes)
     api_request: pyqtSignal = pyqtSignal(ApiRequest)
+    request_finished: pyqtSignal = pyqtSignal(str)
 
     def __init__(self, backend):
         super().__init__()
@@ -85,6 +89,7 @@ class Api(QObject):
     def is_api_started(self) -> bool:
         return self._thread and self._thread.is_alive()
 
+    @trace_operation
     def restart(self) -> None:
         logger.debug("Restarting API")
 
@@ -96,6 +101,7 @@ class Api(QObject):
             self.stop()
             self.start()
 
+    @trace_operation
     def start(self) -> None:
         if self.is_api_started():
             logger.warning("Unable to start API mode, because it is already started")
@@ -103,7 +109,9 @@ class Api(QObject):
 
         self._thread = Thread(target=self._run, daemon=True)
         self._thread.start()
+        logger.debug("API server worker started")
 
+    @trace_operation
     def stop(self, timeout=5.0) -> None:
         if not self.is_api_started():
             logger.warning("Unable to stop API mode, because it is not started")
@@ -113,6 +121,7 @@ class Api(QObject):
             self._server.should_exit = True
 
         self._thread.join(timeout=timeout)
+        logger.debug("API graceful stop wait finished: worker_alive={}", self._thread.is_alive())
 
         if self._thread.is_alive() and self._server:
             self._server.force_exit = True
@@ -120,6 +129,7 @@ class Api(QObject):
 
         self._thread = self._server = self._loop = self._queue = None
 
+    @trace_operation
     def _run(self) -> None:
         loop = new_event_loop()
         set_event_loop(loop)
@@ -128,13 +138,14 @@ class Api(QObject):
 
         config: UvicornConfig = UvicornConfig(
             app=self.app,
-            host="0.0.0.0",
+            host=self.backend.config.api.address,
             port=self.backend.config.api.port,
             log_config=None,
             access_log=True,
         )
 
         self._server: UvicornServer = UvicornServer(config)
+        logger.debug("API listener prepared: address={} port={}", config.host, config.port)
 
         self.api_started.emit(ApiModes.START)
 
@@ -146,11 +157,13 @@ class Api(QObject):
             loop.close()
             self.api_stopped.emit(ApiModes.STOP)
 
+    @trace_operation
     async def backend_request(self, request: ApiRequest) -> None:  # Use this to create long-time job
         if not request.request_id:
             request.request_id = str(uuid4())
 
         if request.request_id in self.pending_jobs:
+            logger.debug("API duplicate request rejected: request_id={}", request.request_id)
             raise TerminalApiError(
                 http_status=HTTPStatus.BAD_REQUEST,
                 detail=f"duplicated request id {request.request_id}"
@@ -159,12 +172,14 @@ class Api(QObject):
         loop = get_running_loop()
         future: Future = loop.create_future()
         self.pending_jobs[request.request_id] = future
+        logger.debug("API dispatch to Qt: request_id={} pending_jobs={}", request.request_id, len(self.pending_jobs))
         self.api_request.emit(request)
 
         try:
             return await wait_for(future, timeout=self.backend.config.api.waiting_timeout_seconds)
 
         except TimeoutError:
+            logger.debug("API backend wait expired: request_id={}", request.request_id)
             raise TerminalApiError(http_status=HTTPStatus.GATEWAY_TIMEOUT, detail="request processing timeout")
 
         except LookupError as lost_transaction:
@@ -172,6 +187,8 @@ class Api(QObject):
 
         finally:
             self.pending_jobs.pop(request.request_id)
+            self.request_finished.emit(request.request_id)
+            logger.debug("API pending request removed: request_id={} remaining={}", request.request_id, len(self.pending_jobs))
 
     def process_backend_response(self, request: ApiRequest):
         if not self._loop:
@@ -181,8 +198,10 @@ class Api(QObject):
             future = self.pending_jobs.get(request.request_id)
 
             if not future or future.done():
+                logger.debug("API late response ignored: request_id={} future_present={}", request.request_id, future is not None)
                 return
 
+            logger.debug("API future completing: request_id={} http_status={}", request.request_id, int(request.http_status))
             if request.http_status is not HTTPStatus.OK:
                 future.set_exception(TerminalApiError(detail=request.error, http_status=request.http_status))
                 return
@@ -244,7 +263,7 @@ class Api(QObject):
             ),
         )
 
-        app.mount("/static", StaticFiles(directory=ResourcePath.resource_path("common/doc/static")), name="static")
+        app.mount("/static", StaticFiles(directory=ResourcePath.resource_path("common/data/static")), name="static")
 
         api: APIRouter = APIRouter(prefix=ApiUrl.API)
 
@@ -270,6 +289,18 @@ class Api(QObject):
                 headers={"X-Request-ID": request.state.request_id},
             )
 
+        @app.exception_handler(SignalError)
+        def operation_errors_handler(request, exception):
+            return JSONResponse({"detail": str(exception)}, status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                                headers={"X-Request-ID": getattr(request.state, "request_id", "")})
+
+        @app.exception_handler(Exception)
+        def unexpected_errors_handler(request, exception):
+            log_error(exception, "HTTP request failed")
+            return JSONResponse({"detail": "Internal processing error; see the diagnostic log"},
+                                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                                headers={"X-Request-ID": getattr(request.state, "request_id", "")})
+
         @app.get(ApiUrl.SIGNAL, response_class=HTMLResponse, tags=[EndpointTags.DOCS], include_in_schema=False)
         def get_signal_info(request: Request):
             return HTMLResponse(
@@ -286,7 +317,7 @@ class Api(QObject):
 
         @app.get("/favicon.ico", response_class=FileResponse, include_in_schema=False)
         def favicon():
-            return FileResponse("common/doc/static/triforce_unsigned.png")
+            return FileResponse(ResourcePath.resource_path("common/data/static/triforce_unsigned.png"))
 
         @app.get(ApiUrl.POSTMAN, response_class=FileResponse, tags=[EndpointTags.TOOLS], include_in_schema=False)
         def get_postman_collection(request: Request):
@@ -341,7 +372,7 @@ class Api(QObject):
         shutdown of the PyQt application
         """
 
-        @api.post(ApiUrl.CREATE_PREDEFINED_TRANSACTION, response_model=Transaction, tags=[EndpointTags.TRANSACTIONS])
+        @api.post(ApiUrl.CREATE_PREDEFINED_TRANSACTION, response_model=Union[Transaction, TransactionResp], tags=[EndpointTags.TRANSACTIONS])
         async def create_predefined_transaction(request: Request, trans_type: TransTypes):
             transaction: Transaction = self.backend.get_predefined_transaction(trans_type)
 
@@ -365,7 +396,7 @@ class Api(QObject):
                 )
             )
 
-        @api.post(ApiUrl.REVERSE_TRANSACTION, response_model=Transaction, tags=[EndpointTags.TRANSACTIONS])
+        @api.post(ApiUrl.REVERSE_TRANSACTION, response_model=Union[Transaction, TransactionResp], tags=[EndpointTags.TRANSACTIONS])
         async def reverse_transaction(request: Request, trans_id: str):
             return await self.backend_request(
                 ReversalRequest(
@@ -455,7 +486,7 @@ class Api(QObject):
 
         @app.get(ApiUrl.DOCUMENT, response_class=FileResponse, tags=[EndpointTags.DOCS])
         def get_user_guide():
-            return normpath(f"{getcwd()}/{GuiFilesPath.DOC}")
+            return normpath(f"{getcwd()}/{ApplicationResources.USER_GUIDE}")
 
         app.include_router(api)
 

@@ -92,7 +92,7 @@ class LogPrinter(QObject):
         bitmap = ", ".join(transaction.data_fields.keys())
         trans_id = transaction.trans_id
 
-        if transaction.matched and not transaction.is_request:
+        if transaction.matched and transaction.direction == 'incoming':
             trans_id = transaction.match_id
 
         level(f"[TRANS_ID][{trans_id}]")

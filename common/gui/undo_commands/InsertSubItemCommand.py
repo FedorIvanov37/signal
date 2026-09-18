@@ -13,19 +13,21 @@ class InsertSubItemCommand(QUndoCommand):
         self.tree = tree
         self.item = item
         self.sub_item = sub_item
+        self.index = 0
         self.callback = callback
         self.item_data = self.item.text(ColumnsOrder.VALUE)
 
     def redo(self):
         with SignalsBlocker(self.tree):
-            self.item.insertChild(int(), self.sub_item)
+            self.item.insertChild(self.index, self.sub_item)
 
             if self.callback is not None:
                 self.callback(self.item, self.sub_item, UndoSteps.REDO)
 
     def undo(self):
         with SignalsBlocker(self.tree):
-            self.sub_item = self.item.takeChild(int())
+            self.index = self.item.indexOfChild(self.sub_item)
+            self.item.takeChild(self.index)
 
         if self.callback is not None:
             self.item.setText(ColumnsOrder.VALUE, self.item_data)

@@ -1,4 +1,5 @@
-from struct import pack
+from common.core.tools.DebugTrace import trace_operation
+from struct import pack, error as StructError
 from http import HTTPStatus
 from http.client import HTTPResponse
 from urllib.request import urlopen
@@ -33,6 +34,11 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
         self.config = config
         self.readyRead.connect(self.read_transaction_data)
         self._recv_buffer = bytes()
+        self.disconnected.connect(self._clear_recv_buffer)
+
+    def _clear_recv_buffer(self):
+        logger.debug("TCP receive buffer cleared: discarded_bytes={}", len(self._recv_buffer))
+        self._recv_buffer = bytes()
 
     def connection_in_progress(self):
         return self.state() == self.SocketState.ConnectingState
@@ -44,6 +50,7 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
         return self.peerPort()
 
     def send_transaction_data(self, trans_id: str, transaction_data: bytes):
+        logger.debug("TCP send requested: trans_id={} body_bytes={} state={}", trans_id, len(transaction_data), self.state().name)
         if not self.state() == self.SocketState.ConnectedState:
             logger.warning("Host disconnected. Trying to establish the connection")
 
@@ -57,45 +64,73 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
             self.sending_error.emit(trans_id, "Cannot connect to host")
             return
 
-        transaction_header = pack("!H", len(transaction_data))
+        try:
+            transaction_header = pack("!H", len(transaction_data))
+
+        except StructError:
+            self.sending_error.emit(trans_id, "Transaction exceeds the two-byte outgoing length limit")
+            return
+
         transaction_data = transaction_header + transaction_data
         bytes_sent = self.write(transaction_data)
 
-        if bytes_sent == int():
+        if bytes_sent != len(transaction_data):
+            # A partial frame must not be followed by another transaction.
+            self.abort()
             self.sending_error.emit(trans_id, "Cannot send transaction data")
             return
 
-        logger.debug(f"bytes sent {bytes_sent}")
+        logger.debug("TCP frame buffered: trans_id={} frame_bytes={} accepted_bytes={}", trans_id, len(transaction_data), bytes_sent)
 
         self.flush()
 
         self.transaction_sent.emit(trans_id)
 
     def read_transaction_data(self):
-        self._recv_buffer += self.readAll().data()
+        chunk = self.readAll().data()
+        self._recv_buffer += chunk
+        logger.debug("TCP data received: chunk_bytes={} buffered_bytes={}", len(chunk), len(self._recv_buffer))
 
-        header_len = self.config.host.header_length if self.config.host.header_length_exists else int()
+        config = self.config.model_copy(deep=True)
+        header_len = config.host.header_length if config.host.header_length_exists else int()
+
+        if header_len <= 0:
+            logger.error("TCP reception requires a positive message header length; check host settings")
+            self._clear_recv_buffer()
+            self.abort()
+            return
 
         while len(self._recv_buffer) >= header_len:
             msg_len = int.from_bytes(self._recv_buffer[:header_len], 'big')
 
+            if msg_len == 0:
+                logger.error("Received an empty transaction frame")
+                self._clear_recv_buffer()
+                self.abort()
+                return
+
             if len(self._recv_buffer) < header_len + msg_len:
+                logger.debug("TCP frame incomplete: expected_bytes={} buffered_bytes={} missing_bytes={}",
+                             header_len + msg_len, len(self._recv_buffer), header_len + msg_len - len(self._recv_buffer))
                 break
 
             message = self._recv_buffer[:header_len + msg_len]
             self._recv_buffer = self._recv_buffer[header_len + msg_len:]
+            logger.debug("TCP frame extracted: frame_bytes={} remaining_bytes={}", len(message), len(self._recv_buffer))
             self.incoming_transaction_data.emit(message)
 
+    @trace_operation
     def connect_sv(self, host: str | None = None, port: int | None = None):
+        config = self.config.model_copy(deep=True)
         if host is None:
-            host = self.config.host.host
+            host = config.host.host
 
         if port is None:
-            port = self.config.host.port
+            port = config.host.port
 
         for item in host, port:
             if item in (str(), None):
-                logger.error("Lost SV host address or port number. Check the configuration.")
+                logger.error("Missing SV host address or port number. Check the configuration.")
                 logger.error("Connection is not established")
                 return
 
@@ -103,9 +138,11 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
 
         logger.info(f"Connecting to {host}:{port}")
 
+        self._clear_recv_buffer()
         self.connectToHost(host, port)
 
         self.waitForConnected(msecs=10000)
+        logger.debug("TCP connection attempt completed: state={} socket_error={}", self.state().name, self.error().name)
 
         if self.state() is self.SocketState.ConnectedState:
             self.setSocketOption(QTcpSocket.SocketOption.LowDelayOption, 1)
@@ -113,6 +150,7 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
 
         return self.error()
 
+    @trace_operation
     def disconnect_sv(self):
         if not self.state() == QTcpSocket.SocketState.ConnectedState:
             return
@@ -122,8 +160,10 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
         if not self.state() == QTcpSocket.SocketState.UnconnectedState:
             self.waitForDisconnected(msecs=10000)
 
+    @trace_operation
     def reconnect_sv(self, host: str | None = None, port: str | None = None):
         for retry in range(3):
+            logger.debug("TCP reconnect cleanup: attempt={} state={}", retry + 1, self.state().name)
 
             if self.state() == self.SocketState.UnconnectedState:
                 break
@@ -131,7 +171,7 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
             self.disconnect_sv()
 
         else:
-            logger.error("Cannot disconnect the host")
+            logger.error("Cannot disconnect from the host")
             return
 
         try:
@@ -143,6 +183,7 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
     def is_connected(self):
         return self.state() == self.SocketState.ConnectedState
 
+    @trace_operation
     def get_remote_spec(self):
         validator = DataValidator(self.config)
 
@@ -169,11 +210,12 @@ class Connector(QTcpSocket, ConnectionInterface, metaclass=QObjectAbcMeta):
 
         try:
             if resp.getcode() != HTTPStatus.OK:
-                logger.error(f"Cannot get remote specification: Non-success http-code {resp.status}")
+                logger.error(f"Cannot get remote specification: Unsuccessful HTTP status code {resp.status}")
                 logger.warning(use_local_spec_text)
                 return
 
             spec_data: str = resp.read().decode()
+            logger.debug("Remote specification received: status={} text_chars={}", resp.getcode(), len(spec_data))
 
             self.got_remote_spec.emit(spec_data)
 

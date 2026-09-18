@@ -190,7 +190,7 @@ class Ui_LicenseWindow(object):
         LicenseWindow.setWindowTitle(_translate("LicenseWindow", "Signal | GNU General Public License"))
         self.ButtonAccept.setText(_translate("LicenseWindow", "Accept"))
         self.ButtonReject.setText(_translate("LicenseWindow", "Reject"))
-        self.CheckBoxAgreement.setText(_translate("LicenseWindow", "I am agree with the terms and conditions"))
+        self.CheckBoxAgreement.setText(_translate("LicenseWindow", "I agree to the terms and conditions"))
         self.CheckBoxDontShowAgain.setText(_translate("LicenseWindow", "Don\'t show this message anymore"))
         self.InfoBoard.setDocumentTitle(_translate("LicenseWindow", "GNU/GPL license agreement"))
         self.InfoBoard.setHtml(_translate("LicenseWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"

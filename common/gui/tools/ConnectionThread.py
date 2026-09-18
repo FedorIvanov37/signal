@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QObject, QThread, QCoreApplication
+from PyQt6.QtCore import QObject, QThread
 from common.core.tools.Connector import Connector
 from common.core.data_models.Config import Config
 from common.core.interfaces.ConnectorInterface import ConnectionInterface
@@ -8,12 +8,8 @@ from contextlib import suppress
 
 """
 
- Separate thread for TCP socket. Should be used for GUI to not freeze the MainWindow while the connection is in progress
- Processes event loop in a while-true cycle until property self.stop will be set as True. For non-GUI mode better to use 
- a native connector, which blocks the work while the connection is in progress, otherwise, work will be continued when 
- the connection is not yet established.
- 
- No direct interaction or call is possible. Using a separate stream the connector can interact through pyqtSignals only 
+ TCP socket worker using the native QThread event loop.
+ Shutdown stops the event loop and deletes the socket in its owning thread.
 
  The connector Implements ConnectionInterface - metaclass, which describes the functions kit. In case of changing the 
  code, change the interface first 
@@ -122,19 +118,13 @@ class ConnectionThread(ConnectionInterface, QObject, metaclass=QObjectAbcMeta):
         self.connector: Connector = Connector(self.config)
         self.thread: QThread = QThread()
         self.connector.moveToThread(self.thread)
-        self.thread.started.connect(self.run)
-        self.thread.start()  # Once the connector started no more direct call can be made
+        self.thread.finished.connect(self.connector.deleteLater)
+        self.thread.start()
 
-    def run(self):
-        while not self.stop:  # Main endless cycle
-            QCoreApplication.processEvents()  # Processes events instead of direct interaction
-            QThread.msleep(10)
-
-        self.thread.terminate()
-        self.disconnect_sv()
-
-    def stop_thread(self):  # Once the self.stop become True the connection will be dropped and the thread terminated
+    def stop_thread(self):
         self.stop = True
+        self.thread.quit()
+        self.thread.wait()
 
     def is_connected(self):
         return self.connector.state() == self.connector.SocketState.ConnectedState
