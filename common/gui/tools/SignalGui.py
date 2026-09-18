@@ -611,7 +611,8 @@ class SignalGui(Terminal):
             else:
                 self.set_remote_spec.emit()
 
-        if not getattr(self, '_applying_theme_only', False):
+        if (not getattr(self, '_applying_theme_only', False)
+                and not self.window.property('signalTourCommit')):
             logger.info("Settings applied")
 
     def _begin_shutdown(self):

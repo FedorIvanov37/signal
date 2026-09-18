@@ -285,7 +285,7 @@ class SignalCli(Terminal):
 
         print(TextConstants.HELLO_MESSAGE)
         print("")
-        print("  Welcome to SIGNAL Command Line Mode!")
+        print("  Welcome to Signal Command Line Mode!")
         print("")
         print("  Signal distributes under GNU/GPL license as a free software. "
               "To proceed work you have to read and accept license agreement")

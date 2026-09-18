@@ -199,6 +199,9 @@ Signal's development.
     * Drag-and-drop support for transactions and configuration data
     * Undo and redo in the complex field constructor
     * Specification recovery from backups
+    * Version-specific guided tour of interface changes
+    * Application-wide debug logging
+    * Error dialog with a stack trace for unexpected errors
 
 * **Updates**
     * Improved interface, keyboard navigation and error reporting

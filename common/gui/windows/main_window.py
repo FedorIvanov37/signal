@@ -1022,6 +1022,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
                 self.keep_alive.emit(interval)
 
     def set_buttons_menu(self) -> None:
+        from common.gui.windows.welcome_tour import offer_welcome_tour
+        from common.core.enums.ReleaseDefinition import ReleaseDefinition
 
         def process_menu_structure(structure: dict, menu=None):
             for button in structure.keys():
@@ -1110,6 +1112,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
                 ToolBarElements.OPENAPI_DOC: self.show_openapi_doc,
                 ToolBarElements.HOTKEYS: self.hotkeys,
                 ToolBarElements.LICENSE: self.show_license,
+                f'Quick tour {ReleaseDefinition.VERSION}': lambda: offer_welcome_tour(self),
                 ToolBarElements.ABOUT: self.about,
             }
         }

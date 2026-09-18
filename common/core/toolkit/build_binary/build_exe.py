@@ -23,23 +23,25 @@ OUTPUT = ROOT / 'common/bin/signal.exe'
 
 
 
-def prepare_build_data(build):
+def prepare_build_data(build, theme=None):
     """Prepare defaults without touching the active installation's settings."""
     data = build / 'data'
     settings = data / 'settings'
     settings.mkdir(parents=True)
     defaults = json.loads((ROOT / 'common/data/settings/default_config.json').read_text(encoding='utf-8-sig'))
-    # Match Reset theme: white table/base and the default blue console.
-    defaults['theme'] = dict(treeColor='#F0F0F0', windowColor='#F0F0F0', consoleColor='#012E4F')
+    # Keep the default configuration intact; an explicit release theme affects only config.json.
     for name in ('config.json', 'default_config.json'):
-        (settings / name).write_text(json.dumps(defaults, indent=4) + '\n', encoding='utf-8')
+        config = dict(defaults)
+        if name == 'config.json' and theme is not None:
+            config['theme'] = dict(theme)
+        (settings / name).write_text(json.dumps(config, indent=4) + '\n', encoding='utf-8')
     shutil.copytree(ROOT / 'common/data/style', data / 'style',
                     ignore=shutil.ignore_patterns('appearance.json', 'appearance.ini',
                                                   'panel_layout.ini', '*.tmp'))
     return data
 
 
-def build_binary(output):
+def build_binary(output, theme=None):
     """Build fresh code into the explicit destination; never launch it."""
     output = Path(output).resolve()
     for resource in (ROOT / 'Signal.py', MANIFEST,
@@ -52,7 +54,7 @@ def build_binary(output):
 
     with tempfile.TemporaryDirectory(prefix='signal-build-') as temporary_build:
         build = Path(temporary_build)
-        build_data = prepare_build_data(build)
+        build_data = prepare_build_data(build, theme=theme)
         windows = Path(os.environ.get('SystemRoot', r'C:\Windows'))
         previous_path = os.environ.get('PATH', '')
         previous_cwd = Path.cwd()

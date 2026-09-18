@@ -4,6 +4,7 @@ Usage: python common/core/toolkit/build_binary/build_release.py
 Output: dist/Signal_<version>.zip, with signal.exe at the archive root.
 The layout follows the v0.20 distribution: release_info.txt, postman, and
 common/{data,doc,log,src}. README.md belongs only to common/src.
+Settings use default_config.json with the current config theme.
 Temporary staging is removed automatically. Active settings are never changed.
 """
 import ast
@@ -52,6 +53,28 @@ def copy_resources(source, target):
         copy_file(path, target / relative)
 
 
+def release_notes_markdown(root, version):
+    guide = (root / 'common/doc/signal_user_guide.md').read_text(encoding='utf-8-sig')
+    match = re.search(r'^### Signal ' + re.escape(version) + r'\s*\n(.*?)(?=^#{1,3} |\Z)', guide, re.M | re.S)
+    if not match:
+        raise ValueError(f'Release notes for {version} not found in the guide')
+    return match[1].strip()
+
+
+def update_docs_release_info(root, version):
+    """Update the sibling documentation project, retaining other release sections."""
+    target = root.parent / 'signal.docs/docs/general/release-info.md'
+    if not target.is_file():
+        print(f'Documentation release notes skipped: {target} does not exist')
+        return
+    current = target.read_text(encoding='utf-8-sig')
+    section = f'## Signal {version} release info\n\n' + release_notes_markdown(root, version) + '\n'
+    pattern = re.compile(r'^## Signal ' + re.escape(version) + r' release info[^\n]*\n.*?(?=^#{1,2} |\Z)', re.M | re.S)
+    updated = pattern.sub(lambda match: section + '\n', current, count=1) if pattern.search(current) else section + '\n' + current
+    target.write_text(updated.rstrip() + '\n', encoding='utf-8')
+    print(f'Documentation release notes updated: {target}')
+
+
 def assemble(root, stage, defaults, version, binary):
     if not binary.is_file() or binary.stat().st_size == 0:
         raise FileNotFoundError('Fresh release binary was not produced')
@@ -70,12 +93,9 @@ def assemble(root, stage, defaults, version, binary):
     postman = root / 'common/postman' / f'Signal_{version}_postman_collection.zip'
     copy_file(postman, stage / 'postman' / postman.name)
 
-    guide = (root / 'common/doc/signal_user_guide.md').read_text(encoding='utf-8-sig')
-    match = re.search(r'^### Signal ' + re.escape(version) + r'\s*\n(.*?)(?=^#{1,3} |\Z)', guide, re.M | re.S)
-    if not match:
-        raise ValueError(f'Release notes for {version} not found in the guide')
+    markdown = release_notes_markdown(root, version)
     plain = []
-    for line in match[1].strip().splitlines():
+    for line in markdown.splitlines():
         heading = re.fullmatch(r'\s*\* \*\*(.+?)\*\*\s*', line)
         if heading:
             plain.append(heading[1] + ':')
@@ -129,15 +149,17 @@ def verify_stage(stage, defaults):
 
 def main():
     version = release_version(ROOT)
+    active = json.loads((ROOT / 'common/data/settings/config.json').read_text(encoding='utf-8-sig'))
+    theme = active['theme']
     output = ROOT / 'dist' / f'Signal_{version}.zip'
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='signal-release-') as work:
         work = Path(work)
-        defaults = prepare_build_data(work)
+        defaults = prepare_build_data(work, theme=theme)
         stage = work / 'package'
         stage.mkdir()
         binary = work / "binary/signal.exe"
-        build_binary(binary)
+        build_binary(binary, theme=theme)
         assemble(ROOT, stage, defaults, version, binary)
         with tempfile.NamedTemporaryFile(dir=output.parent, suffix='.tmp', delete=False) as stream:
             temporary = Path(stream.name)
@@ -155,6 +177,7 @@ def main():
             temporary.replace(output)
         finally:
             temporary.unlink(missing_ok=True)
+    update_docs_release_info(ROOT, version)
     print(f'Distribution ready: {output}')
     print('Built a fresh release binary in Temp; common/bin was not modified. No application was launched.')
 
